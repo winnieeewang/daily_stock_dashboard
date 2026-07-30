@@ -1,7 +1,8 @@
 yfinance
 pandas
 numpy
-streamlit
-plotly
+ta
 requests
 fredapi
+openai
+akshare
