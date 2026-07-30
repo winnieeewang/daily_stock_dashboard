@@ -361,10 +361,12 @@ def fetch_news(symbols, limit=3):
 
         os.makedirs("data", exist_ok=True)
 
+        # 1. 宏观数据
         macro_df = pd.DataFrame([macro])
         macro_df.to_csv("data/macro.csv", index=False)
         print("✅ 宏观数据已保存到 data/macro.csv")
 
+        # 2. 个股数据
         stock_records = []
         for sym, data in stock_dict.items():
             if "error" not in data:
@@ -378,6 +380,7 @@ def fetch_news(symbols, limit=3):
         else:
             print("⚠️ 无有效个股数据可保存")
 
+        # 3. SOX 信号
         sox_df = pd.DataFrame([sox])
         sox_df.to_csv("data/sox.csv", index=False)
         print("✅ SOX 信号已保存到 data/sox.csv")
