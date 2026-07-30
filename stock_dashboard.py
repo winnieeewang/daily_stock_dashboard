@@ -351,57 +351,41 @@ def fetch_news(symbols, limit=3):
 # 生成报告 + 图表（DeepSeek）
 # ====================================================================
 
-def generate_report():
-    try:
-        print("📊 数据采集开始...")
-        
-        # ---- 宏观数据 ----
-        macro = {}
-        for name, sym in MACRO_INDICES.items():
-            val = get_macro_value(sym)
-            if val is None:
-                macro[name] = "无数据"
-            elif isinstance(val, pd.Series):
-                macro[name] = float(val.iloc[0]) if not val.empty else "无数据"
-            else:
-                try:
-                    macro[name] = float(val)
-                except (TypeError, ValueError):
-                    macro[name] = str(val)
-        
-        # ---- 个股数据 ----
-        stock_dict = {}
-        for sym in STOCKS:
-            tech = get_stock_technical(sym)
-            if tech:
-                stock_dict[sym] = tech
-            else:
-                stock_dict[sym] = {"error": "数据获取失败"}
-                print(f"⚠️ {sym} 数据获取失败，已跳过")
-        
-        # ---- SOX 信号 ----
-        sox = get_sox_signals()
-        if "error" in sox:
-            sox = {
-                "最新价": "N/A",
-                "回撤%": "N/A",
-                "技术性熊市": False,
-                "RSI": "N/A",
-                "MA20": "N/A",
-                "MA50": "N/A",
-                "MA200": "N/A",
-                "信号列表": ["⚠️ SOX 数据获取失败"]
-            }
-        
         adv_dec = get_advance_decline()
         adv_dec = float(adv_dec) if adv_dec is not None else "无数据"
         news = fetch_news(STOCKS, 3)
         
+        # ---- 保存数据到 CSV ----
+        import os
+        import pandas as pd
+
+        os.makedirs("data", exist_ok=True)
+
+        macro_df = pd.DataFrame([macro])
+        macro_df.to_csv("data/macro.csv", index=False)
+        print("✅ 宏观数据已保存到 data/macro.csv")
+
+        stock_records = []
+        for sym, data in stock_dict.items():
+            if "error" not in data:
+                row = {"symbol": sym}
+                row.update(data)
+                stock_records.append(row)
+        if stock_records:
+            stock_df = pd.DataFrame(stock_records)
+            stock_df.to_csv("data/stocks.csv", index=False)
+            print("✅ 个股数据已保存到 data/stocks.csv")
+        else:
+            print("⚠️ 无有效个股数据可保存")
+
+        sox_df = pd.DataFrame([sox])
+        sox_df.to_csv("data/sox.csv", index=False)
+        print("✅ SOX 信号已保存到 data/sox.csv")
+        
         # ---- 构建 Prompt ----
         prompt = f"""你是一位专业股票分析师，请根据以下数据生成一份详细的每日投资看板报告。
 
-**报告日期**：{datetime.now().strftime('%Y-%m-%d %H:%M')}
-
+**报告日期**：{datetime.now().strftime('%Y-%m-%d %H:%M')}"""
 ---
 ### 一、宏观概览
 {json.dumps(macro, indent=2, ensure_ascii=False)}
