@@ -3,8 +3,7 @@
 # 支持港股/美股 + SOX 信号 + 技术指标 + K线图
 # ====================================================================
 
-# 1. 安装依赖（Colab 用，GitHub Actions 用 requirements.txt）
-!pip install -q yfinance pandas ta requests akshare mplfinance matplotlib openai
+
 
 # 2. 导入库
 import yfinance as yf
