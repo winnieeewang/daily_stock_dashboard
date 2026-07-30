@@ -111,7 +111,7 @@ st.markdown("""
 """.format(update_time=datetime.now().strftime('%Y-%m-%d %H:%M')), unsafe_allow_html=True)
 
 # ---------- 配置 ----------
-STOCKS = ["MU", "AAOI", "GOOGL", "MSFT", "ORCL", "TSLA", "AMZN", "MRVL", "LITE", "SNDK", "NVDA", "0700.HK", "0883.HK"]
+STOCKS = ["MU", "AAOI", "GOOGL", "MSFT", "ORCL", "TSLA", "AMZN", "SPCX", "SKHY", "MRVL", "LITE", "SNDK", "NVDA", "0700.HK", "0883.HK", "3750.HK"]
 MACRO_SYMBOLS = {
     "VIX": "^VIX",
     "美元指数": "DX-Y.NYB",
