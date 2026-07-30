@@ -2,6 +2,8 @@ yfinance
 pandas
 numpy
 ta
-google-generativeai
 requests
 akshare
+mplfinance
+matplotlib
+openai
