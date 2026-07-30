@@ -23,4 +23,4 @@ jobs:
       - name: 运行看板
         run: python stock_dashboard.py
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
