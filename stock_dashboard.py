@@ -47,9 +47,10 @@ print("✅ DeepSeek Client 已初始化")
 
 # 股票列表（港股必须加 .HK）
 STOCKS = [
-    "MU", "AAOI", "GOOGL", "MSFT", "AMZN", "MRVL", "LITE", "SNDK", "NVDA",
+    "MU", "AAOI", "GOOGL", "MSFT", "AMZN", "MRVL", "LITE", "SNDK", "NVDA", "ORCL", "SPCX", "SKHY", "TSLA",
     "0700.HK",   # 腾讯
     "0883.HK",   # 中国海洋石油
+    "3750.HK",   # 宁德时代
 ]
 
 MACRO_INDICES = {
