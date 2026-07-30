@@ -4,6 +4,8 @@ numpy
 ta
 requests
 akshare
+openai
 mplfinance
 matplotlib
-openai
+streamlit
+plotly
