@@ -311,12 +311,18 @@ def get_sox_signals():
     ma50 = float(close.rolling(50).mean().iloc[-1])
     ma200 = float(close.rolling(200).mean().iloc[-1])
     
+    # RSI 计算
     delta = close.diff()
     gain = (delta.where(delta > 0, 0)).rolling(14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-    rs = gain / loss
-    rsi_val = float(100 - (100 / (1 + rs.iloc[-1]))) if rs.iloc[-1] != 0 else 50.0
+    # 安全提取 rs
+    try:
+        rs_last = float((gain / loss).iloc[-1])
+    except:
+        rs_last = 1.0  # 默认值
+    rsi_val = float(100 - (100 / (1 + rs_last))) if rs_last != 0 else 50.0
     
+    # MACD
     exp12 = close.ewm(span=12, adjust=False).mean()
     exp26 = close.ewm(span=26, adjust=False).mean()
     macd_line = exp12 - exp26
