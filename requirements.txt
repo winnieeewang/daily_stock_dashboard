@@ -1,11 +1,6 @@
 yfinance
 pandas
 numpy
-ta
-requests
-akshare
-openai
-mplfinance
-matplotlib
 streamlit
 plotly
+requests
