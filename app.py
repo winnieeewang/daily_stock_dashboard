@@ -2,38 +2,29 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import yfinance as yf
+import numpy as np
 
-# ---------- 页面配置 ----------
-st.set_page_config(
-    layout="wide",
-    page_title="每日股票看板",
-    page_icon="📈",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(layout="wide", page_title="每日股票看板", initial_sidebar_state="expanded")
 
-# ---------- 自定义 CSS（深色金融风） ----------
+# ---------- 自定义 CSS ----------
 st.markdown("""
 <style>
-    /* 全局背景 */
-    .stApp {
-        background: linear-gradient(135deg, #0a0e1a 0%, #141b2d 50%, #1a2335 100%);
-    }
-    /* 卡片样式 */
+    .stApp { background: linear-gradient(135deg, #0a0e1a 0%, #141b2d 50%, #1a2335 100%); }
     .metric-card {
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(255,255,255,0.05);
         backdrop-filter: blur(10px);
         border-radius: 16px;
         padding: 20px 24px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
         transition: all 0.3s ease;
     }
     .metric-card:hover {
-        border-color: rgba(0, 200, 255, 0.3);
-        box-shadow: 0 8px 40px rgba(0, 200, 255, 0.08);
+        border-color: rgba(0,200,255,0.3);
+        box-shadow: 0 8px 40px rgba(0,200,255,0.08);
         transform: translateY(-2px);
     }
     .metric-value {
@@ -57,17 +48,14 @@ st.markdown("""
         border-left: 3px solid #00d4ff;
         padding-left: 16px;
         margin: 30px 0 20px 0;
-        letter-spacing: 0.5px;
     }
-    /* K线图容器 */
-    .chart-container {
-        background: rgba(255, 255, 255, 0.03);
+    .stock-card {
+        background: rgba(255,255,255,0.03);
         border-radius: 16px;
         padding: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        margin-bottom: 20px;
+        border: 1px solid rgba(255,255,255,0.06);
+        margin-bottom: 12px;
     }
-    /* 底部信息 */
     .footer {
         text-align: center;
         color: rgba(255,255,255,0.2);
@@ -76,281 +64,206 @@ st.markdown("""
         border-top: 1px solid rgba(255,255,255,0.05);
         margin-top: 40px;
     }
-    /* 标签 */
-    .badge {
-        display: inline-block;
-        padding: 2px 12px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 500;
-        letter-spacing: 0.3px;
-    }
-    .badge-bull { background: rgba(0, 230, 118, 0.15); color: #00e676; }
-    .badge-bear { background: rgba(255, 82, 82, 0.15); color: #ff5252; }
-    .badge-neutral { background: rgba(255, 193, 7, 0.15); color: #ffd54f; }
-    /* 滚动条 */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 </style>
 """, unsafe_allow_html=True)
 
+# ---------- 侧边栏设置 ----------
+st.sidebar.title("⚙️ 控制面板")
+refresh = st.sidebar.button("🔄 强制刷新数据")
+if refresh:
+    st.cache_data.clear()
+    st.rerun()
+
+# 股票列表（与采集脚本一致）
+STOCKS = [
+    "MU", "AAOI", "GOOGL", "MSFT", "AMZN", "MRVL", "LITE", "SNDK", "NVDA", "ORCL", "SPCX", "SKHY", "TSLA",
+    "0700.HK", "0883.HK", "3750.HK"
+]
+
+# 时间周期选择
+period_map = {"1个月": "1mo", "3个月": "3mo", "6个月": "6mo", "1年": "1y"}
+selected_period = st.sidebar.selectbox("📅 K线图周期", list(period_map.keys()), index=1)
+
+# 排序选项
+sort_option = st.sidebar.selectbox("📊 个股排序", ["默认顺序", "涨幅高→低", "涨幅低→高", "PE高→低", "PE低→高"])
+
 # ---------- 标题 ----------
-st.markdown("""
+st.markdown(f"""
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
     <div>
-        <span style="font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #00d4ff, #7b61ff, #ff6b9d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">📈 每日股票看板</span>
-        <span style="font-size: 14px; color: rgba(255,255,255,0.3); margin-left: 16px; font-weight: 300;">QUANT DASHBOARD</span>
+        <span style="font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #00d4ff, #7b61ff, #ff6b9d); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">📈 每日股票看板</span>
+        <span style="font-size: 14px; color: rgba(255,255,255,0.3); margin-left: 16px;">QUANT DASHBOARD</span>
     </div>
     <div style="font-size: 13px; color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.05); padding: 6px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.06);">
-        📅 {update_time}
+        📅 {datetime.now().strftime('%Y-%m-%d %H:%M')}
     </div>
 </div>
-<div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.2), transparent); margin: 12px 0 24px 0;"></div>
-""".format(update_time=datetime.now().strftime('%Y-%m-%d %H:%M')), unsafe_allow_html=True)
-
-# ---------- 配置 ----------
-STOCKS = ["MU", "AAOI", "GOOGL", "MSFT", "ORCL", "TSLA", "AMZN", "SPCX", "SKHY", "MRVL", "LITE", "SNDK", "NVDA", "0700.HK", "0883.HK", "3750.HK"]
-MACRO_SYMBOLS = {
-    "VIX": "^VIX",
-    "美元指数": "DX-Y.NYB",
-    "标普500": "^GSPC",
-    "纳斯达克100": "^NDX",
-    "黄金": "GC=F",
-    "WTI原油": "CL=F",
-    "10Y美债": "^TNX",
-}
+<hr style="border: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,212,255,0.2), transparent); margin: 12px 0 24px 0;">
+""", unsafe_allow_html=True)
 
 # ---------- 加载数据 ----------
+@st.cache_data(ttl=3600)
 def load_csv_data():
-    macro_df = None
-    stocks_df = None
-    sox_df = None
-    if os.path.exists("data/macro.csv"):
-        macro_df = pd.read_csv("data/macro.csv")
-    if os.path.exists("data/stocks.csv"):
-        stocks_df = pd.read_csv("data/stocks.csv")
-    if os.path.exists("data/sox.csv"):
-        sox_df = pd.read_csv("data/sox.csv")
-    return macro_df, stocks_df, sox_df
+    macro_df = pd.read_csv("data/macro.csv") if os.path.exists("data/macro.csv") else None
+    stocks_df = pd.read_csv("data/stocks.csv") if os.path.exists("data/stocks.csv") else None
+    sox_df = pd.read_csv("data/sox.csv") if os.path.exists("data/sox.csv") else None
+    report = ""
+    if os.path.exists("data/report.md"):
+        with open("data/report.md", "r", encoding="utf-8") as f:
+            report = f.read()
+    return macro_df, stocks_df, sox_df, report
 
-macro_df, stocks_df, sox_df = load_csv_data()
-
-# 如果 CSV 不存在，实时获取
-if macro_df is None:
-    macro_data = {}
-    for name, sym in MACRO_SYMBOLS.items():
-        try:
-            ticker = yf.Ticker(sym)
-            hist = ticker.history(period="5d")
-            if not hist.empty:
-                macro_data[name] = hist['Close'].iloc[-1]
-            else:
-                macro_data[name] = None
-        except:
-            macro_data[name] = None
-    macro_df = pd.DataFrame([macro_data])
+macro_df, stocks_df, sox_df, report = load_csv_data()
 
 # ---------- 宏观仪表盘 ----------
 st.markdown('<div class="section-title">🌍 宏观数据</div>', unsafe_allow_html=True)
-
 if macro_df is not None and not macro_df.empty:
-    cols = st.columns(len(macro_df.columns))
-    for i, col_name in enumerate(macro_df.columns):
-        val = macro_df.iloc[0][col_name]
-        if pd.notna(val):
-            try:
-                val_float = float(val)
-                if col_name == "VIX":
-                    color = "🟢" if val_float < 18 else "🟡" if val_float < 25 else "🔴"
-                elif col_name in ["黄金", "WTI原油", "美元指数"]:
-                    color = "🟡"
-                else:
-                    color = "🔵"
-                display_val = f"{val_float:.2f}"
-            except:
-                display_val = str(val)
-                color = "⚪"
+    # 选择显示的重要宏观列
+    macro_cols = ["VIX", "美元指数", "标普500", "纳斯达克100", "黄金", "WTI原油", "10年期美债收益率",
+                  "美国国债规模", "芝加哥联储杠杆指数", "2年期实际利率", "FINRA保证金债务", "Volume PCR", "OI PCR"]
+    available = [c for c in macro_cols if c in macro_df.columns]
+    cols = st.columns(len(available))
+    for i, col in enumerate(available):
+        val = macro_df.iloc[0][col]
+        if isinstance(val, (int, float)):
+            display = f"{val:.2f}" if col != "FINRA保证金债务" else f"{val:,.0f}"
         else:
-            display_val = "N/A"
-            color = "⚪"
-        
+            display = str(val)
         with cols[i]:
             st.markdown(f"""
             <div class="metric-card">
-                <div class="metric-label">{color} {col_name}</div>
-                <div class="metric-value">{display_val}</div>
+                <div class="metric-label">{col}</div>
+                <div class="metric-value">{display}</div>
             </div>
             """, unsafe_allow_html=True)
+else:
+    st.warning("暂无宏观数据")
 
-# ---------- SOX 信号 ----------
+# ---------- SOX ----------
 st.markdown('<div class="section-title">📉 SOX 半导体指数</div>', unsafe_allow_html=True)
-
 if sox_df is not None and not sox_df.empty:
     sox_row = sox_df.iloc[0]
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">📊 最新价</div>
-            <div class="metric-value">{sox_row.get('最新价', 'N/A')}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">📊 最新价</div><div class="metric-value">{sox_row.get('最新价','N/A')}</div></div>""", unsafe_allow_html=True)
     with col2:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">📉 回撤</div>
-            <div class="metric-value" style="color: {'#ff5252' if float(str(sox_row.get('回撤%', '0')).replace('%','')) < -20 else '#ffd54f'};">{sox_row.get('回撤%', 'N/A')}%</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">📉 回撤</div><div class="metric-value" style="color: {'#ff5252' if float(sox_row.get('回撤%',0)) < -20 else '#ffd54f'};">{sox_row.get('回撤%','N/A')}%</div></div>""", unsafe_allow_html=True)
     with col3:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">📈 RSI(14)</div>
-            <div class="metric-value">{sox_row.get('RSI', 'N/A')}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">📈 RSI(14)</div><div class="metric-value">{sox_row.get('RSI','N/A')}</div></div>""", unsafe_allow_html=True)
     with col4:
         status = "🐻 熊市" if sox_row.get('技术性熊市') else "🐂 非熊市"
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">📌 状态</div>
-            <div class="metric-value" style="font-size: 18px; color: {'#ff5252' if sox_row.get('技术性熊市') else '#00e676'};">{status}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">📌 状态</div><div class="metric-value" style="font-size: 18px; color: {'#ff5252' if sox_row.get('技术性熊市') else '#00e676'};">{status}</div></div>""", unsafe_allow_html=True)
     with col5:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">📌 MA20</div>
-            <div class="metric-value" style="font-size: 20px;">{sox_row.get('MA20', 'N/A')}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">📌 MA20</div><div class="metric-value" style="font-size: 20px;">{sox_row.get('MA20','N/A')}</div></div>""", unsafe_allow_html=True)
     if '信号列表' in sox_row and sox_row['信号列表']:
-        st.markdown("""
-        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 12px 20px; margin-top: 12px; border-left: 2px solid rgba(0,212,255,0.3);">
-            <span style="color: rgba(255,255,255,0.5); font-size: 12px;">⚡ 关键信号</span>
-            <span style="color: rgba(255,255,255,0.7); font-size: 13px; margin-left: 12px;">{sox_row['信号列表']}</span>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 12px 20px; margin-top: 12px; border-left: 2px solid rgba(0,212,255,0.3);"><span style="color: rgba(255,255,255,0.5);">⚡ 关键信号</span><span style="color: rgba(255,255,255,0.7); margin-left: 12px;">{sox_row['信号列表']}</span></div>""", unsafe_allow_html=True)
 else:
     st.warning("暂无 SOX 数据")
 
-# ---------- 个股 K 线图 ----------
-st.markdown('<div class="section-title">📊 个股走势</div>', unsafe_allow_html=True)
-
-@st.cache_data(ttl=3600)
-def get_stock_hist(symbol):
-    try:
-        ticker = yf.Ticker(symbol)
-        hist = ticker.history(period="3mo")
-        if not hist.empty:
-            return hist
-        return None
-    except:
-        return None
-
-# 从 CSV 读取今日涨跌幅
-stock_changes = {}
+# ---------- 个股展示（支持排序） ----------
+st.markdown('<div class="section-title">📊 个股数据</div>', unsafe_allow_html=True)
 if stocks_df is not None and not stocks_df.empty:
+    # 排序
+    if sort_option == "涨幅高→低":
+        stocks_df = stocks_df.sort_values("涨跌幅%", ascending=False)
+    elif sort_option == "涨幅低→高":
+        stocks_df = stocks_df.sort_values("涨跌幅%", ascending=True)
+    elif sort_option == "PE高→低":
+        stocks_df = stocks_df.sort_values("PE Ratio", ascending=False, na_position='last')
+    elif sort_option == "PE低→高":
+        stocks_df = stocks_df.sort_values("PE Ratio", ascending=True, na_position='last')
+    else:
+        # 默认顺序按 STOCKS 列表
+        stocks_df['order'] = stocks_df['symbol'].map({s:i for i,s in enumerate(STOCKS)})
+        stocks_df = stocks_df.sort_values('order')
+    
     for _, row in stocks_df.iterrows():
-        sym = row.get('symbol', '')
-        if sym:
-            stock_changes[sym] = row.get('涨跌幅%', 0)
-
-# 分组显示（2列网格）
-for i in range(0, len(STOCKS), 2):
-    cols = st.columns(2)
-    for j, sym in enumerate(STOCKS[i:i+2]):
-        with cols[j]:
-            hist = get_stock_hist(sym)
-            if hist is None:
-                st.markdown(f"""
-                <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 30px; text-align: center; border: 1px solid rgba(255,255,255,0.06);">
-                    <span style="color: rgba(255,255,255,0.3);">⚠️ 无法获取 {sym} 数据</span>
+        sym = row['symbol']
+        if row.get('error'):
+            st.warning(f"无法获取 {sym} 数据")
+            continue
+        close = row.get('收盘价', 'N/A')
+        change = row.get('涨跌幅%', 0)
+        vol_status = row.get('量比状态', 'N/A')
+        pe = row.get('PE Ratio', 'N/A')
+        rsi = row.get('RSI(14)', 'N/A')
+        ma20 = row.get('MA20', 'N/A')
+        change_color = "#00e676" if change > 0 else "#ff5252" if change < 0 else "#ffd54f"
+        change_symbol = "▲" if change > 0 else "▼" if change < 0 else "●"
+        display_name = sym.replace(".HK", "")
+        st.markdown(f"""
+        <div class="stock-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                <div>
+                    <span style="font-weight: 600; font-size: 18px; color: #ffffff;">{display_name}</span>
+                    <span style="margin-left: 12px; font-size: 14px; color: {change_color};">{change_symbol} {change:.2f}%</span>
                 </div>
-                """, unsafe_allow_html=True)
-                continue
-            
-            # 计算均线
-            hist['MA20'] = hist['Close'].rolling(20).mean()
-            hist['MA50'] = hist['Close'].rolling(50).mean()
-            
-            # 涨跌幅
-            change = stock_changes.get(sym, 0)
-            change_color = "#00e676" if change > 0 else "#ff5252" if change < 0 else "#ffd54f"
-            change_symbol = "▲" if change > 0 else "▼" if change < 0 else "●"
-            
-            # 标题带涨跌幅
-            display_name = sym.replace(".HK", "")
-            title_html = f"""
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                <span style="color: #ffffff; font-weight: 600; font-size: 16px;">{display_name}</span>
-                <span style="color: {change_color}; font-size: 14px; font-weight: 500;">{change_symbol} {change:.2f}%</span>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; color: rgba(255,255,255,0.6);">
+                    <span>💰 收盘: {close}</span>
+                    <span>📈 PE: {pe}</span>
+                    <span>📊 量比: {vol_status}</span>
+                    <span>📉 RSI: {rsi:.2f}</span>
+                    <span>📌 MA20: {ma20:.2f}</span>
+                </div>
             </div>
-            """
-            st.markdown(title_html, unsafe_allow_html=True)
-            
-            # 绘制K线图（简化版，更清晰）
-            fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08,
-                                row_heights=[0.7, 0.3])
-            
-            fig.add_trace(go.Candlestick(
-                x=hist.index,
-                open=hist['Open'],
-                high=hist['High'],
-                low=hist['Low'],
-                close=hist['Close'],
-                name=sym,
-                increasing_line_color='#00e676',
-                decreasing_line_color='#ff5252'
-            ), row=1, col=1)
-            
-            fig.add_trace(go.Scatter(
-                x=hist.index, y=hist['MA20'], 
-                line=dict(color='rgba(255, 193, 7, 0.8)', width=1.5), 
-                name="MA20"
-            ), row=1, col=1)
-            
-            fig.add_trace(go.Scatter(
-                x=hist.index, y=hist['MA50'], 
-                line=dict(color='rgba(0, 212, 255, 0.8)', width=1.5), 
-                name="MA50"
-            ), row=1, col=1)
-            
-            fig.add_trace(go.Bar(
-                x=hist.index, y=hist['Volume'], 
-                name="成交量",
-                marker_color='rgba(0, 212, 255, 0.3)',
-                marker_line_width=0
-            ), row=2, col=1)
-            
-            fig.update_layout(
-                height=400,
-                margin=dict(l=10, r=10, t=10, b=10),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                xaxis_rangeslider_visible=False,
-                showlegend=False,
-                font=dict(color='rgba(255,255,255,0.4)', size=10),
-            )
-            fig.update_xaxes(
-                gridcolor='rgba(255,255,255,0.04)',
-                zerolinecolor='rgba(255,255,255,0.04)',
-                color='rgba(255,255,255,0.3)',
-            )
-            fig.update_yaxes(
-                gridcolor='rgba(255,255,255,0.04)',
-                zerolinecolor='rgba(255,255,255,0.04)',
-                color='rgba(255,255,255,0.3)',
-            )
-            
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # K线图（根据所选周期）
+        try:
+            hist = yf.download(sym, period=period_map[selected_period], progress=False)
+            if not hist.empty:
+                fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08, row_heights=[0.7, 0.3])
+                fig.add_trace(go.Candlestick(x=hist.index, open=hist['Open'], high=hist['High'], low=hist['Low'], close=hist['Close'], name=sym), row=1, col=1)
+                # 均线
+                ma20_hist = hist['Close'].rolling(20).mean()
+                ma50_hist = hist['Close'].rolling(50).mean()
+                fig.add_trace(go.Scatter(x=hist.index, y=ma20_hist, line=dict(color='orange', width=1), name="MA20"), row=1, col=1)
+                fig.add_trace(go.Scatter(x=hist.index, y=ma50_hist, line=dict(color='cyan', width=1), name="MA50"), row=1, col=1)
+                fig.add_trace(go.Bar(x=hist.index, y=hist['Volume'], name="成交量", marker_color='rgba(0,212,255,0.3)'), row=2, col=1)
+                fig.update_layout(height=400, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, showlegend=False)
+                fig.update_xaxes(gridcolor='rgba(255,255,255,0.04)', zerolinecolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.3)')
+                fig.update_yaxes(gridcolor='rgba(255,255,255,0.04)', zerolinecolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.3)')
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        except:
+            st.caption("K线图加载失败")
+else:
+    st.warning("暂无个股数据")
+
+# ---------- AI 报告 ----------
+if report:
+    st.markdown("---")
+    st.markdown('<div class="section-title">📝 每日分析报告（含操作建议）</div>', unsafe_allow_html=True)
+    st.markdown(report)
+else:
+    st.info("今日报告尚未生成，请等待数据更新。")
+
+# ---------- 历史趋势图（宏观指标） ----------
+st.markdown("---")
+st.markdown('<div class="section-title">📈 宏观历史趋势</div>', unsafe_allow_html=True)
+if macro_df is not None and len(macro_df) > 1:
+    # 选择展示的宏观指标（需历史数据，我们这里用最近30天的每日数据，但macro.csv只有一行，所以不能绘历史）
+    # 替代：使用 yfinance 实时获取部分宏观历史
+    macro_hist_symbols = {"VIX": "^VIX", "10年期美债收益率": "^TNX", "标普500": "^GSPC"}
+    st.info("以下展示部分宏观指标近30天走势（实时获取）")
+    for name, sym in macro_hist_symbols.items():
+        try:
+            hist = yf.download(sym, period="1mo", progress=False)
+            if not hist.empty:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], mode='lines', name=name, line=dict(color='#00d4ff')))
+                fig.update_layout(height=200, margin=dict(l=10, r=10, t=20, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False)
+                fig.update_xaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.3)')
+                fig.update_yaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.3)')
+                st.plotly_chart(fig, use_container_width=True)
+        except:
+            pass
+else:
+    st.caption("暂无历史数据，需多日积累")
 
 # ---------- 底部 ----------
 st.markdown(f"""
 <div class="footer">
-    <span style="opacity: 0.6;">⚡ 数据每日自动更新 · 系统运行正常 · {datetime.now().strftime('%Y-%m-%d %H:%M')}</span>
+    <span>⚡ 数据每日自动更新 · 系统运行正常 · {datetime.now().strftime('%Y-%m-%d %H:%M')}</span>
 </div>
 """, unsafe_allow_html=True)
