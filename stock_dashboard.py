@@ -19,8 +19,8 @@ import time
 warnings.filterwarnings('ignore')
 
 # ---------- 配置 ----------
-# 请填入你的 API Key
-FRED_API_KEY = ""                  # 必填：https://fred.stlouisfed.org/docs/api/api_key.html
+# sk-e9823add77db40bb85ef993f4d338a9b
+FRED_API_KEY = "75063c7902071c1eaf1b8453f39198f0"                  # 必填：https://fred.stlouisfed.org/docs/api/api_key.html
 ALPHA_VANTAGE_KEY = ""             # 可选：https://www.alphavantage.co/support/#api-key
 TELEGRAM_BOT_TOKEN = ""            # 可选：预警通知
 TELEGRAM_CHAT_ID = ""              # 可选
