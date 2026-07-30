@@ -102,14 +102,19 @@ def get_advance_decline():
 def get_fred_data(series_id):
     if not FRED_API_KEY:
         return None
-    fred = Fred(api_key=FRED_API_KEY)
     try:
+        fred = Fred(api_key=FRED_API_KEY)
         series = fred.get_series(series_id)
         if not series.empty:
-            return float(series.iloc[-1])
-    except:
-        pass
-    return None
+            val = float(series.iloc[-1])
+            print(f"✅ FRED {series_id}: {val}")
+            return val
+        else:
+            print(f"⚠️ FRED {series_id} 返回空数据")
+            return None
+    except Exception as e:
+        print(f"❌ FRED {series_id} 获取失败: {e}")
+        return None
 
 # ---------- FINRA 保证金债务 ----------
 def get_finra_margin_debt():
@@ -135,23 +140,37 @@ def get_finra_margin_debt():
 
 # ---------- Put-Call Ratio (Alpha Vantage) ----------
 def get_put_call_ratio():
-    """获取成交量 PCR 和未平仓合约 PCR (Alpha Vantage)"""
     if not ALPHA_VANTAGE_KEY:
         return None, None
     try:
         url = f"https://www.alphavantage.co/query?function=PUT_CALL_RATIO&apikey={ALPHA_VANTAGE_KEY}"
-        resp = requests.get(url)
+        resp = requests.get(url, timeout=10)
         data = resp.json()
-        if "data" in data:
-            latest = data["data"][-1]  # 最新一期
-            volume_pcr = float(latest.get("volume_put_call_ratio", 0))
+        print(f"🔍 Alpha Vantage PCR 响应: {data.keys() if 'data' in data else '无 data 字段'}")
+        if "data" in data and data["data"]:
+            latest = data["data"][-1]
+            vol_pcr = float(latest.get("volume_put_call_ratio", 0))
             oi_pcr = float(latest.get("open_interest_put_call_ratio", 0))
-            return volume_pcr, oi_pcr
+            print(f"✅ PCR: Volume={vol_pcr}, OI={oi_pcr}")
+            return vol_pcr, oi_pcr
         else:
+            print("⚠️ Alpha Vantage PCR 返回空数据")
             return None, None
-    except:
+    except Exception as e:
+        print(f"❌ Alpha Vantage PCR 获取失败: {e}")
         return None, None
-
+# ---------- FINRA 保证金债务 ----------
+def get_finra_margin_debt():
+    """尝试从 FRED 获取金融状况指数作为保证金债务的近似值"""
+    try:
+        from fredapi import Fred
+        fred = Fred(api_key=FRED_API_KEY)
+        nfci = fred.get_series("NFCI")  # 国家金融状况指数
+        if not nfci.empty:
+            return float(nfci.iloc[-1])
+    except:
+        pass
+    return None
 # ---------- 港股数据 ----------
 def get_hk_data(symbol):
     if 'akshare' in globals():
