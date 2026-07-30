@@ -398,8 +398,7 @@ def generate_report():
         news = fetch_news(STOCKS, 3)
         
         # ---- 保存数据到 CSV ----
-        import os
-        import pandas as pd
+     
 
         os.makedirs("data", exist_ok=True)
 
