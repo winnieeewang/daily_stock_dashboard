@@ -5,4 +5,6 @@ ta
 requests
 fredapi
 openai
+streamlit
+plotly
 akshare
