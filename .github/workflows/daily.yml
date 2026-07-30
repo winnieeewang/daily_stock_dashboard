@@ -1,6 +1,4 @@
-
-        run: pip install -r requirements.txt
-      name: 每日股票看板
+name: 每日股票看板
 
 on:
   schedule:
@@ -11,7 +9,7 @@ jobs:
   run-dashboard:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # 允许推送代码到仓库
+      contents: write
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -37,6 +35,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add data/
+          git add -f data/
           git diff --staged --quiet || git commit -m "每日数据更新 $(date +'%Y-%m-%d')"
           git push
