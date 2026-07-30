@@ -217,7 +217,10 @@ def get_stock_technical(symbol):
     
     # 成交量状态
     vol_ma5 = volume.rolling(5).mean()
-    ma5_vol = float(vol_ma5.iloc[-1]) if not pd.isna(vol_ma5.iloc[-1]) else 0.0
+    try:
+        ma5_vol = float(vol_ma5.iloc[-1])
+    except (TypeError, ValueError):
+        ma5_vol = 0.0
     if ma5_vol > 0:
         if latest_volume > ma5_vol * 1.2:
             vol_status = "放量"
