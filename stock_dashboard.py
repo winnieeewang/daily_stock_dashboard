@@ -19,7 +19,7 @@ from fredapi import Fred
 
 warnings.filterwarnings("ignore")
 
-# ==================== 1. 日志配置 ====================
+# ==================== 日志配置 ====================
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
@@ -28,25 +28,21 @@ logging.basicConfig(
 logger = logging.getLogger("quant_report")
 
 
-# ==================== 2. 配置层 ====================
+# ==================== 配置层 ====================
 @dataclass(frozen=True)
 class Config:
-    """全量配置集中管理"""
-    fred_api_key: str = field(default_factory=lambda: os.environ.get("FRED_API", ""))
-    alpha_vantage_key: str = field(default_factory=lambda: os.environ.get("ALPHA_API", ""))
+    fred_api_key: str = field(default_factory=lambda: os.environ.get("FRED_API_KEY", ""))
+    alpha_vantage_key: str = field(default_factory=lambda: os.environ.get("ALPHA_VANTAGE_KEY", ""))
     telegram_bot_token: str = field(default_factory=lambda: os.environ.get("TELEGRAM_BOT_TOKEN", ""))
     telegram_chat_id: str = field(default_factory=lambda: os.environ.get("TELEGRAM_CHAT_ID", ""))
     deepseek_api_key: str = field(default_factory=lambda: os.environ.get("DEEPSEEK_API_KEY", ""))
-    serpapi_key: str = field(default_factory=lambda: os.environ.get("SERPAPI", ""))
+    serpapi_key: str = field(default_factory=lambda: os.environ.get("SERPAPI_KEY", ""))
 
-    leverage_levels: Tuple[float, ...] = (1.5, 2.0)
-    maintenance_margin: float = 0.30
+    leverage_levels: Tuple[float, ...] = (1.5, 2.0, 3.0)
+    maintenance_margin: float = 0.25  # 美股/港股监管最低标准，富途实际比例可能更高
     lookback_days: int = 60
-
-    # 路径配置
     output_dir: Path = field(default_factory=lambda: Path("data"))
 
-    # 阈值配置（原魔法数字）
     vix_alert_threshold: float = 25.0
     sox_support_level: float = 11200.0
     rsi_overbought: float = 70.0
@@ -54,7 +50,6 @@ class Config:
     volume_surge_ratio: float = 1.2
     volume_contract_ratio: float = 0.8
 
-    # 股票池
     stocks: Tuple[str, ...] = (
         "MU", "AAOI", "GOOGL", "MSFT", "AMZN", "MRVL", "LITE",
         "SNDK", "NVDA", "ORCL", "SPCX", "SKHY", "TSLA",
@@ -72,10 +67,11 @@ class Config:
     })
 
     def __post_init__(self):
+        object.__setattr__(self, 'output_dir', Path(self.output_dir))
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
 
-# ==================== 3. 数据结构定义 ====================
+# ==================== 数据结构 ====================
 class StockTechData(TypedDict, total=False):
     symbol: str
     收盘价: float
@@ -86,6 +82,7 @@ class StockTechData(TypedDict, total=False):
     MACD: float
     MACD信号: float
     MACD柱: float
+    前日MACD柱: float
     MA5: float
     MA20: float
     MA50: float
@@ -95,6 +92,14 @@ class StockTechData(TypedDict, total=False):
     布林下轨: float
     ATR: float
     PE_Ratio: Optional[float]
+    资金集中价位: Optional[float]
+    集中度: float
+    抄底评分: int
+    抄底依据: List[str]
+    反弹反转信号: str
+    反弹反转置信度: str
+    反弹反转描述: str
+    杠杆风险等级: str
 
 
 class SOXSignals(TypedDict, total=False):
@@ -116,9 +121,8 @@ class SentimentResult(TypedDict):
     标签: str
 
 
-# ==================== 4. 工具装饰器 ====================
+# ==================== 装饰器 ====================
 def retry_on_error(max_retries: int = 2, exceptions: Tuple = (Exception,)):
-    """带日志的简单重试装饰器"""
     def decorator(func: Callable) -> Callable:
         def wrapper(*args, **kwargs):
             last_exc = None
@@ -127,33 +131,29 @@ def retry_on_error(max_retries: int = 2, exceptions: Tuple = (Exception,)):
                     return func(*args, **kwargs)
                 except exceptions as e:
                     last_exc = e
-                    logger.warning(f"{func.__name__} 第{attempt + 1}次失败: {e}")
+                    if attempt < max_retries:
+                        logger.warning(f"{func.__name__} 第{attempt + 1}次失败: {e}")
             logger.error(f"{func.__name__} 最终失败: {last_exc}")
             return None
         return wrapper
     return decorator
 
 
-# ==================== 5. 数据获取层 ====================
+# ==================== 数据获取层 ====================
 class DataFetcher:
-    """统一封装 Yahoo Finance / AKShare 数据获取"""
-
     def __init__(self, cfg: Config):
         self.cfg = cfg
 
     @retry_on_error(max_retries=2, exceptions=(Exception,))
     def fetch_yf(self, ticker: str, period: str = "3mo") -> pd.DataFrame:
-        """安全获取 Yahoo Finance 数据"""
         df = yf.download(ticker, period=period, progress=False, auto_adjust=True)
         if df.empty:
             raise ValueError(f"{ticker} 返回空数据")
-        # 处理可能的 MultiIndex 列
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
         return df
 
     def fetch_hk(self, symbol: str) -> pd.DataFrame:
-        """港股数据优先走 AKShare，失败回退 Yahoo"""
         try:
             import akshare as ak
             code = symbol.replace(".HK", "").zfill(5)
@@ -161,67 +161,45 @@ class DataFetcher:
             if df.empty:
                 raise ValueError("AKShare 返回空数据")
 
-            # === 关键修复：兼容不同版本 akshare 的列名 ===
-            # 有些版本返回中文列名，有些返回英文，做双重映射
             rename_map = {
-                "日期": "Date",
-                "date": "Date",
-                "开盘": "Open",
-                "open": "Open",
-                "收盘": "Close",
-                "close": "Close",
-                "最高": "High",
-                "high": "High",
-                "最低": "Low",
-                "low": "Low",
-                "成交量": "Volume",
-                "volume": "Volume",
+                "日期": "Date", "date": "Date",
+                "开盘": "Open", "open": "Open",
+                "收盘": "Close", "close": "Close",
+                "最高": "High", "high": "High",
+                "最低": "Low", "low": "Low",
+                "成交量": "Volume", "volume": "Volume",
             }
-            # 只重命名实际存在的列
-            existing_renames = {k: v for k, v in rename_map.items() if k in df.columns}
-            df = df.rename(columns=existing_renames)
+            existing = {k: v for k, v in rename_map.items() if k in df.columns}
+            df = df.rename(columns=existing)
 
-            # 如果已经有 Date 列，转为 datetime 并设为索引
             if "Date" in df.columns:
                 df["Date"] = pd.to_datetime(df["Date"])
                 df = df.set_index("Date")
             elif not isinstance(df.index, pd.DatetimeIndex):
-                # 尝试把第一列当日期
                 df.index = pd.to_datetime(df.index)
-            
             df = df.sort_index()
 
             required = ["Open", "High", "Low", "Close", "Volume"]
-            # 如果还有缺失，尝试大小写不敏感匹配
             for req in required:
-                if req not in df.columns:
-                    # 尝试小写
-                    if req.lower() in df.columns:
-                        df[req] = df[req.lower()]
-            
-            # 只保留需要的列，并强制数值化
+                if req not in df.columns and req.lower() in df.columns:
+                    df[req] = df[req.lower()]
             df = df[[c for c in required if c in df.columns]]
             if len(df.columns) < len(required):
                 missing = set(required) - set(df.columns)
                 raise ValueError(f"AKShare 返回数据缺少列: {missing}")
-
-            df = df.apply(pd.to_numeric, errors="coerce").dropna()
-            return df
+            return df.apply(pd.to_numeric, errors="coerce").dropna()
         except Exception as e:
-            logger.warning(f"AKShare 获取 {symbol} 失败({e})，回退 Yahoo Finance")
+            logger.warning(f"AKShare {symbol} 失败({e})，回退 Yahoo Finance")
             return self.fetch_yf(symbol, period=f"{self.cfg.lookback_days}d")
 
     def get_stock_df(self, symbol: str) -> pd.DataFrame:
-        """根据市场自动路由数据源"""
         if symbol.endswith(".HK"):
             return self.fetch_hk(symbol)
         return self.fetch_yf(symbol, period=f"{self.cfg.lookback_days}d")
 
 
-# ==================== 6. 技术指标层 ====================
+# ==================== 技术指标层（含 POC） ====================
 class TechnicalAnalyzer:
-    """技术指标计算与清洗"""
-
     @staticmethod
     def safe_float(series: pd.Series, default: float = 0.0) -> float:
         try:
@@ -231,9 +209,40 @@ class TechnicalAnalyzer:
             return default
 
     @classmethod
+    def volume_profile_poc(cls, df: pd.DataFrame, bins: int = 20) -> Dict[str, Any]:
+        """成交量分布 POC：资金最集中的价位"""
+        if df.empty or len(df) < 5:
+            return {"资金集中价位": None, "集中度": 0.0}
+        low, high = df["Low"].min(), df["High"].max()
+        if low >= high or pd.isna(low) or pd.isna(high):
+            return {"资金集中价位": float(df["Close"].iloc[-1]), "集中度": 100.0}
+
+        edges = np.linspace(low, high, bins + 1)
+        centers = (edges[:-1] + edges[1:]) / 2
+        tp = (df["High"] + df["Low"] + df["Close"]) / 3
+
+        vols = np.zeros(bins)
+        for i in range(bins):
+            if i == bins - 1:
+                mask = (tp >= edges[i]) & (tp <= edges[i + 1])
+            else:
+                mask = (tp >= edges[i]) & (tp < edges[i + 1])
+            vols[i] = df.loc[mask, "Volume"].sum()
+
+        total = vols.sum()
+        if total == 0:
+            return {"资金集中价位": float(df["Close"].iloc[-1]), "集中度": 0.0}
+
+        max_idx = int(np.argmax(vols))
+        return {
+            "资金集中价位": round(float(centers[max_idx]), 2),
+            "集中度": round(float(vols[max_idx] / total * 100), 2),
+        }
+
+    @classmethod
     def analyze(cls, df: pd.DataFrame, cfg: Config) -> Optional[StockTechData]:
         if len(df) < 20:
-            logger.warning("数据不足20条，跳过技术指标计算")
+            logger.warning("数据不足20条，跳过计算")
             return None
 
         close = df["Close"].astype(float)
@@ -245,18 +254,13 @@ class TechnicalAnalyzer:
         prev_close = cls.safe_float(close.shift(1), latest_close)
         change = (latest_close - prev_close) / prev_close * 100 if prev_close else 0.0
 
-        # 量比状态
+        # 量比
         vol_ma5 = volume.rolling(5).mean()
         ma5_vol = cls.safe_float(vol_ma5, 0.0)
+        latest_vol = cls.safe_float(volume, 0.0)
         if ma5_vol > 0:
-            latest_vol = cls.safe_float(volume, 0.0)
             ratio = latest_vol / ma5_vol
-            if ratio > cfg.volume_surge_ratio:
-                vol_status = "放量"
-            elif ratio < cfg.volume_contract_ratio:
-                vol_status = "缩量"
-            else:
-                vol_status = "持平"
+            vol_status = "放量" if ratio > cfg.volume_surge_ratio else "缩量" if ratio < cfg.volume_contract_ratio else "持平"
         else:
             vol_status = "持平"
 
@@ -272,8 +276,9 @@ class TechnicalAnalyzer:
             macd_line = cls.safe_float(macd_obj.macd())
             macd_signal = cls.safe_float(macd_obj.macd_signal())
             macd_diff = cls.safe_float(macd_obj.macd_diff())
+            prev_macd_diff = cls.safe_float(macd_obj.macd_diff().shift(1), macd_diff)
         except Exception:
-            macd_line = macd_signal = macd_diff = 0.0
+            macd_line = macd_signal = macd_diff = prev_macd_diff = 0.0
 
         # 均线
         ma5 = cls.safe_float(close.rolling(5).mean())
@@ -292,24 +297,26 @@ class TechnicalAnalyzer:
 
         # ATR
         try:
-            atr = float(ta.volatility.AverageTrueRange(
-                high, low, close, window=14
-            ).average_true_range().iloc[-1])
+            atr = float(ta.volatility.AverageTrueRange(high, low, close, window=14).average_true_range().iloc[-1])
         except Exception:
             atr = 0.0
 
-        # PE（独立获取，失败不影响主流程）
-        pe = cls._fetch_pe(df, close)
+        # PE
+        pe = cls._fetch_pe(df)
+
+        # POC
+        poc = cls.volume_profile_poc(df)
 
         return {
             "收盘价": latest_close,
             "涨跌幅": change,
-            "成交量": int(cls.safe_float(volume, 0)),
+            "成交量": int(latest_vol),
             "量比状态": vol_status,
             "RSI_14": rsi,
             "MACD": macd_line,
             "MACD信号": macd_signal,
             "MACD柱": macd_diff,
+            "前日MACD柱": prev_macd_diff,
             "MA5": ma5,
             "MA20": ma20,
             "MA50": ma50,
@@ -319,14 +326,14 @@ class TechnicalAnalyzer:
             "布林下轨": bb_low,
             "ATR": atr,
             "PE_Ratio": pe,
+            "资金集中价位": poc["资金集中价位"],
+            "集中度": poc["集中度"],
         }
 
     @staticmethod
-    def _fetch_pe(df: pd.DataFrame, close: pd.Series) -> Optional[float]:
-        """延迟获取 PE，避免频繁调用 info 接口"""
+    def _fetch_pe(df: pd.DataFrame) -> Optional[float]:
         try:
-            # 尝试从缓存或本地推断，避免每次都调 API
-            ticker = getattr(df, "name", None)  # 如果 df 带 name
+            ticker = getattr(df, "name", None)
             if not ticker:
                 return None
             info = yf.Ticker(ticker).info
@@ -335,23 +342,182 @@ class TechnicalAnalyzer:
             return None
 
 
-# ==================== 7. 宏观与 SOX 层 ====================
-class MacroCollector:
-    """宏观数据、FRED、PCR 等聚合"""
+# ==================== 反弹/反转判断层 ====================
+class ReversalAnalyzer:
+    @staticmethod
+    def analyze(data: StockTechData) -> Dict[str, str]:
+        signals = []
+        confidence = 0
 
+        macd = data.get("MACD", 0)
+        macd_sig = data.get("MACD信号", 0)
+        macd_hist = data.get("MACD柱", 0)
+        prev_hist = data.get("前日MACD柱", macd_hist)
+
+        # MACD
+        if macd > macd_sig and macd_hist > 0:
+            signals.append("MACD金叉")
+            confidence += 25
+        elif macd_hist > prev_hist and macd_hist < 0:
+            signals.append("MACD绿柱收敛")
+            confidence += 15
+        elif macd_hist > 0 and macd_hist > prev_hist:
+            signals.append("MACD红柱放大")
+            confidence += 15
+
+        # RSI
+        rsi = data.get("RSI_14", 50)
+        if 30 < rsi < 45:
+            signals.append("RSI从超卖区回升")
+            confidence += 20
+        elif rsi < 30:
+            signals.append("RSI深度超卖")
+            confidence += 10
+        elif rsi > 55:
+            signals.append("RSI进入强势区")
+            confidence += 10
+
+        # 均线
+        close = data.get("收盘价", 0)
+        ma5 = data.get("MA5", 0)
+        ma20 = data.get("MA20", 0)
+        if close > ma5 > ma20:
+            signals.append("站上短期均线")
+            confidence += 20
+        elif close > ma5:
+            signals.append("站上MA5")
+            confidence += 10
+
+        # 量价
+        vol_status = data.get("量比状态", "持平")
+        if vol_status == "放量":
+            signals.append("放量确认")
+            confidence += 15
+        elif vol_status == "缩量" and close > ma5:
+            signals.append("缩量企稳")
+            confidence += 10
+
+        # 布林带
+        bb_low = data.get("布林下轨", 0)
+        if bb_low > 0 and close <= bb_low * 1.01:
+            signals.append("触及布林下轨")
+            confidence += 10
+
+        # 判断
+        if confidence >= 65 and len(signals) >= 3:
+            label = "反转"
+            conf_level = "高"
+        elif confidence >= 40 and len(signals) >= 2:
+            label = "反弹"
+            conf_level = "中" if confidence >= 55 else "低"
+        else:
+            label = "无"
+            conf_level = "低"
+
+        desc = f"{' | '.join(signals)}（置信度{confidence}分）" if signals else "暂无明确信号"
+        return {
+            "信号": label,
+            "置信度": conf_level,
+            "描述": desc,
+        }
+
+
+# ==================== 抄底评分层 ====================
+class BottomFishingEngine:
+    @staticmethod
+    def score(data: StockTechData) -> Dict[str, Any]:
+        score = 0
+        reasons: List[str] = []
+        current = data.get("收盘价", 0)
+        poc = data.get("资金集中价位")
+
+        # RSI
+        rsi = data.get("RSI_14", 50)
+        if rsi < 30:
+            score += 30
+            reasons.append("RSI超卖")
+        elif rsi < 40:
+            score += 15
+            reasons.append("RSI偏低")
+
+        # 布林带
+        bb_low = data.get("布林下轨", 0)
+        if bb_low > 0 and current <= bb_low * 1.02:
+            score += 25
+            reasons.append("触及/逼近布林下轨")
+
+        # 缩量
+        if data.get("量比状态") == "缩量":
+            score += 15
+            reasons.append("恐慌盘衰竭（缩量企稳）")
+
+        # POC 距离
+        if poc and poc > 0 and current > 0:
+            dist = abs(current - poc) / poc * 100
+            if dist < 3:
+                score += 30
+                reasons.append(f"接近资金集中区（{poc:.2f}，主力成本支撑）")
+
+        return {"抄底评分": score, "抄底依据": reasons}
+
+
+# ==================== 杠杆强平线层 ====================
+class RiskEngine:
+    def __init__(self, cfg: Config):
+        self.cfg = cfg
+
+    @staticmethod
+    def margin_call_price(entry: float, leverage: float, maintenance: float) -> Optional[float]:
+        if entry <= 0 or leverage <= 1 or maintenance <= 0:
+            return None
+        return round(entry * (leverage - 1) / (leverage * (1 - maintenance)), 2)
+
+    def analyze(self, data: StockTechData) -> Dict[str, Any]:
+        price = data.get("收盘价", 0)
+        atr = data.get("ATR", 0)
+        result: Dict[str, Any] = {"当前价格": price, "ATR": atr, "details": {}}
+
+        max_risk = "低"
+        for lev in self.cfg.leverage_levels:
+            mc = self.margin_call_price(price, lev, self.cfg.maintenance_margin)
+            if mc is None:
+                continue
+            dist = price - mc
+            atr_mult = round(dist / atr, 2) if atr > 0 else 999
+            if atr_mult < 3:
+                risk = "高"
+            elif atr_mult < 6:
+                risk = "中"
+            else:
+                risk = "低"
+            if risk == "高":
+                max_risk = "高"
+            elif risk == "中" and max_risk != "高":
+                max_risk = "中"
+
+            result["details"][f"{lev}x"] = {
+                "强平价": mc,
+                "距强平ATR倍数": atr_mult,
+                "风险等级": risk,
+            }
+
+        result["综合风险等级"] = max_risk
+        result["描述"] = f"当前价距{self.cfg.leverage_levels[-1]}x强平约{result['details'].get(f'{self.cfg.leverage_levels[-1]}x', {}).get('距强平ATR倍数', 'N/A')}倍ATR"
+        return result
+
+
+# ==================== 宏观与 SOX ====================
+class MacroCollector:
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.fetcher = DataFetcher(cfg)
 
     def collect_all(self) -> Dict[str, Any]:
         macro: Dict[str, Any] = {}
-
-        # 基础宏观指标
         for name, sym in self.cfg.macro_indices.items():
             val = self._get_macro_value(sym)
             macro[name] = val if val is not None else "无数据"
 
-        # FRED 数据
         if self.cfg.fred_api_key:
             macro.update(self._fetch_fred_batch())
         else:
@@ -359,11 +525,10 @@ class MacroCollector:
             macro["芝加哥联储杠杆指数"] = "未配置FRED Key"
             macro["2年期实际利率（近似）"] = "未配置FRED Key"
 
-        # PCR
+        macro.update(self._fetch_finra_margin())
         vol_pcr, oi_pcr = self._get_put_call_ratio()
         macro["Volume PCR"] = vol_pcr if vol_pcr is not None else "无数据"
         macro["OI PCR"] = oi_pcr if oi_pcr is not None else "无数据"
-
         return macro
 
     def _get_macro_value(self, symbol: str) -> Optional[float]:
@@ -377,28 +542,55 @@ class MacroCollector:
         result: Dict[str, Any] = {}
         try:
             fred = Fred(api_key=self.cfg.fred_api_key)
-            # 美国国债规模
             debt = fred.get_series("GFDEBTN")
             result["美国国债规模"] = float(debt.iloc[-1]) if not debt.empty else None
-            # 杠杆指数
             lev = fred.get_series("NFCILEVERAGE")
             result["芝加哥联储杠杆指数"] = float(lev.iloc[-1]) if not lev.empty else None
-            # 实际利率
             dgs2 = fred.get_series("DGS2")
             t5yie = fred.get_series("T5YIE")
             if not dgs2.empty and not t5yie.empty:
                 result["2年期实际利率（近似）"] = f"{float(dgs2.iloc[-1] - t5yie.iloc[-1]):.2f}%"
         except Exception as e:
-            logger.error(f"FRED 批量获取失败: {e}")
+            logger.error(f"FRED 批量失败: {e}")
         return result
+
+    def _fetch_finra_margin(self) -> Dict[str, Any]:
+        """FINRA 保证金债务无官方 API，支持读取用户手动下载的 CSV"""
+        csv_path = self.cfg.output_dir / "finra_margin.csv"
+        if not csv_path.exists():
+            return {"FINRA保证金债务": "需手动下载: https://www.finra.org/rules-guidance/key-topics/margin-accounts"}
+        try:
+            df = pd.read_csv(csv_path)
+            df["date"] = pd.to_datetime(df["date"])
+            df = df.sort_values("date").set_index("date")
+            series = df["margin_debt"].astype(float)
+            if len(series) < 13:
+                return {"FINRA保证金债务": "数据不足12个月，无法计算YoY"}
+            yoy = series.pct_change(periods=12) * 100
+            latest_yoy = yoy.iloc[-1]
+            prev_yoy = yoy.iloc[-2]
+            rolled_over = latest_yoy < prev_yoy
+
+            if latest_yoy > 60:
+                zone = "极度危险（历史顶部区间）"
+            elif latest_yoy > 40:
+                zone = f"警戒区（历史前兆区间）{'，且已开始回落⚠️' if rolled_over else '，仍在加速'}"
+            else:
+                zone = "正常"
+
+            return {
+                "FINRA保证金债务YoY%": round(latest_yoy, 1),
+                "FINRA杠杆区间": zone,
+                "FINRA增速回落": rolled_over,
+            }
+        except Exception as e:
+            logger.warning(f"读取 FINRA 数据失败: {e}")
+            return {"FINRA保证金债务": "CSV解析失败"}
 
     def _get_put_call_ratio(self) -> Tuple[Optional[float], Optional[float]]:
         if not self.cfg.alpha_vantage_key:
             return None, None
-        url = (
-            "https://www.alphavantage.co/query"
-            f"?function=PUT_CALL_RATIO&apikey={self.cfg.alpha_vantage_key}"
-        )
+        url = f"https://www.alphavantage.co/query?function=PUT_CALL_RATIO&apikey={self.cfg.alpha_vantage_key}"
         try:
             resp = requests.get(url, timeout=10)
             data = resp.json()
@@ -409,7 +601,7 @@ class MacroCollector:
                     float(latest.get("open_interest_put_call_ratio", 0)) or None,
                 )
         except Exception as e:
-            logger.warning(f"PCR 获取失败: {e}")
+            logger.warning(f"PCR 失败: {e}")
         return None, None
 
     def get_sox(self) -> SOXSignals:
@@ -419,17 +611,14 @@ class MacroCollector:
                 "最新价": None, "回撤": None, "技术性熊市": False,
                 "RSI": None, "信号列表": ["无法获取 SOX 数据"],
             }
-
         close = df["Close"].astype(float)
         latest = float(close.iloc[-1])
         peak = float(close.max())
         drawdown = (latest - peak) / peak * 100
+        ma20 = safe_float(close.rolling(20).mean())
+        ma50 = safe_float(close.rolling(50).mean())
+        ma200 = safe_float(close.rolling(200).mean())
 
-        ma20 = cls_safe_float(close.rolling(20).mean())
-        ma50 = cls_safe_float(close.rolling(50).mean())
-        ma200 = cls_safe_float(close.rolling(200).mean())
-
-        # RSI
         delta = close.diff()
         gain = delta.where(delta > 0, 0).rolling(14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
@@ -439,30 +628,26 @@ class MacroCollector:
         except Exception:
             rsi_val = 50.0
 
-        # MACD
         exp12 = close.ewm(span=12, adjust=False).mean()
         exp26 = close.ewm(span=26, adjust=False).mean()
         macd_line = exp12 - exp26
         macd_signal = macd_line.ewm(span=9, adjust=False).mean()
-        macd_val = float(macd_line.iloc[-1])
-        macd_sig_val = float(macd_signal.iloc[-1])
 
         signals: List[str] = []
         if latest < self.cfg.sox_support_level:
-            signals.append(f"⚠️ SOX 跌破{self.cfg.sox_support_level:.0f}关键支撑")
+            signals.append(f"⚠️ SOX 跌破{self.cfg.sox_support_level:.0f}")
         else:
-            signals.append(f"✅ SOX 站上{self.cfg.sox_support_level:.0f}支撑")
-
+            signals.append(f"✅ SOX 站上{self.cfg.sox_support_level:.0f}")
         if ma20 < ma50:
-            signals.append("🔻 20/50日均线死叉")
+            signals.append("🔻 20/50死叉")
         if rsi_val < self.cfg.rsi_oversold:
-            signals.append("🟢 RSI超卖，可能反弹")
+            signals.append("🟢 RSI超卖")
         elif rsi_val > self.cfg.rsi_overbought:
-            signals.append("🔴 RSI超买，警惕回调")
+            signals.append("🔴 RSI超买")
         if drawdown < -20:
-            signals.append(f"🐻 技术性熊市（回撤{drawdown:.1f}%）")
-        if macd_val < macd_sig_val:
-            signals.append("🔻 MACD卖出信号")
+            signals.append(f"🐻 技术性熊市（{drawdown:.1f}%）")
+        if float(macd_line.iloc[-1]) < float(macd_signal.iloc[-1]):
+            signals.append("🔻 MACD卖出")
 
         return {
             "最新价": latest,
@@ -471,72 +656,25 @@ class MacroCollector:
             "MA20": ma20,
             "MA50": ma50,
             "MA200": ma200,
-            "MACD": macd_val,
-            "MACD信号": macd_sig_val,
+            "MACD": float(macd_line.iloc[-1]),
+            "MACD信号": float(macd_signal.iloc[-1]),
             "支撑11200": latest > self.cfg.sox_support_level,
             "技术性熊市": drawdown < -20,
             "信号列表": signals,
         }
 
 
-def cls_safe_float(series: pd.Series, default: float = 0.0) -> float:
-    """模块级快捷函数"""
+def safe_float(series: pd.Series, default: float = 0.0) -> float:
     try:
         return float(series.iloc[-1])
     except Exception:
         return default
 
 
-# ==================== 8. 风险与情绪层 ====================
-class RiskEngine:
-    """杠杆、强平、情绪指数"""
-
-    def __init__(self, cfg: Config):
-        self.cfg = cfg
-
+# ==================== 情绪指数（修正版） ====================
+class SentimentEngine:
     @staticmethod
-    def margin_call_price(entry: float, leverage: float, maintenance: float) -> Optional[float]:
-        if entry <= 0 or leverage <= 1 or maintenance <= 0:
-            return None
-        return round(entry * (leverage - 1) / (leverage * (1 - maintenance)), 2)
-
-    def leverage_analysis(self, data: StockTechData) -> Dict[str, Any]:
-        price = data.get("收盘价", 0)
-        bb_low = data.get("布林下轨", 0)
-        atr = data.get("ATR", 0)
-        rsi = data.get("RSI_14", 50)
-
-        margin_calls = {}
-        for lev in self.cfg.leverage_levels:
-            mc = self.margin_call_price(price, lev, self.cfg.maintenance_margin)
-            if mc:
-                margin_calls[f"{lev}x"] = mc
-
-        distance_pct = ((price - bb_low) / bb_low * 100) if bb_low > 0 else 0
-        vol_effect = (
-            "高" if price > 0 and atr / price > 0.05 else
-            "中" if price > 0 and atr / price > 0.025 else
-            "低" if price > 0 else "未知"
-        )
-
-        # 风险评分
-        score = 0
-        score += 40 if distance_pct < 2 else 20 if distance_pct < 5 else 5
-        score += 30 if vol_effect == "高" else 15 if vol_effect == "中" else 0
-        if rsi < 30 and distance_pct < 0:
-            score += 20
-
-        level = "高" if score >= 60 else "中" if score >= 35 else "低"
-        return {
-            "风险等级": level,
-            "距布林下轨": round(distance_pct, 2),
-            "波动率影响": vol_effect,
-            "强平价格": margin_calls,
-            "描述": f"当前价格距布林下轨 {distance_pct:.1f}%，波动率{vol_effect}，综合杠杆风险{level}",
-        }
-
-    @staticmethod
-    def sentiment(vix: Any, vol_pcr: Any, sox_rsi: Any) -> SentimentResult:
+    def calculate(vix: Any, vol_pcr: Any, sox_rsi: Any) -> SentimentResult:
         try:
             vix_f = float(vix) if vix not in (None, "无数据") else 18.0
         except (TypeError, ValueError):
@@ -564,7 +702,7 @@ class RiskEngine:
         return {"情绪指数": composite, "标签": label}
 
 
-# ==================== 9. 新闻与预警层 ====================
+# ==================== 预警服务 ====================
 class AlertService:
     def __init__(self, cfg: Config):
         self.cfg = cfg
@@ -580,40 +718,36 @@ class AlertService:
                 timeout=10,
             )
         except Exception as e:
-            logger.warning(f"Telegram 发送失败: {e}")
+            logger.warning(f"Telegram 失败: {e}")
 
     def check_and_send(self, macro: Dict, stock_dict: Dict[str, Any], sox: SOXSignals) -> List[str]:
         alerts: List[str] = []
         if sox.get("技术性熊市"):
-            alerts.append(f"🐻 SOX 技术性熊市（回撤 {sox.get('回撤', 0):.1f}%）")
+            alerts.append(f"🐻 SOX 技术性熊市（{sox.get('回撤', 0):.1f}%）")
         if sox.get("最新价", 0) < self.cfg.sox_support_level:
             alerts.append(f"⚠️ SOX 跌破 {self.cfg.sox_support_level:.0f}")
 
         for sym, data in stock_dict.items():
-            # === 关键修复：跳过 None / 失败数据 ===
             if not data:
-                logger.debug(f"{sym} 无数据，跳过预警检查")
                 continue
-
             rsi = data.get("RSI_14", 50)
             if rsi > self.cfg.rsi_overbought:
                 alerts.append(f"🔴 {sym} RSI={rsi:.1f} 超买")
             elif rsi < self.cfg.rsi_oversold:
                 alerts.append(f"🟢 {sym} RSI={rsi:.1f} 超卖")
 
-        vix_val = macro.get("VIX", 0)
         try:
-            if float(vix_val) > self.cfg.vix_alert_threshold:
-                alerts.append(f"🌪️ VIX 超过 {self.cfg.vix_alert_threshold}，当前 {vix_val}")
+            if float(macro.get("VIX", 0)) > self.cfg.vix_alert_threshold:
+                alerts.append(f"🌪️ VIX 超 {self.cfg.vix_alert_threshold}，当前 {macro['VIX']}")
         except (TypeError, ValueError):
             pass
 
         if alerts:
-            msg = "📢 <b>市场预警</b>\n" + "\n".join(alerts)
-            self.send_telegram(msg)
+            self.send_telegram("📢 <b>市场预警</b>\n" + "\n".join(alerts))
         return alerts
 
 
+# ==================== 新闻 ====================
 class NewsFetcher:
     def __init__(self, cfg: Config):
         self.cfg = cfg
@@ -621,25 +755,32 @@ class NewsFetcher:
     def fetch_baidu(self, query: str) -> List[Dict]:
         if not self.cfg.serpapi_key:
             return []
-        params = {
-            "engine": "baidu_news",
-            "q": query,
-            "api_key": self.cfg.serpapi_key,
-            "num": 3,
-        }
         try:
-            # 新版 serpapi 的正确导入路径
             from serpapi.google_search import GoogleSearch
-            results = GoogleSearch(params).get_dict()
+            results = GoogleSearch({
+                "engine": "baidu_news", "q": query,
+                "api_key": self.cfg.serpapi_key, "num": 3,
+            }).get_dict()
             return results.get("news_results", [])
         except Exception as e:
-            logger.warning(f"百度新闻获取失败 ({query}): {e}")
+            logger.warning(f"百度新闻失败 ({query}): {e}")
             return []
 
-# ==================== 10. AI 报告层 ====================
-class AIReportGenerator:
-    """DeepSeek / OpenAI 接口封装"""
 
+# ==================== 富途数据（可选本地补充） ====================
+def load_futu_data() -> Dict[str, Dict]:
+    path = Path("data/futu_data.json")
+    if not path.exists():
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f).get("stocks", {})
+    except Exception:
+        return {}
+
+
+# ==================== AI 报告 ====================
+class AIReportGenerator:
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.client = None
@@ -653,16 +794,12 @@ class AIReportGenerator:
         try:
             resp = self.client.chat.completions.create(
                 model="deepseek-chat",
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.7,
-                max_tokens=max_tokens,
+                messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+                temperature=0.7, max_tokens=max_tokens,
             )
             return resp.choices[0].message.content
         except Exception as e:
-            logger.error(f"AI 调用失败: {e}")
+            logger.error(f"AI 失败: {e}")
             return None
 
     @staticmethod
@@ -675,113 +812,89 @@ class AIReportGenerator:
         try:
             return json.loads(raw)
         except json.JSONDecodeError:
-            # 兜底：找第一个 [ 和最后一个 ]
-            start, end = raw.find("["), raw.rfind("]")
-            if start != -1 and end != -1 and end > start:
-                return json.loads(raw[start:end + 1])
+            s, e = raw.find("["), raw.rfind("]")
+            if s != -1 and e != -1 and e > s:
+                return json.loads(raw[s:e + 1])
             raise
 
-    def generate_market_overview(
-        self,
-        macro: Dict,
-        sox: SOXSignals,
-        sentiment: SentimentResult,
-        adv_dec: Optional[float],
-        news: Dict[str, List[Dict]],
-    ) -> Optional[str]:
-        prompt = f"""你是一位专业股票分析师，请根据以下数据生成一份简洁的大盘总览。
-报告日期：{datetime.now().strftime('%Y-%m-%d %H:%M')}
----
-### 宏观概览
-{json.dumps(macro, indent=2, ensure_ascii=False)}
-涨跌家数比（SPY涨跌幅近似）：{adv_dec if adv_dec is not None else '无数据'}%
----
-### SOX 指数信号
-- 最新价：{sox.get('最新价', 'N/A')}
-- 回撤：{sox.get('回撤', 'N/A')}%
-- 技术性熊市：{'是' if sox.get('技术性熊市') else '否'}
-- RSI(14)：{sox.get('RSI', 'N/A')}
-- MA20：{sox.get('MA20', 'N/A')}
-关键信号：{chr(10).join(['- ' + s for s in sox.get('信号列表', [])])}
----
-### 市场情绪
-情绪指数：{sentiment['情绪指数']} （{sentiment['标签']}）
----
-### 个股新闻摘要
-{json.dumps(news, indent=2, ensure_ascii=False) if news else '无新闻数据'}
----
-要求：1.宏观判断 2.SOX解读 3.情绪与资金 4.今日整体操作建议 5.风险提示。
-总字数500字以内，专业简洁，使用emoji。个股具体买卖点位不需要展开。
+    def generate_overview(self, macro: Dict, sox: SOXSignals, sentiment: SentimentResult, adv_dec: Optional[float], news: Dict) -> Optional[str]:
+        prompt = f"""你是专业股票分析师，请生成简洁大盘总览。
+日期：{datetime.now().strftime('%Y-%m-%d %H:%M')}
+宏观：{json.dumps(macro, indent=2, ensure_ascii=False)}
+SPY涨跌：{adv_dec if adv_dec is not None else '无'}%
+SOX：最新{sox.get('最新价','N/A')} 回撤{sox.get('回撤','N/A')}% 熊市{'是' if sox.get('技术性熊市') else '否'}
+情绪：{sentiment['情绪指数']}（{sentiment['标签']}）
+新闻：{json.dumps(news, indent=2, ensure_ascii=False) if news else '无'}
+要求：1.宏观判断 2.SOX解读 3.情绪资金 4.操作建议 5.风险提示。500字内，专业简洁，用emoji。不展开个股点位。
 """
         return self._call(prompt, max_tokens=1200)
 
-    def generate_decision_cards(
-        self,
-        stock_dict: Dict[str, StockTechData],
-        macro: Dict,
-        sox: SOXSignals,
-    ) -> Optional[List[Dict]]:
+    def generate_cards(self, stock_dict: Dict[str, StockTechData], macro: Dict, sox: SOXSignals, leverage_dict: Dict[str, Any]) -> Optional[List[Dict]]:
         valid = {s: d for s, d in stock_dict.items() if d}
         if not valid:
-            logger.warning("无有效个股数据，跳过决策卡片")
             return None
 
         facts = []
         for sym, data in valid.items():
             market = "港股" if sym.endswith(".HK") else "美股"
-            mc = RiskEngine(self.cfg).leverage_analysis(data)["强平价格"]
-            mc_str = "；".join([f"{k}强平${v:.2f}" for k, v in mc.items()])
+            lev = leverage_dict.get(sym, {})
+            mc_str = "；".join([
+                f"{k}强平${v['强平价']:.2f}({v['距强平ATR倍数']}xATR)"
+                for k, v in lev.get("details", {}).items()
+            ])
+            bf = BottomFishingEngine.score(data)
+            rev = ReversalAnalyzer.analyze(data)
 
             facts.append(f"""
 {sym}（{market}）
-收盘 {data.get('收盘价', 0):.2f}，涨跌幅 {data.get('涨跌幅', 0):.2f}%，量比{data.get('量比状态', 'N/A')}
-RSI {data.get('RSI_14', 0):.2f}，MACD {data.get('MACD', 0):.3f}，PE {data.get('PE_Ratio', 'N/A')}
-MA5 {data.get('MA5', 0):.2f} / MA20 {data.get('MA20', 0):.2f} / MA50 {data.get('MA50', 0):.2f}
-布林带：上轨{data.get('布林上轨', 0):.2f} 中轨{data.get('布林中轨', 0):.2f} 下轨{data.get('布林下轨', 0):.2f}
-ATR {data.get('ATR', 0):.2f}
-斩杀线：{mc_str if mc_str else 'N/A'}
+收盘 {data.get('收盘价',0):.2f} 涨跌{data.get('涨跌幅',0):.2f}% 量比{data.get('量比状态','N/A')}
+RSI {data.get('RSI_14',0):.1f} MACD {data.get('MACD',0):.3f} PE {data.get('PE_Ratio','N/A')}
+MA5 {data.get('MA5',0):.2f} MA20 {data.get('MA20',0):.2f} MA50 {data.get('MA50',0):.2f}
+布林 {data.get('布林上轨',0):.2f}/{data.get('布林中轨',0):.2f}/{data.get('布林下轨',0):.2f}
+POC {data.get('资金集中价位','N/A')} 集中度{data.get('集中度',0):.1f}%
+抄底评分 {bf['抄底评分']} 依据：{', '.join(bf['抄底依据'])}
+反弹反转：{rev['信号']}（{rev['置信度']}）{rev['描述']}
+ATR {data.get('ATR',0):.2f}
+强平线：{mc_str or 'N/A'}
 """)
-
-        prompt = f"""你是一位专业的美股/港股分析师。请针对以下每只股票，生成结构化决策卡片。
-市场背景：VIX={macro.get('VIX', 'N/A')}，标普500={macro.get('标普500', 'N/A')}，SOX回撤={sox.get('回撤', 'N/A')}%
-
-个股数据：
+        prompt = f"""你是专业美股/港股分析师。针对以下股票生成结构化决策卡片。
+市场：VIX={macro.get('VIX','N/A')} 标普={macro.get('标普500','N/A')} SOX回撤={sox.get('回撤','N/A')}%
+个股：
 {''.join(facts)}
-
-请严格只输出一个 JSON 数组，不要任何前后缀说明文字、不要 markdown 代码块标记。数组每个元素对应一只股票，字段如下：
+严格只输出 JSON 数组，无前后缀、无 markdown。每只股票字段：
 [
   {{
-    "symbol": "股票代码（须与上面给出的代码完全一致，如 0700.HK）",
-    "score": 0到100的整数评分,
-    "operation": "买入 或 观望 或 卖出",
-    "trend": "看多 或 看空 或 震荡",
-    "core_view": "50字以内核心判断",
-    "catalysts": ["利好催化1", "利好催化2"],
-    "risks": ["风险点1", "风险点2"],
+    "symbol": "代码（如 0700.HK）",
+    "score": 0-100整数,
+    "operation": "买入/观望/卖出",
+    "trend": "看多/看空/震荡",
+    "core_view": "50字内核心判断",
+    "catalysts": ["利好1","利好2"],
+    "risks": ["风险1","风险2"],
     "sniper": {{
-      "ideal_buy": "理想买入价位描述",
-      "second_buy": "二次加仓/回调买入位描述",
-      "stop_loss": "止损位描述",
-      "target": "止盈目标描述"
+      "ideal_buy": "理想买入位",
+      "second_buy": "二次加仓位",
+      "stop_loss": "止损位",
+      "target": "止盈目标"
     }},
-    "sectors": ["相关板块1", "相关板块2"]
+    "sectors": ["板块1","板块2"],
+    "bottom_fishing": {{"score": 0-100, "reasons": ["依据1"]}},
+    "reversal": {{"signal": "反弹/反转/无", "confidence": "高/中/低"}}
   }}
 ]
 """
-        raw = self._call(prompt, system="你是专业金融分析师，只输出严格合法的 JSON 数组，不输出任何其他文字。", max_tokens=3000)
+        raw = self._call(prompt, system="只输出严格合法 JSON 数组，不输出其他文字。", max_tokens=4000)
         if not raw:
             return None
         try:
             return self.extract_json(raw)
         except Exception as e:
-            logger.error(f"决策卡片 JSON 解析失败: {e}")
+            logger.error(f"卡片解析失败: {e}")
             return None
 
 
-# ==================== 11. 主控层 ====================
+# ==================== 主控编排 ====================
 class ReportOrchestrator:
-    """编排整个报告生成流程"""
-
     def __init__(self):
         self.cfg = Config()
         self.fetcher = DataFetcher(self.cfg)
@@ -790,138 +903,144 @@ class ReportOrchestrator:
         self.alert_svc = AlertService(self.cfg)
         self.news_fetcher = NewsFetcher(self.cfg)
         self.ai = AIReportGenerator(self.cfg)
+        self.futu_data = load_futu_data()
 
-    def _fetch_stock_parallel(self) -> Dict[str, StockTechData]:
-        """并发获取所有股票技术指标"""
+    def _fetch_stock_parallel(self) -> Tuple[Dict[str, StockTechData], Dict[str, Any]]:
         results: Dict[str, StockTechData] = {}
+        leverage_results: Dict[str, Any] = {}
 
-        def worker(sym: str) -> Tuple[str, Optional[StockTechData]]:
+        def worker(sym: str) -> Tuple[str, Optional[StockTechData], Optional[Dict]]:
             try:
                 df = self.fetcher.get_stock_df(sym)
                 data = TechnicalAnalyzer.analyze(df, self.cfg)
-                if data:
-                    data["symbol"] = sym
-                return sym, data
+                if not data:
+                    return sym, None, None
+                data["symbol"] = sym
+
+                # 补充富途 PE（如果本地有数据且 yfinance 没拿到）
+                futu_pe = self.futu_data.get(sym, {}).get("pe_ratio")
+                if data.get("PE_Ratio") is None and futu_pe is not None:
+                    data["PE_Ratio"] = float(futu_pe)
+
+                # 叠加新功能
+                bf = BottomFishingEngine.score(data)
+                data["抄底评分"] = bf["抄底评分"]
+                data["抄底依据"] = bf["抄底依据"]
+
+                rev = ReversalAnalyzer.analyze(data)
+                data["反弹反转信号"] = rev["信号"]
+                data["反弹反转置信度"] = rev["置信度"]
+                data["反弹反转描述"] = rev["描述"]
+
+                # 杠杆风险
+                lev = self.risk_engine.analyze(data)
+                data["杠杆风险等级"] = lev["综合风险等级"]
+                leverage_results[sym] = lev
+
+                return sym, data, lev
             except Exception as e:
-                logger.error(f"获取 {sym} 失败: {e}")
-                return sym, None
+                logger.error(f"{sym} 失败: {e}")
+                return sym, None, None
 
-        # 港股数据源（akshare）有线程安全问题倾向，降低并发或单独处理
-        hk_stocks = [s for s in self.cfg.stocks if s.endswith(".HK")]
-        us_stocks = [s for s in self.cfg.stocks if not s.endswith(".HK")]
+        hk = [s for s in self.cfg.stocks if s.endswith(".HK")]
+        us = [s for s in self.cfg.stocks if not s.endswith(".HK")]
 
-        # US stocks 并发
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            future_map = {executor.submit(worker, s): s for s in us_stocks}
-            for future in as_completed(future_map):
-                sym, data = future.result()
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            for fut in as_completed({ex.submit(worker, s): s for s in us}):
+                sym, data, lev = fut.result()
                 results[sym] = data
+                if lev:
+                    leverage_results[sym] = lev
 
-        # HK stocks 串行（akshare 底层可能依赖全局状态）
-        for sym in hk_stocks:
-            sym, data = worker(sym)
+        for sym in hk:
+            sym, data, lev = worker(sym)
             results[sym] = data
+            if lev:
+                leverage_results[sym] = lev
 
-        return results
+        return results, leverage_results
 
-    def _persist(self, macro: Dict, stock_dict: Dict, sox: SOXSignals, cards: Optional[List], report_md: Optional[str]):
-        """统一持久化"""
+    def _persist(self, macro: Dict, stock_dict: Dict, sox: SOXSignals, leverage_dict: Dict, cards: Optional[List], report_md: Optional[str]):
         out = self.cfg.output_dir
 
-        # 宏观
         pd.DataFrame([macro]).to_csv(out / "macro.csv", index=False)
 
-        # 个股
         records = []
         for sym, data in stock_dict.items():
             if not data:
                 continue
             row = {"symbol": sym, **data}
-            risk = self.risk_engine.leverage_analysis(data)
-            row["杠杆风险"] = risk["风险等级"]
-            for k, v in risk["强平价格"].items():
-                row[f"强平价格_{k}"] = v
             records.append(row)
+
         if records:
             pd.DataFrame(records).to_csv(out / "stocks.csv", index=False)
 
-        # SOX
         sox_row = {k: v for k, v in sox.items() if k != "信号列表"}
         sox_row["信号列表"] = "；".join(sox.get("信号列表", []))
         pd.DataFrame([sox_row]).to_csv(out / "sox.csv", index=False)
 
-        # AI 报告
+        if leverage_dict:
+            payload = {
+                "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "stocks": leverage_dict,
+            }
+            (out / "leverage_risk.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
         if report_md:
             (out / "report.md").write_text(report_md, encoding="utf-8")
 
-        # 决策卡片
         if cards:
             payload = {
                 "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
                 "stocks": cards,
             }
-            (out / "cards.json").write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
+            (out / "cards.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def run(self):
         logger.info("📊 报告生成流程启动")
-        # 1. 宏观
+
         macro = self.macro_collector.collect_all()
-        logger.info("宏观数据采集完成")
+        logger.info("宏观完成")
 
-        # 2. 个股（并发）
-        stock_dict = self._fetch_stock_parallel()
-        valid_count = sum(1 for v in stock_dict.values() if v)
-        logger.info(f"个股数据采集完成，有效 {valid_count}/{len(self.cfg.stocks)}")
+        stock_dict, leverage_dict = self._fetch_stock_parallel()
+        valid = sum(1 for v in stock_dict.values() if v)
+        logger.info(f"个股完成，有效 {valid}/{len(self.cfg.stocks)}")
 
-        # 3. SOX
         sox = self.macro_collector.get_sox()
-        logger.info("SOX 信号采集完成")
+        logger.info("SOX 完成")
 
-        # 4. 涨跌家数比
         try:
-            spy_df = self.fetcher.fetch_yf("SPY", period="2d")
-            adv_dec = float((spy_df["Close"].iloc[-1] - spy_df["Close"].iloc[-2]) / spy_df["Close"].iloc[-2] * 100)
+            spy = self.fetcher.fetch_yf("SPY", period="2d")
+            adv_dec = float((spy["Close"].iloc[-1] - spy["Close"].iloc[-2]) / spy["Close"].iloc[-2] * 100)
         except Exception:
             adv_dec = None
 
-        # 5. 情绪
-        sentiment = self.risk_engine.sentiment(
-            macro.get("VIX", 0),
-            macro.get("Volume PCR"),
-            sox.get("RSI", 50),
-        )
-        logger.info(f"市场情绪: {sentiment['情绪指数']} ({sentiment['标签']})")
+        sentiment = SentimentEngine.calculate(macro.get("VIX", 0), macro.get("Volume PCR"), sox.get("RSI", 50))
+        logger.info(f"情绪: {sentiment['情绪指数']} ({sentiment['标签']})")
 
-        # 6. 新闻
         news = {}
         if self.cfg.serpapi_key:
             for sym in self.cfg.stocks:
                 news[sym] = self.news_fetcher.fetch_baidu(sym.replace(".HK", ""))
 
-        # 7. 预警
         alerts = self.alert_svc.check_and_send(macro, stock_dict, sox)
         if alerts:
             logger.info(f"触发 {len(alerts)} 条预警")
 
-        # 8. AI 生成
         report_md = None
         cards = None
         if self.ai.client:
-            report_md = self.ai.generate_market_overview(macro, sox, sentiment, adv_dec, news)
+            report_md = self.ai.generate_overview(macro, sox, sentiment, adv_dec, news)
             if report_md:
-                logger.info("大盘总览报告生成完成")
-            cards = self.ai.generate_decision_cards(stock_dict, macro, sox)
+                logger.info("大盘报告完成")
+            cards = self.ai.generate_cards(stock_dict, macro, sox, leverage_dict)
             if cards:
-                logger.info(f"决策卡片生成完成，共 {len(cards)} 只")
+                logger.info(f"决策卡片完成，共 {len(cards)} 只")
         else:
-            logger.info("未配置 DeepSeek API Key，跳过 AI 报告")
+            logger.info("跳过 AI 报告")
 
-        # 9. 持久化
-        self._persist(macro, stock_dict, sox, cards, report_md)
-        logger.info("✅ 全部数据已保存，流程结束")
+        self._persist(macro, stock_dict, sox, leverage_dict, cards, report_md)
+        logger.info("✅ 全部完成")
 
 
 if __name__ == "__main__":
