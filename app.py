@@ -81,8 +81,19 @@ def load_cards():
             return None
     return None
 
+@st.cache_data(ttl=3600)
+def load_leverage_risk():
+    if os.path.exists("data/leverage_risk.json"):
+        try:
+            with open("data/leverage_risk.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
+
 macro_df, stocks_df, sox_df, report = load_data()
 cards_data = load_cards()
+leverage_data = load_leverage_risk()
 
 OP_COLOR = {"买入": "#00e676", "观望": "#ffd54f", "卖出": "#ff5252"}
 
@@ -108,7 +119,10 @@ def score_gauge(score, operation):
 st.markdown('<div class="section-title">🌍 宏观数据</div>', unsafe_allow_html=True)
 if macro_df is not None and not macro_df.empty:
     macro_cols = ["VIX", "美元指数", "标普500", "纳斯达克100", "黄金", "WTI原油", "10年期美债收益率",
-                  "美国国债规模", "芝加哥联储杠杆指数", "2年期实际利率", "FINRA保证金债务", "Volume PCR", "OI PCR"]
+                  "美国国债规模", "芝加哥联储杠杆指数", "2年期实际利率（近似）", "FINRA保证金债务", "Volume PCR", "OI PCR"]
+    # 兼容旧列名
+    if "2年期实际利率" in macro_df.columns and "2年期实际利率（近似）" not in macro_df.columns:
+        macro_df.rename(columns={"2年期实际利率": "2年期实际利率（近似）"}, inplace=True)
     available = [c for c in macro_cols if c in macro_df.columns]
     cols_per_row = 6
     for i in range(0, len(available), cols_per_row):
@@ -164,7 +178,7 @@ if sox_df is not None and not sox_df.empty:
 else:
     st.warning("⚠️ 暂无 SOX 数据")
 
-# ---------- AI 决策卡片（仿 daily_stock_analysis 决策仪表盘风格） ----------
+# ---------- AI 决策卡片 ----------
 st.markdown('<div class="section-title">🎯 AI 决策卡片</div>', unsafe_allow_html=True)
 if cards_data and cards_data.get("stocks"):
     st.caption(f"生成时间：{cards_data.get('generated_at', 'N/A')}")
@@ -184,47 +198,59 @@ if cards_data and cards_data.get("stocks"):
                 <div style="color:rgba(255,255,255,0.75);font-size:14px;">{card.get('core_view','')}</div>
             </div>
             """, unsafe_allow_html=True)
-
-            # 狙击点位 四列
-            leverage_data = load_leverage_risk()  # 类似 load_cards()，读 data/leverage_risk.json
-
-# 在每张卡片渲染的地方（col_left 内，狙击点位下方）
-if leverage_data and sym in leverage_data.get("stocks", {}):
-    lev_rows = leverage_data["stocks"][sym]
-    lev_cols = st.columns(len(lev_rows))
-    for c, row in zip(lev_cols, lev_rows):
-        atr_mult = row["距强平ATR倍数"]
-        danger = isinstance(atr_mult, (int, float)) and atr_mult < 3
-        color = "#ff5252" if danger else "#ffd54f" if isinstance(atr_mult, (int, float)) and atr_mult < 6 else "rgba(255,255,255,0.5)"
-        with c:
-            st.markdown(f"""<div class="metric-card" style="border-left:2px solid {color};">
-                <div class="metric-label">{row['杠杆倍数']} 强平价</div>
-                <div style="font-size:14px;color:{color};margin-top:4px;">${row['强平价']} （{row['距强平ATR倍数']}倍ATR）</div>
-            </div>""", unsafe_allow_html=True)
+            
+            # 狙击点位
             sniper = card.get("sniper", {}) or {}
             s1, s2, s3, s4 = st.columns(4)
-            labels = [
-                ("理想买入", sniper.get("ideal_buy", "-"), "#00d4ff"),
-                ("二次买入", sniper.get("second_buy", "-"), "#00e676"),
-                ("止损位", sniper.get("stop_loss", "-"), "#ff5252"),
-                ("止盈目标", sniper.get("target", "-"), "#ffd54f"),
+            sniper_labels = [
+                ("🎯 理想买入", sniper.get("ideal_buy", "-"), "#00d4ff"),
+                ("📈 二次买入", sniper.get("second_buy", "-"), "#00e676"),
+                ("🛑 止损位", sniper.get("stop_loss", "-"), "#ff5252"),
+                ("🏁 止盈目标", sniper.get("target", "-"), "#ffd54f"),
             ]
-            for c, (label, val, color) in zip([s1, s2, s3, s4], labels):
+            for c, (label, val, color) in zip([s1, s2, s3, s4], sniper_labels):
                 with c:
                     st.markdown(f"""<div class="metric-card" style="border-left:2px solid {color};">
                         <div class="metric-label">{label}</div>
                         <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-top:4px;">{val}</div>
                     </div>""", unsafe_allow_html=True)
-
+            
+            # 杠杆强平价格（从 leverage_risk.json 读取）
+            if leverage_data and leverage_data.get("stocks", {}).get(sym):
+                lev_items = leverage_data["stocks"][sym]
+                st.markdown('<div style="font-size:13px;color:rgba(255,255,255,0.4);margin:8px 0 4px 0;">📊 各杠杆强平价格（斩杀线）</div>', unsafe_allow_html=True)
+                lev_cols = st.columns(len(lev_items))
+                for col_idx, (lev_key, lev_info) in enumerate(lev_items.items()):
+                    if isinstance(lev_info, dict):
+                        price = lev_info.get("强平价", "N/A")
+                        atr_mult = lev_info.get("距强平ATR倍数", "N/A")
+                    else:
+                        price = lev_info
+                        atr_mult = "N/A"
+                    danger = isinstance(atr_mult, (int, float)) and atr_mult < 3
+                    color = "#ff5252" if danger else "#ffd54f" if isinstance(atr_mult, (int, float)) and atr_mult < 6 else "rgba(255,255,255,0.5)"
+                    with lev_cols[col_idx]:
+                        st.markdown(f"""<div class="metric-card" style="border-left:2px solid {color};padding:8px 12px;">
+                            <div class="metric-label" style="font-size:10px;">{lev_key}</div>
+                            <div style="font-size:14px;color:{color};">${price}</div>
+                            <div style="font-size:10px;color:rgba(255,255,255,0.3);">{atr_mult}倍ATR</div>
+                        </div>""", unsafe_allow_html=True)
+            
             # 催化 & 风险
             cc1, cc2 = st.columns(2)
             with cc1:
-                catalysts = "".join([f"<div>✨ {c}</div>" for c in card.get("catalysts", [])])
-                st.markdown(f'<div class="sox-signal">{catalysts or "暂无"}</div>', unsafe_allow_html=True)
+                catalysts = card.get("catalysts", [])
+                if catalysts:
+                    st.markdown(f'<div class="sox-signal" style="border-left-color:#00e676;">✨ ' + '；'.join(catalysts) + '</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="sox-signal" style="border-left-color:#00e676;">✨ 暂无</div>', unsafe_allow_html=True)
             with cc2:
-                risks = "".join([f"<div>🚨 {r}</div>" for r in card.get("risks", [])])
-                st.markdown(f'<div class="sox-signal" style="border-left-color:rgba(255,82,82,0.4);">{risks or "暂无"}</div>', unsafe_allow_html=True)
-
+                risks = card.get("risks", [])
+                if risks:
+                    st.markdown(f'<div class="sox-signal" style="border-left-color:#ff5252;">🚨 ' + '；'.join(risks) + '</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="sox-signal" style="border-left-color:#ff5252;">🚨 暂无</div>', unsafe_allow_html=True)
+            
             # 板块标签
             sectors = card.get("sectors", [])
             if sectors:
@@ -232,7 +258,7 @@ if leverage_data and sym in leverage_data.get("stocks", {}):
                 st.markdown(f'<div style="margin:8px 0 20px 0;">{tags}</div>', unsafe_allow_html=True)
             else:
                 st.markdown('<div style="margin-bottom:20px;"></div>', unsafe_allow_html=True)
-
+        
         with col_right:
             st.plotly_chart(score_gauge(card.get("score", 50), op), use_container_width=True, config={'displayModeBar': False})
 else:
@@ -284,7 +310,7 @@ if stocks_df is not None and not stocks_df.empty:
             </div>
         </div>
         """, unsafe_allow_html=True)
-        # K线图（带错误处理）
+        # K线图
         try:
             period = period_map[selected_period]
             hist = yf.download(sym, period=period, progress=False)
