@@ -12,12 +12,12 @@ from fredapi import Fred
 warnings.filterwarnings('ignore')
 
 # ---------- 配置 ----------
-FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
-ALPHA_VANTAGE_KEY = os.environ.get("ALPHA_VANTAGE_KEY", "")
+FRED_API_KEY = os.environ.get("FRED_API", "")
+ALPHA_VANTAGE_KEY = os.environ.get("ALPHA_API", "")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-SERPAPI_API_KEY = os.environ.get("SERPAPI_API_KEY", "")  # 从环境变量读取
+SERPAPI_API_KEY = os.environ.get("SERPAPI", "")  # 从环境变量读取
 # 定义需要搜索新闻的股票代码（港股保留原始格式，搜索时可能需要调整）
 NEWS_STOCKS = ["MU", "AAOI", "GOOGL", "MSFT", "ORCL", "TSLA", "AMZN", "SPCX", "SKHY", "MRVL", "LITE", "SNDK", "NVDA", "0700.HK", "0883.HK", "3750.HK"]  # 示例，您可以按需修改
 # 常用杠杆倍数（用于强平计算）
