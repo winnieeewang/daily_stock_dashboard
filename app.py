@@ -38,13 +38,14 @@ import yfinance as yf
 from plotly.subplots import make_subplots
 
 import utils as U  # 本地工具模块
+from stock_dashboard import Config  # 自选股列表
 
 # ---------------------------------------------------------------------------
 # Streamlit 配置
 # ---------------------------------------------------------------------------
 st.set_page_config(
     layout="wide",
-    page_title="Investment Copilot | Winnie Wang",
+    page_title="Winnie's Daily Stock Dashboard",
     page_icon="📈",
     initial_sidebar_state="expanded",
 )
@@ -177,6 +178,29 @@ SERPAPI_KEY = os.environ.get("SERPAPI", "") or st.secrets.get("SERPAPI", "") if 
 DEEPSEEK_KEY = os.environ.get("DEEPSEEK_API_KEY", "") or (st.secrets.get("DEEPSEEK_API_KEY", "") if hasattr(st, "secrets") else "")
 FRED_KEY = os.environ.get("FRED_API", "") or (st.secrets.get("FRED_API", "") if hasattr(st, "secrets") else "")
 
+
+def _get_secret(name: str, default: str = "") -> str:
+    """双路读 secret（os.environ + st.secrets）。"""
+    val = os.environ.get(name, "")
+    if val:
+        return val
+    if hasattr(st, "secrets"):
+        try:
+            val = st.secrets.get(name, "")
+            if val:
+                return str(val)
+        except Exception:
+            pass
+    return default
+
+
+def _check_lib(name: str) -> bool:
+    try:
+        __import__(name)
+        return True
+    except ImportError:
+        return False
+
 DATA_DIR = Path("data")
 
 
@@ -276,8 +300,8 @@ def safe_float(v: Any, default: float = 0.0) -> float:
 # 侧边栏：导航 + 控制
 # ---------------------------------------------------------------------------
 with st.sidebar:
-    st.markdown("### 🎛️ Investment Copilot")
-    st.caption("Author: Winnie Wang")
+    st.markdown("### 🎛️ Winnie's Daily Stock Dashboard")
+    st.caption("Investment Copilot · by Winnie")
     st.divider()
     page = st.radio(
         "导航",
@@ -304,7 +328,7 @@ st.markdown(
     f"""
 <div class="top-bar">
     <div>
-        <div class="title">📈 Investment Copilot</div>
+        <div class="title">📈 Winnie's Daily Stock Dashboard</div>
         <div class="sub">专业投资分析工作台 · {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
@@ -321,10 +345,124 @@ st.markdown(
 # ---------------------------------------------------------------------------
 # 页面：Dashboard
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# v2.5 智能荐股辅助
+# ---------------------------------------------------------------------------
+@st.cache_data(ttl=3600, show_spinner=False)
+def _cached_metrics(symbols_tuple):
+    return U.fetch_all_metrics(list(symbols_tuple))
+
+
+def _bias_emoji(b):
+    return "🐂" if b == "看多" else ("🐻" if b == "看空" else "➡️")
+
+
+def _rec_md(r, sub):
+    chg = r.get("chgPct") or 0
+    c = "#dc2626" if chg > 0 else ("#16a34a" if chg < 0 else "var(--text-dim)")
+    nm = U.STOCK_NAMES.get(r["symbol"], "")
+    return (f'<div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">'
+            f'<b>{r["symbol"]}</b> <span style="color:var(--text-dim);font-size:10px;">{nm}</span><br>'
+            f'<span style="color:{c};font-weight:600;">{chg:+.2f}%</span> '
+            f'<span style="color:var(--text-dim);font-size:10px;">{sub}</span></div>')
+
+
 def page_dashboard():
     st.markdown('<div class="section-title"><span class="accent">🏠</span>市场全景 Dashboard</div>', unsafe_allow_html=True)
 
-    # ===== 第一行：F&G / 情绪 / VIX / SOX / 10Y =====
+    # ===== v2.4 新增：组合策略 Portfolio Context =====
+    dominance = U.compute_portfolio_dominance(STOCKS_DF)
+    dominance_emoji = dominance.get("emoji", "💤")
+    dominance_label = dominance.get("dominance_label", "空仓")
+    if dominance_label == "多头占优":
+        dominance_color = "#dc2626"
+    elif dominance_label == "空头占优":
+        dominance_color = "#16a34a"
+    elif dominance_label == "空仓":
+        dominance_color = "#9ca3af"
+    else:
+        dominance_color = "#f59e0b"
+    total_n = dominance.get("total", 0)
+    long_n = dominance.get("long_count", 0)
+    short_n = dominance.get("short_count", 0)
+    flat_n = dominance.get("flat_count", 0)
+    avg_chg = dominance.get("avg_chg", 0.0)
+    long_pct = dominance.get("long_pct", 0.0)
+    short_pct = dominance.get("short_pct", 0.0)
+    flat_pct = dominance.get("flat_pct", 0.0)
+    etf_n = dominance.get("etf_count", 0)
+    err = dominance.get("error")
+    # 取 30 天内最大回撤作为时间戳
+    last_update = "—"
+    if STOCKS_DF is not None and not STOCKS_DF.empty and "日期" in STOCKS_DF.columns:
+        try:
+            last_update = str(STOCKS_DF["日期"].max())[:10]
+        except Exception:
+            pass
+
+    if err is None:
+        st.markdown(
+            f"""
+<div class="card" style="background:linear-gradient(135deg,#fff 0%,#f8fafc 100%);">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <div>
+      <h4 style="margin:0 0 4px 0;">🎯 组合策略 Portfolio Context</h4>
+      <div style="font-size:11px;color:var(--text-dim);">{total_n}/16 策略持仓 · 更新 {last_update}</div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;">
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:var(--text-dim);">持仓策略</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text);">{total_n}</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:var(--text-dim);">活跃均值</div>
+        <div style="font-size:18px;font-weight:800;color:{dominance_color};">{avg_chg:+.2f}%</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:var(--text-dim);">ETF 持仓</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text);">{etf_n}</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:24px;margin-top:14px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:8px;min-width:200px;">
+      <span style="font-size:48px;">{dominance_emoji}</span>
+      <div>
+        <div style="font-size:28px;font-weight:800;color:{dominance_color};">{dominance_label}</div>
+        <div style="font-size:11px;color:var(--text-dim);">{U.emoji_for_sentiment(min(100, max(0, 50 + avg_chg*10)))} 风险偏好: {min(100, max(0, 50 + avg_chg*10)):.0f}/100</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex:1;flex-wrap:wrap;">
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;flex:1;min-width:120px;">
+        <div style="font-size:11px;color:#dc2626;font-weight:600;">● 多头</div>
+        <div style="font-size:22px;font-weight:800;color:#dc2626;">{long_n}</div>
+        <div style="font-size:11px;color:var(--text-dim);">{long_pct:.1f}%</div>
+      </div>
+      <div style="background:#dcfce7;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;flex:1;min-width:120px;">
+        <div style="font-size:11px;color:#16a34a;font-weight:600;">● 空头</div>
+        <div style="font-size:22px;font-weight:800;color:#16a34a;">{short_n}</div>
+        <div style="font-size:11px;color:var(--text-dim);">{short_pct:.1f}%</div>
+      </div>
+      <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;flex:1;min-width:120px;">
+        <div style="font-size:11px;color:#475569;font-weight:600;">● 空仓</div>
+        <div style="font-size:22px;font-weight:800;color:#475569;">{flat_n}</div>
+        <div style="font-size:11px;color:var(--text-dim);">{flat_pct:.1f}%</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:12px;background:#e5e7eb;">
+    <div style="width:{long_pct}%;background:#dc2626;transition:width 0.4s;"></div>
+    <div style="width:{short_pct}%;background:#16a34a;transition:width 0.4s;"></div>
+    <div style="width:{flat_pct}%;background:#94a3b8;transition:width 0.4s;"></div>
+  </div>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.warning(f"组合策略卡数据缺失: {err}（请先运行 `python stock_dashboard.py` 生成 data/stocks.csv）")
+
+    # ===== 第一行：F&G / 情绪 / VIX / VXN / SOX / 10Y =====
     fg = U.calculate_fear_greed()
     macro_row = MACRO_DF.iloc[0] if MACRO_DF is not None and not MACRO_DF.empty else None
     sox_row = SOX_DF.iloc[0] if SOX_DF is not None and not SOX_DF.empty else None
@@ -335,12 +473,12 @@ def page_dashboard():
     fg_score = fg.get("score", 50.0)
     fg_color = {"极度贪婪": "#16a34a", "贪婪": "#84cc16", "中性": "#fbbf24", "恐惧": "#f97316", "极度恐惧": "#dc2626"}.get(fg_label, "#9ca3af")
 
-    c1, c2, c3, c4, c5 = st.columns(5)
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
     with c1:
         st.markdown(
             f"""
 <div class="card" style="text-align:center;">
-    <h4>😨 Fear &amp; Greed</h4>
+    <h4>{U.emoji_for_sentiment(fg_score)} Fear &amp; Greed</h4>
     <div class="big" style="color:{fg_color};">{fg_score:.0f}</div>
     <div class="pill-neutral" style="display:inline-block;margin-top:4px;">{fg_label}</div>
     <div class="gauge-bg" style="margin-top:8px;">
@@ -358,7 +496,7 @@ def page_dashboard():
         st.markdown(
             f"""
 <div class="card" style="text-align:center;">
-    <h4>🌡️ 自建情绪指数</h4>
+    <h4>{U.emoji_for_sentiment(sentiment_score)} 自建情绪指数</h4>
     <div class="big" style="color:{sent_color};">{sentiment_score:.0f}</div>
     <div class="pill-neutral" style="display:inline-block;margin-top:4px;">{sentiment_label}</div>
     <div class="gauge-bg" style="margin-top:8px;">
@@ -371,11 +509,22 @@ def page_dashboard():
     with c3:
         vix = safe_float(macro_row.get("VIX"), 0.0) if macro_row is not None else 0.0
         vix_color = "var(--up)" if vix > 25 else "var(--text)"
+        vix_warn = "⚠️ 警戒" if vix > 25 else ("正常" if vix > 0 else "—")
         st.markdown(
-            f'<div class="card" style="text-align:center;"><h4>🌪️ VIX</h4><div class="big" style="color:{vix_color};">{vix:.2f}</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">{"⚠️ 警戒" if vix > 25 else "正常"}</div></div>',
+            f'<div class="card" style="text-align:center;"><h4>{U.emoji_for_panic(vix)} VIX</h4><div class="big" style="color:{vix_color};">{vix:.2f}</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">{vix_warn}</div></div>',
             unsafe_allow_html=True,
         )
     with c4:
+        # VXN (纳指恐慌) — 实时拉
+        vxn_quote = U.fetch_index_quote("^VXN")
+        vxn = vxn_quote.get("last", 0.0)
+        vxn_color = "#dc2626" if vxn > 30 else ("#f97316" if vxn > 22 else "#16a34a")
+        vxn_warn = "😱 警戒" if vxn > 30 else ("⚠️ 偏高" if vxn > 22 else ("正常" if vxn > 0 else "—"))
+        st.markdown(
+            f'<div class="card" style="text-align:center;"><h4>{U.emoji_for_panic(vxn)} VXN 纳指</h4><div class="big" style="color:{vxn_color};">{vxn:.2f}</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">{vxn_warn}</div></div>',
+            unsafe_allow_html=True,
+        )
+    with c5:
         sox_px = safe_float(sox_row.get("最新价"), 0.0) if sox_row is not None else 0.0
         sox_dd = safe_float(sox_row.get("回撤"), 0.0) if sox_row is not None else 0.0
         sox_bear = bool(sox_row.get("技术性熊市", False)) if sox_row is not None else False
@@ -383,18 +532,77 @@ def page_dashboard():
             f'<div class="card" style="text-align:center;"><h4>💾 SOX 半导体</h4><div class="big">{sox_px:.0f}</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">回撤 {sox_dd:.1f}% {"🐻" if sox_bear else ""}</div></div>',
             unsafe_allow_html=True,
         )
-    with c5:
+    with c6:
         tnx = safe_float(macro_row.get("10年期美债收益率"), 0.0) if macro_row is not None else 0.0
         st.markdown(
             f'<div class="card" style="text-align:center;"><h4>🏛️ 10Y 美债</h4><div class="big">{tnx:.2f}%</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">利率风向标</div></div>',
             unsafe_allow_html=True,
         )
 
-    # ===== v2.1 新增：第二行 4 张指标卡 =====
+    # ===== v2.4 新增：全球主指数（上证 / 恒指 / 标普 / 纳指 / 道指） =====
+    world_idx = [
+        ("000001.SS", "上证指数", "🇨🇳"),
+        ("^HSI", "恒生指数", "🇭🇰"),
+        ("^GSPC", "标普 500", "🇺🇸"),
+        ("^NDX", "纳指 100", "🇺🇸"),
+        ("^DJI", "道指", "🇺🇸"),
+    ]
+    wc = st.columns(5)
+    for col, (sym, name, flag) in zip(wc, world_idx):
+        with col:
+            q = U.fetch_index_quote(sym)
+            if "error" in q or q.get("last", 0) == 0:
+                st.markdown(
+                    f'<div class="card" style="text-align:center;">'
+                    f'<h4>{flag} {name}</h4>'
+                    f'<div style="font-size:11px;color:var(--text-dim);margin:14px 0;">—</div>'
+                    f'<div style="font-size:10px;color:var(--text-dim);">{sym}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                px = q["last"]
+                chg = q["chg_pct"]
+                color = "#dc2626" if chg > 0 else ("#16a34a" if chg < 0 else "var(--text-dim)")
+                # 30 天趋势 (牛/熊)
+                regime_emoji = ""
+                try:
+                    h = yf.download(sym, period="1mo", progress=False, auto_adjust=True)
+                    if not h.empty and len(h) >= 5:
+                        if isinstance(h.columns, pd.MultiIndex):
+                            h.columns = h.columns.get_level_values(0)
+                        chg30 = (h["Close"].iloc[-1] / h["Close"].iloc[0] - 1) * 100
+                        regime_emoji = U.emoji_for_market_regime(chg30)
+                except Exception:
+                    pass
+                st.markdown(
+                    f'<div class="card" style="text-align:center;">'
+                    f'<h4>{flag} {name} {regime_emoji}</h4>'
+                    f'<div class="big" style="color:{color};">{px:,.2f}</div>'
+                    f'<div style="font-size:13px;font-weight:700;color:{color};margin-top:4px;">{chg:+.2f}%</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+
+    # ===== v2.3 新增：第二行 4 张指标卡（实时兜底）=====
+    # 顺序：先读 JSON 缓存（GitHub Actions 写入），缺失则实时调 fetch_*()
     y2c = EXTRA_DATA.get("2y_scorecard") or {}
     debt = EXTRA_DATA.get("us_debt") or {}
     margin = EXTRA_DATA.get("margin_debt") or {}
     nfci = EXTRA_DATA.get("nfci_leverage") or {}
+
+    if not y2c or y2c.get("y2") is None:
+        with st.spinner("实时拉取 2Y…"):
+            y2c = U.fetch_2y_scorecard()
+    if not debt or debt.get("value_trillion") is None:
+        with st.spinner("实时拉取 US Debt…"):
+            debt = U.fetch_us_debt()
+    if not margin or margin.get("value_billion") is None:
+        with st.spinner("实时拉取 Margin Debt…"):
+            margin = U.fetch_margin_debt()
+    if not nfci or nfci.get("value") is None:
+        with st.spinner("实时拉取 NFCI…"):
+            nfci = U.fetch_nfci_leverage()
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -414,11 +622,18 @@ def page_dashboard():
                 unsafe_allow_html=True,
             )
         else:
+            y2_err = y2c.get("error", "FRED 拉取失败")
+            y2_tip = (
+                f'<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">'
+                f'检查 GitHub Secrets 是否含 <code>FRED_API</code> · 错误: {y2_err}'
+                f'</div>'
+            )
             st.markdown(
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>📊 2-Year Scorecard</h4>'
-                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 数据缺失 (需 FRED_API)</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 数据缺失</div>'
                 f'<div style="font-size:10px;color:var(--text-dim);">DGS2 / ^TNX</div>'
+                f'{y2_tip}'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -434,11 +649,13 @@ def page_dashboard():
                 unsafe_allow_html=True,
             )
         else:
+            debt_err = debt.get("error", "FRED 拉取失败")
             st.markdown(
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>🇺🇸 U.S. National Debt</h4>'
-                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 需 FRED_API</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 数据缺失</div>'
                 f'<div style="font-size:10px;color:var(--text-dim);">GFDEBTN</div>'
+                f'<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">{debt_err}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -455,11 +672,13 @@ def page_dashboard():
                 unsafe_allow_html=True,
             )
         else:
+            mb_err = margin.get("error", "FRED 拉取失败")
             st.markdown(
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>💳 FINRA Margin Debt</h4>'
-                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 需 FRED_API</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 数据缺失</div>'
                 f'<div style="font-size:10px;color:var(--text-dim);">MDEBT</div>'
+                f'<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">{mb_err}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -478,14 +697,301 @@ def page_dashboard():
                 unsafe_allow_html=True,
             )
         else:
+            nfci_err = nfci.get("error", "FRED 拉取失败")
             st.markdown(
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>🏦 NFCI Leverage</h4>'
-                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 需 FRED_API</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 数据缺失</div>'
                 f'<div style="font-size:10px;color:var(--text-dim);">NFCILEVERAGE</div>'
+                f'<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">{nfci_err}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
+
+    # ===== v2.4 新增：🚨 宏观风险雷达 =====
+    radar = U.compute_macro_risk_radar()
+    overall = radar.get("overall", {})
+    overall_color = {"green": "#16a34a", "yellow": "#f59e0b", "red": "#dc2626"}.get(overall.get("signal"), "#9ca3af")
+
+    def _radar_group_card(group_key, title, icon):
+        g = radar.get(group_key, {})
+        if not g:
+            return ""
+        signal = g.get("signal", "yellow")
+        sig_color = {"green": "#16a34a", "yellow": "#f59e0b", "red": "#dc2626"}.get(signal, "#9ca3af")
+        sig_label = {"green": "✅ 正常", "yellow": "⚠️ 关注", "red": "🔴 警戒"}.get(signal, "—")
+        metrics = g.get("metrics", {}) or {}
+        emoji = g.get("emoji", "")
+        # 把 metrics 渲染成 key: value 行
+        rows = ""
+        for k, v in metrics.items():
+            rows += f'<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span style="color:var(--text-dim);">{k}</span><b>{v}</b></div>'
+        return (
+            f'<div class="card" style="padding:12px 14px;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+            f'<h4 style="margin:0;font-size:13px;">{icon} {title}</h4>'
+            f'<span style="font-size:14px;">{emoji}</span>'
+            f'</div>'
+            f'<div style="font-size:11px;color:{sig_color};font-weight:600;margin-bottom:6px;">{sig_label}</div>'
+            f'{rows}'
+            f'<div style="font-size:10px;color:var(--text-dim);margin-top:6px;border-top:1px solid var(--border);padding-top:4px;">{g.get("note","")}</div>'
+            f'</div>'
+        )
+
+    st.markdown(
+        f'<div class="section-title"><span class="accent">🚨</span>宏观风险雷达 Macro Risk Radar '
+        f'<span style="font-size:13px;color:{overall_color};margin-left:8px;">{overall.get("emoji","")} {overall.get("note","")}</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    rc1, rc2, rc3 = st.columns(3)
+    with rc1:
+        st.markdown(_radar_group_card("regime", "周期 Regime", "🌊"), unsafe_allow_html=True)
+        st.markdown(_radar_group_card("risk", "恐慌 Risk", "😱"), unsafe_allow_html=True)
+    with rc2:
+        st.markdown(_radar_group_card("rates", "利率 Rates", "🏛️"), unsafe_allow_html=True)
+        st.markdown(_radar_group_card("ratios", "比值 Ratios", "⚖️"), unsafe_allow_html=True)
+    with rc3:
+        st.markdown(_radar_group_card("cross_asset", "跨资产 Cross", "🌐"), unsafe_allow_html=True)
+        st.markdown(_radar_group_card("a_share", "A股 A-Share", "🇨🇳"), unsafe_allow_html=True)
+
+    # ===== v2.3 新增：🌍 全球市场三段（美股 / A股 / 港股）=====
+    st.markdown('<div class="section-title"><span class="accent">🌍</span>全球市场总览（按市场分段）</div>', unsafe_allow_html=True)
+    seg_us, seg_cn, seg_hk = st.tabs(["🇺🇸 美股 (US)", "🇨🇳 A股 (CN)", "🇭🇰 港股 (HK)"])
+
+    # --- 美股 ---
+    with seg_us:
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown('<div class="card"><h4>📈 美股主指数</h4>', unsafe_allow_html=True)
+            us_indices = [
+                ("^GSPC", "标普 500"),
+                ("^NDX", "纳指 100"),
+                ("^DJI", "道指"),
+                ("^RUT", "罗素 2000"),
+            ]
+            for sym, name in us_indices:
+                try:
+                    t = yf.Ticker(sym)
+                    info = t.fast_info
+                    px = float(info.last_price) if info.last_price else 0
+                    prev = float(info.previous_close) if info.previous_close else 0
+                    chg = (px - prev) / prev * 100 if prev else 0
+                    color = "#dc2626" if chg > 0 else ("#16a34a" if chg < 0 else "var(--text-dim)")
+                    st.markdown(
+                        f'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">'
+                        f'<span>{name}</span>'
+                        f'<span><b>{px:.2f}</b> <span style="color:{color};font-weight:600;">{chg:+.2f}%</span></span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                except Exception:
+                    st.markdown(f'<div style="color:var(--text-dim);">{name}: —</div>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+        with c2:
+            st.markdown('<div class="card"><h4>📊 美股情绪</h4>', unsafe_allow_html=True)
+            try:
+                fg = fg  # 上面的 F&G
+                st.markdown(
+                    f'<div style="font-size:11px;color:var(--text-dim);">Fear &amp; Greed</div>'
+                    f'<div style="font-size:24px;font-weight:800;color:{fg_color};">{fg_score:.0f} · {fg_label}</div>',
+                    unsafe_allow_html=True,
+                )
+            except Exception:
+                st.markdown('<div style="color:var(--text-dim);">F&G 待加载</div>', unsafe_allow_html=True)
+            # VIX
+            try:
+                vix_t = yf.Ticker("^VIX")
+                vix_info = vix_t.fast_info
+                vix_now = float(vix_info.last_price) if vix_info.last_price else 0
+                vix_color = "#dc2626" if vix_now > 25 else "#16a34a"
+                st.markdown(
+                    f'<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">VIX</div>'
+                    f'<div style="font-size:22px;font-weight:800;color:{vix_color};">{vix_now:.2f}</div>'
+                    f'<div style="font-size:10px;color:var(--text-dim);">{"⚠️ 警戒" if vix_now > 25 else "正常"}</div>',
+                    unsafe_allow_html=True,
+                )
+            except Exception:
+                pass
+            # 10Y (用 ^TNX)
+            try:
+                tnx_t = yf.Ticker("^TNX")
+                tnx_info = tnx_t.fast_info
+                tnx_now = float(tnx_info.last_price) if tnx_info.last_price else 0
+                st.markdown(
+                    f'<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">10Y 美债</div>'
+                    f'<div style="font-size:22px;font-weight:800;">{tnx_now:.2f}%</div>',
+                    unsafe_allow_html=True,
+                )
+            except Exception:
+                pass
+            st.markdown("</div>", unsafe_allow_html=True)
+        with c3:
+            st.markdown('<div class="card"><h4>🔥 自选股 Top 5 (美股)</h4>', unsafe_allow_html=True)
+            if STOCKS_DF is not None and not STOCKS_DF.empty:
+                us_df = STOCKS_DF[~STOCKS_DF["symbol"].str.contains(r"\.HK|\.SS|\.SZ", regex=True, na=False)]
+                if "涨跌幅" in us_df.columns and not us_df.empty:
+                    for _, r in us_df.head(5).iterrows():
+                        chg = safe_float(r.get("涨跌幅"))
+                        c_chg = "#dc2626" if chg > 0 else ("#16a34a" if chg < 0 else "var(--text-dim)")
+                        st.markdown(
+                            f'<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">'
+                            f'<span><b>{r["symbol"]}</b> <span style="color:var(--text-dim);font-size:10px;">{U.STOCK_NAMES.get(r["symbol"], "")}</span></span>'
+                            f'<span style="color:{c_chg};font-weight:600;">{chg:+.2f}%</span>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # --- A股 ---
+    with seg_cn:
+        if U.akshare_available():
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown('<div class="card"><h4>📈 A股主指数</h4>', unsafe_allow_html=True)
+                with st.spinner("akshare 拉取 A股…"):
+                    cn_overview = U.fetch_a_share_overview()
+                if cn_overview.get("error"):
+                    st.caption(f"⚠️ {cn_overview['error']}")
+                for idx in cn_overview.get("indices", [])[:8]:
+                    name = idx.get("名称", "")
+                    px = float(idx.get("最新价", 0) or 0)
+                    chg = float(idx.get("涨跌幅", 0) or 0)
+                    color = "#dc2626" if chg > 0 else ("#16a34a" if chg < 0 else "var(--text-dim)")
+                    st.markdown(
+                        f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">'
+                        f'<span>{name}</span>'
+                        f'<span><b>{px:.2f}</b> <span style="color:{color};font-weight:600;">{chg:+.2f}%</span></span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                st.markdown("</div>", unsafe_allow_html=True)
+            with c2:
+                st.markdown('<div class="card"><h4>📊 A股情绪</h4>', unsafe_allow_html=True)
+                adv = cn_overview.get("advance") or cn_overview.get("上涨")
+                dec = cn_overview.get("decline") or cn_overview.get("下降")
+                if adv is not None and dec is not None:
+                    st.markdown(
+                        f'<div style="font-size:11px;color:var(--text-dim);">涨 / 跌家数</div>'
+                        f'<div style="font-size:18px;font-weight:800;">'
+                        f'<span style="color:#dc2626;">{int(adv)} 涨</span> · '
+                        f'<span style="color:#16a34a;">{int(dec)} 跌</span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                up_lim = cn_overview.get("涨停")
+                dn_lim = cn_overview.get("跌停")
+                if up_lim is not None:
+                    st.markdown(
+                        f'<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">涨停 / 跌停</div>'
+                        f'<div style="font-size:18px;font-weight:800;">'
+                        f'<span style="color:#dc2626;">{int(up_lim)}</span> · '
+                        f'<span style="color:#16a34a;">{int(dn_lim)}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                nb = cn_overview.get("north_flow")
+                if nb is not None:
+                    nb_color = "#dc2626" if nb > 0 else "#16a34a"
+                    st.markdown(
+                        f'<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">北向资金 (亿元)</div>'
+                        f'<div style="font-size:18px;font-weight:800;color:{nb_color};">{nb:+.2f}</div>',
+                        unsafe_allow_html=True,
+                    )
+                st.markdown("</div>", unsafe_allow_html=True)
+            with c3:
+                st.markdown('<div class="card"><h4>🔥 A股 Top 5 (自选股)</h4>', unsafe_allow_html=True)
+                if STOCKS_DF is not None and not STOCKS_DF.empty:
+                    cn_df = STOCKS_DF[STOCKS_DF["symbol"].str.contains(r"\.SS|\.SZ", regex=True, na=False)]
+                    if "涨跌幅" in cn_df.columns and not cn_df.empty:
+                        for _, r in cn_df.head(5).iterrows():
+                            chg = safe_float(r.get("涨跌幅"))
+                            c_chg = "#dc2626" if chg > 0 else ("#16a34a" if chg < 0 else "var(--text-dim)")
+                            st.markdown(
+                                f'<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">'
+                                f'<span><b>{r["symbol"]}</b> <span style="color:var(--text-dim);font-size:10px;">{U.STOCK_NAMES.get(r["symbol"], "")}</span></span>'
+                                f'<span style="color:{c_chg};font-weight:600;">{chg:+.2f}%</span>'
+                                f'</div>',
+                                unsafe_allow_html=True,
+                            )
+                st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.warning("⚠️ A股 实时数据需要 `akshare` 库。requirements.txt 已包含 `akshare>=1.13.0`，重新部署即可。")
+
+    # --- 港股 ---
+    with seg_hk:
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown('<div class="card"><h4>📈 港股主指数</h4>', unsafe_allow_html=True)
+            hk_indices = [
+                ("^HSI", "恒生指数"),
+                ("^HSCE", "国企指数"),
+                ("^HSTECH", "恒生科技"),
+                ("^HSCCI", "恒生地产"),
+            ]
+            for sym, name in hk_indices:
+                try:
+                    t = yf.Ticker(sym)
+                    info = t.fast_info
+                    px = float(info.last_price) if info.last_price else 0
+                    prev = float(info.previous_close) if info.previous_close else 0
+                    chg = (px - prev) / prev * 100 if prev else 0
+                    color = "#dc2626" if chg > 0 else ("#16a34a" if chg < 0 else "var(--text-dim)")
+                    st.markdown(
+                        f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">'
+                        f'<span>{name}</span>'
+                        f'<span><b>{px:.2f}</b> <span style="color:{color};font-weight:600;">{chg:+.2f}%</span></span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                except Exception:
+                    st.markdown(f'<div style="color:var(--text-dim);">{name}: —</div>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+        with c2:
+            st.markdown('<div class="card"><h4>📊 港股情绪</h4>', unsafe_allow_html=True)
+            try:
+                hsi_t = yf.Ticker("^HSI")
+                hsi_px = float(hsi_t.fast_info.last_price or 0)
+                hsi_chg = float(hsi_t.fast_info.last_price or 0) / float(hsi_t.fast_info.previous_close or 1) - 1
+                hsi_color = "#dc2626" if hsi_chg > 0 else "#16a34a"
+                st.markdown(
+                    f'<div style="font-size:11px;color:var(--text-dim);">恒指动量 (近 5 日)</div>'
+                    f'<div style="font-size:24px;font-weight:800;color:{hsi_color};">{hsi_chg*100:+.2f}%</div>',
+                    unsafe_allow_html=True,
+                )
+            except Exception:
+                pass
+            # HSI 20D Realized Vol
+            try:
+                hsi_hist = yf.download("^HSI", period="3mo", progress=False)
+                if not hsi_hist.empty:
+                    ret = hsi_hist["Close"].pct_change().dropna()
+                    if len(ret) >= 20:
+                        vol_20d = float(ret.tail(20).std() * (252**0.5) * 100)
+                        st.markdown(
+                            f'<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">20 日年化波动</div>'
+                            f'<div style="font-size:22px;font-weight:800;">{vol_20d:.1f}%</div>',
+                            unsafe_allow_html=True,
+                        )
+            except Exception:
+                pass
+            st.markdown("</div>", unsafe_allow_html=True)
+        with c3:
+            st.markdown('<div class="card"><h4>🔥 港股 Top 5 (自选股)</h4>', unsafe_allow_html=True)
+            if STOCKS_DF is not None and not STOCKS_DF.empty:
+                hk_df = STOCKS_DF[STOCKS_DF["symbol"].str.contains(r"\.HK", regex=True, na=False)]
+                if "涨跌幅" in hk_df.columns and not hk_df.empty:
+                    for _, r in hk_df.head(5).iterrows():
+                        chg = safe_float(r.get("涨跌幅"))
+                        c_chg = "#dc2626" if chg > 0 else ("#16a34a" if chg < 0 else "var(--text-dim)")
+                        st.markdown(
+                            f'<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">'
+                            f'<span><b>{r["symbol"]}</b> <span style="color:var(--text-dim);font-size:10px;">{U.STOCK_NAMES.get(r["symbol"], "")}</span></span>'
+                            f'<span style="color:{c_chg};font-weight:600;">{chg:+.2f}%</span>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # ===== 第二行：今日重点 + Top 机会 + Top 风险 =====
     st.markdown('<div class="section-title">🎯 今日重点 & 自选扫描</div>', unsafe_allow_html=True)
@@ -501,11 +1007,11 @@ def page_dashboard():
             if "涨跌幅" in STOCKS_DF.columns:
                 top_up = STOCKS_DF.nlargest(1, "涨跌幅").iloc[0]
                 focuses.append(
-                    f"🚀 <b>{top_up['symbol']}</b> 今日涨 {safe_float(top_up.get('涨跌幅')):.2f}%，关注能否突破 / 短线见顶"
+                    f"🚀 <b>{top_up['symbol']}</b> <span style='color:var(--text-dim);font-size:11px;'>{U.STOCK_NAMES.get(top_up['symbol'],'')}</span> 今日涨 {safe_float(top_up.get('涨跌幅')):.2f}%，关注能否突破 / 短线见顶"
                 )
                 top_dn = STOCKS_DF.nsmallest(1, "涨跌幅").iloc[0]
                 focuses.append(
-                    f"🔻 <b>{top_dn['symbol']}</b> 今日跌 {safe_float(top_dn.get('涨跌幅')):.2f}%，关注是否到支撑 / 风险扩大"
+                    f"🔻 <b>{top_dn['symbol']}</b> <span style='color:var(--text-dim);font-size:11px;'>{U.STOCK_NAMES.get(top_dn['symbol'],'')}</span> 今日跌 {safe_float(top_dn.get('涨跌幅')):.2f}%，关注是否到支撑 / 风险扩大"
                 )
             # RSI 超卖 / 超买
             if "RSI_14" in STOCKS_DF.columns:
@@ -583,9 +1089,9 @@ def page_dashboard():
             st.caption("暂无数据")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ===== 第三行：美股 / 港股热力图 =====
+    # ===== 第三行：美股 / 港股 / A股 热力图 =====
     st.markdown('<div class="section-title"><span class="accent">🔥</span>全市场热力图</div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
+    c1, c2, c3 = st.columns(3)
     with c1:
         st.caption("🇺🇸 美股全市场 (按板块 / 当日涨跌幅)")
         with st.spinner("拉取美股热力图…"):
@@ -596,6 +1102,11 @@ def page_dashboard():
         with st.spinner("拉取港股热力图…"):
             hk_hm = U.build_heatmap_data(U.HK_HEATMAP_TICKERS)
         _draw_heatmap(hk_hm, "sector", "symbol", "change_pct", "weight")
+    with c3:
+        st.caption("🇨🇳 A股全市场 (按申万行业 / 当日涨跌幅)")
+        with st.spinner("拉取A股热力图…"):
+            a_hm = U.build_heatmap_data(U.A_SHARE_HEATMAP_TICKERS)
+        _draw_heatmap(a_hm, "sector", "symbol", "change_pct", "weight")
 
     # ===== 第四行：经济日历 + FedWatch =====
     st.markdown('<div class="section-title"><span class="accent">📅</span>经济日程 & FedWatch</div>', unsafe_allow_html=True)
@@ -644,6 +1155,40 @@ def page_dashboard():
         st.markdown("##### 🌙 Evening Recap (盘后)")
         er = DATA.get("evening") or "（尚未生成）首次运行 stock_dashboard.py 后会自动写入 data/evening_recap.md"
         st.markdown(f'<div class="brief-box">{er}</div>', unsafe_allow_html=True)
+
+    # ===== v2.5 新增：📊 智能荐股 =====
+    st.markdown('<div class="section-title"><span class="accent">📊</span>智能荐股（技术面 · 估值 · 动量 · 杠杆止损）</div>', unsafe_allow_html=True)
+    st.caption("综合 技术面(MA20/60 趋势) + 估值(PE) + 动量(当日) + 杠杆止损位，量化初筛三类建议。综合评分≥60 为买入信号。⚠️ 仅供参考，不构成投资建议。")
+    try:
+        syms = list(Config().stocks)
+        with st.spinner("正在计算智能荐股（拉取行情 / PE）…"):
+            metrics = _cached_metrics(tuple(syms))
+        rec = U.recommend_stocks(metrics)
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown("##### ⚡ 日内做T候选（高波动）")
+            if rec["intraday_t"]:
+                for r in rec["intraday_t"]:
+                    lo = r["last"] * (1 - r["atrPct"] / 100) if r["last"] else 0
+                    up = r["last"] * (1 + r["atrPct"] / 100) if r["last"] else 0
+                    st.markdown(_rec_md(r, f"波动 {r['atrPct']}% · T区间 ↓{lo:.2f} ↑{up:.2f}"), unsafe_allow_html=True)
+            else:
+                st.caption("暂无高波动标的（需 ATR≥2.5%）")
+        with c2:
+            st.markdown("##### 📈 中期持股推荐")
+            for r in rec["midterm_hold"]:
+                pe = r["pe"] if r["pe"] is not None else "—"
+                st.markdown(_rec_md(r, f"评分 {r['comp']} {_bias_emoji(r['bias'])} · PE {pe} · 止损 {r['stop']}"), unsafe_allow_html=True)
+        with c3:
+            st.markdown("##### ✅ 综合买入信号")
+            if rec["buy"]:
+                for r in rec["buy"]:
+                    pe = r["pe"] if r["pe"] is not None else "—"
+                    st.markdown(_rec_md(r, f"评分 {r['comp']} {_bias_emoji(r['bias'])} · PE {pe}"), unsafe_allow_html=True)
+            else:
+                st.caption("当前无综合评分≥60 的标的")
+    except Exception as e:  # noqa: BLE001
+        st.warning(f"⚠️ 智能荐股计算失败: {e}")
 
 
 def _draw_heatmap(df: pd.DataFrame, sector_col: str, sym_col: str, color_col: str, size_col: str):
@@ -698,19 +1243,38 @@ def page_stock_deepdive():
     # ============== 左栏 ==============
     with left:
         st.markdown("#### 👀 自选 & 搜索")
+        # 第一层：按市场分类（港股 / A股 / 美股）
+        hk_syms = [s for s in all_symbols if s.endswith(".HK")]
+        a_syms = [s for s in all_symbols if s.endswith((".SS", ".SZ"))]
+        us_syms = [s for s in all_symbols if not s.endswith((".HK", ".SS", ".SZ"))]
+        market_caps = []
+        if us_syms:
+            market_caps.append("🇺🇸 美股")
+        if hk_syms:
+            market_caps.append("🇭🇰 港股")
+        if a_syms:
+            market_caps.append("🇨🇳 A股")
+        market = st.radio("市场分类", market_caps, horizontal=True, label_visibility="collapsed", key="market_radio")
+        if "美股" in market:
+            market_syms = us_syms
+        elif "港股" in market:
+            market_syms = hk_syms
+        else:
+            market_syms = a_syms
+
+        # 第二层：在所选市场内搜索 / 选择
         q = st.text_input("🔍 搜索代码/名称", "")
         if q:
-            all_symbols = [s for s in all_symbols if q.upper() in s.upper()]
-        st.caption(f"共 {len(all_symbols)} 只")
-        # 用 selectbox 选主标的
-        if "selected_sym" not in st.session_state:
-            st.session_state.selected_sym = all_symbols[0] if all_symbols else None
-        sel = st.selectbox("主标的", all_symbols, index=all_symbols.index(st.session_state.selected_sym) if st.session_state.selected_sym in all_symbols else 0)
+            market_syms = [s for s in market_syms if q.upper() in s.upper()]
+        st.caption(f"共 {len(market_syms)} 只")
+        if "selected_sym" not in st.session_state or st.session_state.selected_sym not in market_syms:
+            st.session_state.selected_sym = market_syms[0] if market_syms else None
+        sel = st.selectbox("主标的", market_syms, index=market_syms.index(st.session_state.selected_sym) if st.session_state.selected_sym in market_syms else 0)
         st.session_state.selected_sym = sel
 
         # 自选列表（卡片式）
         st.markdown("##### 📋 自选列表")
-        for sym in all_symbols[:15]:
+        for sym in market_syms[:15]:
             r = work_df[work_df["symbol"] == sym].iloc[0] if not work_df[work_df["symbol"] == sym].empty else None
             if r is None:
                 continue
@@ -720,7 +1284,7 @@ def page_stock_deepdive():
             cls = "active" if sym == sel else ""
             st.markdown(
                 f"<div class='stock-row {cls}' style='display:flex;justify-content:space-between;align-items:center;font-size:12px;'>"
-                f"<span><b>{sym}</b> <span style='color:{rsi_color};font-size:10px;'>R{rsi:.0f}</span></span>"
+                f"<span><b>{sym}</b> <span style='color:var(--text-dim);font-size:10px;'>{U.STOCK_NAMES.get(sym, '')}</span> <span style='color:{rsi_color};font-size:10px;'>R{rsi:.0f}</span></span>"
                 f"<span style='color:{color_for_change(chg)};font-weight:600;'>{fmt_pct(chg, with_sign=False)}</span>"
                 f"</div>",
                 unsafe_allow_html=True,
@@ -751,7 +1315,7 @@ def page_stock_deepdive():
         r = work_df[work_df["symbol"] == sel].iloc[0]
         sym = sel
         is_hk = sym.endswith(".HK")
-        market_label = "港股" if is_hk else "美股"
+        market_label = "港股" if is_hk else ("A股" if sym.endswith((".SS", ".SZ")) else "美股")
 
         # 1) 股票概览
         chg = safe_float(r.get("涨跌幅"))
@@ -931,9 +1495,14 @@ def page_stock_deepdive():
         # 如果缓存里没有，尝试 Yahoo RSS / Stocktwits（免费，无需 key）
         if not sym_news:
             with st.spinner(f"实时拉取 {sym} 新闻…"):
-                sym_news = U.fetch_yahoo_rss(ticker=sym)
-                if not sym_news and not sym.endswith(".HK"):
-                    sym_news = U.fetch_stocktwits(sym, limit=8)
+                if sym.endswith((".SS", ".SZ")):
+                    sym_news = (U.fetch_eastmoney_stock_news(sym)
+                                or U.fetch_10jqka_news(top_n=5)
+                                or U.fetch_xueqiu_news(top_n=5))
+                else:
+                    sym_news = U.fetch_yahoo_rss(ticker=sym)
+                    if not sym_news and not sym.endswith(".HK"):
+                        sym_news = U.fetch_stocktwits(sym, limit=8)
         if sym_news:
             for n in sym_news[:5]:
                 st.markdown(
@@ -1123,6 +1692,93 @@ def page_cross_asset():
     with st.expander("📋 查看原始数据"):
         st.dataframe(pd.DataFrame({n: s.tail(252) for n, s in hist_data.items()}), use_container_width=True, height=300)
 
+    # ===== v2.4 新增：VIX vs VXN 恐慌指数对比（与上图时间维度一致）=====
+    st.markdown('<div class="section-title"><span class="accent">😱</span>恐慌指数对比：VIX (标普) vs VXN (纳指)</div>', unsafe_allow_html=True)
+    st.caption("✅ 与上图用同一个时间区间 + auto_adjust=True；用于观察美债暴增/股市急跌时恐慌情绪联动。")
+
+    with st.spinner("拉取 VIX / VXN 历史…"):
+        panic_data = U.fetch_panic_history(period_str)
+
+    if panic_data:
+        # 找两条曲线的公共时间区间
+        all_idx = None
+        for s in panic_data.values():
+            all_idx = s.index if all_idx is None else all_idx.intersection(s.index)
+        if all_idx is not None and len(all_idx) > 0:
+            common_start, common_end = all_idx.min(), all_idx.max()
+
+            fig2 = go.Figure()
+            # VIX 主轴
+            if "VIX" in panic_data:
+                vix_s = panic_data["VIX"].loc[common_start:common_end]
+                fig2.add_trace(go.Scatter(
+                    x=vix_s.index, y=vix_s.values, name="VIX (标普恐慌)",
+                    line=dict(color="#f59e0b", width=2),
+                    hovertemplate="%{y:.2f}<extra>VIX</extra>",
+                ))
+            # VXN 副轴 (VXN 通常比 VIX 高 1-5 点)
+            if "VXN" in panic_data:
+                vxn_s = panic_data["VXN"].loc[common_start:common_end]
+                fig2.add_trace(go.Scatter(
+                    x=vxn_s.index, y=vxn_s.values, name="VXN (纳指恐慌)",
+                    line=dict(color="#dc2626", width=2, dash="dot"),
+                    yaxis="y2",
+                    hovertemplate="%{y:.2f}<extra>VXN</extra>",
+                ))
+            # 警戒带：VIX>30 阴影
+            fig2.add_hrect(y0=30, y1=80, line_width=0, fillcolor="rgba(220,38,38,0.06)", layer="below")
+            fig2.add_hline(y=30, line=dict(color="#dc2626", width=1, dash="dash"), annotation_text="恐慌阈值 30", annotation_position="top left")
+
+            fig2.update_layout(
+                height=380,
+                margin=dict(l=10, r=10, t=20, b=10),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="white",
+                font=dict(color="#6b7280", size=11),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=11)),
+                xaxis=dict(gridcolor="#f1f5f9"),
+                yaxis=dict(title="VIX (标普恐慌)", gridcolor="#e5e7eb"),
+                yaxis2=dict(title="VXN (纳指恐慌)", overlaying="y", side="right", gridcolor="rgba(0,0,0,0)"),
+                hovermode="x unified",
+            )
+            st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+
+            # 关键统计
+            c1, c2, c3, c4 = st.columns(4)
+            with c1:
+                if "VIX" in panic_data:
+                    last_vix = float(panic_data["VIX"].iloc[-1])
+                    st.metric("VIX 最新", f"{last_vix:.2f}", delta=f"{U.emoji_for_panic(last_vix)}")
+            with c2:
+                if "VXN" in panic_data:
+                    last_vxn = float(panic_data["VXN"].iloc[-1])
+                    st.metric("VXN 最新", f"{last_vxn:.2f}", delta=f"{U.emoji_for_panic(last_vxn)}")
+            with c3:
+                if "VIX" in panic_data and "VXN" in panic_data:
+                    spread = float(panic_data["VXN"].iloc[-1]) - float(panic_data["VIX"].iloc[-1])
+                    st.metric("VXN-VIX 利差", f"{spread:+.2f}", help="纳指波动溢价")
+            with c4:
+                if "VIX" in panic_data:
+                    import numpy as _np
+                    arr = panic_data["VIX"].dropna().values
+                    pct_days = float((arr > 30).sum() / max(1, len(arr)) * 100)
+                    st.metric("VIX>30 占比", f"{pct_days:.1f}%", help=f"区间内 {int((arr>30).sum())} / {len(arr)} 个交易日")
+
+            with st.expander("📋 查看 VIX/VXN 原始数据"):
+                st.dataframe(pd.DataFrame({n: s.loc[common_start:common_end] for n, s in panic_data.items()}), use_container_width=True, height=260)
+        else:
+            st.info("VIX/VXN 历史数据为空")
+    else:
+        st.info("VIX/VXN 拉取失败，可稍后重试")
+
+    # ===== v2.4 备选：宏观风险联动（美债规模 vs 杠杆 vs 恐慌指数 副图）=====
+    with st.expander("➕ 进阶: 美债规模 / 杠杆 联动（需 FRED_API）"):
+        if not _get_secret("FRED_API"):
+            st.caption("⚠️ 未配置 FRED_API，跳过美债/杠杆联动图。可在 Streamlit Cloud Secrets 填 `FRED_API` 后启用。")
+        else:
+            st.caption("✅ 已配置 FRED_API，可叠加：U.S. National Debt (GFDEBTN)、FINRA Margin Debt (MDEBT)、NFCI Leverage。")
+            st.info("提示：如需副图叠加，可调用 `U.fetch_us_debt()` / `U.fetch_margin_debt()` / `U.fetch_nfci_leverage()` 后将 series 画在第三轴 yaxis3。暂未自动渲染以免图例过乱。")
+
 
 # ---------------------------------------------------------------------------
 # 页面：新闻中心
@@ -1209,15 +1865,26 @@ def page_diagnostics():
     st.markdown('<div class="section-title"><span class="accent">⚙️</span>数据诊断 & Secret 检查</div>', unsafe_allow_html=True)
 
     rows = [
-        ("FRED_API (新增)", FRED_KEY, "FRED 是 4 张新指标卡 + AI 宏观的源"),
-        ("DEEPSEEK_API_KEY", DEEPSEEK_KEY, "AI 报告 / 预测"),
-        ("SERPAPI (付费)", SERPAPI_KEY, "主力新闻源（100/月免费）"),
-        ("FINNHUB_API (新增可选)", FINNHUB_KEY, "美股个股新闻（60/min 免费）"),
-        ("NEWSAPI_KEY (新增可选)", NEWSAPI_KEY, "宏观新闻（100/day 免费）"),
+        ("FRED_API", FRED_KEY, "4 张新指标卡 (2Y / Debt / Margin / NFCI)"),
+        ("DEEPSEEK_API_KEY", DEEPSEEK_KEY, "AI 报告 / 下周预测 (DeepSeek)"),
+        ("OPENROUTER_API_KEY", _get_secret("OPENROUTER_API_KEY"), "AI 报告 OpenRouter 兜底 (Claude 3.5 Sonnet)"),
+        ("SERPAPI", SERPAPI_KEY, "主力新闻源（100/月免费）"),
+        ("FINNHUB_API", FINNHUB_KEY, "美股个股新闻（60/min 免费）"),
+        ("NEWSAPI_KEY", NEWSAPI_KEY, "宏观新闻（100/day 免费）"),
     ]
     for name, v, desc in rows:
-        ok = "✅" if v else ("⚠️" if "可选" in name else "❌")
+        ok = "✅" if v else "❌"
         st.markdown(f"- {ok} **{name}**: {'已配置 (' + str(len(v)) + ' 字符)' if v else '未配置'} — {desc}")
+
+    st.markdown("#### 🐍 Python 库状态")
+    libs = [
+        ("akshare", U.akshare_available(), "A股数据全景 / K线 / 涨跌榜"),
+        ("fredapi", _check_lib("fredapi"), "FRED 4 个指标 (DGS2/GFDEBTN/MDEBT/NFCILEVERAGE)"),
+        ("openai", _check_lib("openai"), "DeepSeek / OpenRouter 调用"),
+        ("feedparser", _check_lib("feedparser"), "RSS 新闻源"),
+    ]
+    for name, ok, desc in libs:
+        st.markdown(f"- {'✅' if ok else '❌'} **{name}**: {'已安装' if ok else '未安装 — pip install ' + name} — {desc}")
 
     st.divider()
     st.markdown("#### 📁 data/ 目录文件状态")
@@ -1360,7 +2027,15 @@ elif page == "⚙️ 数据诊断":
 st.markdown(
     f"""
 <div style="text-align:center;color:var(--text-dim);font-size:11px;padding:30px 0 10px;border-top:1px solid var(--border);margin-top:30px;">
-    ⚡ Investment Copilot · Author: Winnie Wang · {datetime.now().strftime('%Y-%m-%d %H:%M')} · 仅供研究参考，不构成投资建议
+    ⚡ Investment Copilot ·
+    <svg width="20" height="20" viewBox="0 0 32 32" style="vertical-align:middle;margin:0 3px;">
+      <circle cx="11" cy="9" r="4" fill="#e0a93b"/><circle cx="21" cy="9" r="4" fill="#e0a93b"/>
+      <circle cx="16" cy="17" r="9" fill="#f0c060"/>
+      <ellipse cx="16" cy="20" rx="4.5" ry="3.5" fill="#d99a3a"/>
+      <circle cx="13" cy="15" r="1.1" fill="#3a2a12"/><circle cx="19" cy="15" r="1.1" fill="#3a2a12"/>
+      <circle cx="16" cy="19" r="1" fill="#3a2a12"/>
+    </svg>
+    Author: Winnie Wang · {datetime.now().strftime('%Y-%m-%d %H:%M')} · 仅供研究参考，不构成投资建议
 </div>
 """,
     unsafe_allow_html=True,

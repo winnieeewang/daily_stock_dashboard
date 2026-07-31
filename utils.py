@@ -8,11 +8,13 @@ utils.py — 投资分析工作台 (Investment Copilot) 工具模块
   4. Economic Calendar（财报 / FOMC / CPI / PPI / NFP 抓取 + 静态兜底）
   5. 美股 / 港股热力图数据源（标普 500 + 纳指 100 + 恒生指数 + 国企指数）
   6. Morning Brief / Evening Recap 提示词模板
+  7. OpenRouter / DeepSeek 双 LLM 接入
 
 设计原则：
   - 所有外部调用都做超时 + 异常兜底，单点失败不能让 Streamlit 崩溃
   - 所有数据可被 Streamlit @st.cache_data 装饰（提供 hash 函数）
   - 不依赖付费 API（除 SERPAPI_KEY），所有 fallback 优先用 yfinance 免费数据
+  - **双路读 Key**：支持 os.environ（GitHub Actions / 本地）和 st.secrets（Streamlit Cloud）
 """
 from __future__ import annotations
 
@@ -31,6 +33,38 @@ import numpy as np
 import pandas as pd
 import requests
 import yfinance as yf
+
+# ---------------------------------------------------------------------------
+# Streamlit 软依赖：stock_dashboard.py 是非 web 跑（GitHub Actions / 本地）
+# 不能强制 import streamlit；这里用 try/except 软加载
+# ---------------------------------------------------------------------------
+try:
+    import streamlit as st  # noqa: F401
+
+    _HAS_STREAMLIT = True
+except ImportError:
+    st = None  # type: ignore
+    _HAS_STREAMLIT = False
+
+
+def _get_secret(name: str, default: str = "") -> str:
+    """
+    双路读 secret（任何 API key 通用）：
+      1) os.environ[name]（GitHub Actions / 本地 .env）
+      2) st.secrets[name]（Streamlit Cloud 的 secrets）
+    """
+    val = os.environ.get(name, "")
+    if val:
+        return val
+    if _HAS_STREAMLIT and hasattr(st, "secrets"):
+        try:
+            val = st.secrets.get(name, "")  # type: ignore[union-attr]
+            if val:
+                return str(val)
+        except Exception:  # noqa: BLE001
+            pass
+    return default
+
 
 logger = logging.getLogger("copilot_utils")
 
@@ -503,6 +537,22 @@ HK_HEATMAP_TICKERS = {
     "汽车/制造": ["1211.HK", "9818.HK", "0175.HK", "2382.HK", "0267.HK"],
 }
 
+# A 股全市场热力图（按申万一级行业，主要成分股 / 龙头）
+A_SHARE_HEATMAP_TICKERS: Dict[str, List[str]] = {
+    "食品饮料": ["600519.SS", "000858.SZ", "603288.SS"],
+    "银行/保险": ["601318.SS", "600036.SS", "601166.SS"],
+    "新能源": ["300750.SZ", "002594.SZ", "601012.SS"],
+    "半导体/电子": ["688981.SS", "002475.SZ", "603501.SS", "688041.SS"],
+    "医药": ["600276.SS", "300760.SZ"],
+    "汽车": ["601127.SS", "600104.SS"],
+    "家电": ["000333.SZ", "000651.SZ"],
+    "周期/材料": ["600900.SS", "601899.SS", "600585.SS"],
+    "能源": ["600028.SS", "601857.SS"],
+    "通信": ["600941.SS"],
+    "计算机": ["002415.SZ"],
+    "地产": ["600048.SS"],
+}
+
 
 def build_heatmap_data(
     universe: Dict[str, List[str]],
@@ -532,7 +582,7 @@ def build_heatmap_data(
                 rows.append(
                     {
                         "sector": sector,
-                        "symbol": sym.replace(".HK", ""),
+                        "symbol": sym.replace(".HK", "").replace(".SS", "").replace(".SZ", ""),
                         "symbol_full": sym,
                         "change_pct": round(chg, 2),
                         "weight": max(1e6, avg_vol_amt),  # treemap size
@@ -544,7 +594,7 @@ def build_heatmap_data(
                 rows.append(
                     {
                         "sector": sector,
-                        "symbol": sym.replace(".HK", ""),
+                        "symbol": sym.replace(".HK", "").replace(".SS", "").replace(".SZ", ""),
                         "symbol_full": sym,
                         "change_pct": 0.0,
                         "weight": 1e6,
@@ -644,56 +694,97 @@ EVENING_RECAP_PROMPT = """你是华尔街资深卖方策略师，请基于以下
 """
 
 
-def render_morning_brief(
-    api_key: str,
-    context: Dict[str, Any],
+def _call_llm(
+    messages: List[Dict[str, str]],
+    *,
+    temperature: float = 0.65,
+    max_tokens: int = 1600,
+    prefer: str = "deepseek",  # "deepseek" | "openrouter" | "auto"
 ) -> Optional[str]:
-    """调用 DeepSeek 生成 Morning Brief。"""
-    if not api_key:
+    """
+    通用 LLM 调用层：优先 DeepSeek，OpenRouter 兜底。
+    从双路 secret 同时读取两个 key：
+      - DEEPSEEK_API_KEY
+      - OPENROUTER_API_KEY
+    """
+    deepseek_key = _get_secret("DEEPSEEK_API_KEY")
+    openrouter_key = _get_secret("OPENROUTER_API_KEY")
+
+    # 决定调用顺序
+    if prefer == "openrouter":
+        order = [("openrouter", openrouter_key), ("deepseek", deepseek_key)]
+    elif prefer == "deepseek":
+        order = [("deepseek", deepseek_key), ("openrouter", openrouter_key)]
+    else:  # auto
+        order = [("deepseek", deepseek_key), ("openrouter", openrouter_key)]
+
+    for provider, key in order:
+        if not key:
+            continue
+        try:
+            from openai import OpenAI
+            if provider == "deepseek":
+                client = OpenAI(api_key=key, base_url="https://api.deepseek.com/v1")
+                model = "deepseek-chat"
+            else:  # openrouter
+                client = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
+                # 默认模型：Claude 3.5 Sonnet（性价比最高的卖方报告模型）
+                model = "anthropic/claude-3.5-sonnet"
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            content = resp.choices[0].message.content
+            if content:
+                return content
+        except Exception as e:  # noqa: BLE001
+            logger.warning("%s 调用失败: %s — 切换下一个 provider", provider, e)
+            continue
+    return None
+
+
+def render_morning_brief(
+    api_key: str = "",
+    context: Dict[str, Any] = None,
+    *,
+    prefer: str = "deepseek",
+) -> Optional[str]:
+    """调用 LLM 生成 Morning Brief（DeepSeek / OpenRouter 二选一）。"""
+    if context is None:
         return None
-    try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
-        prompt = MORNING_BRIEF_PROMPT.format(**context)
-        resp = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "你是专业卖方策略师，输出必须是简体中文，分析风格克制专业。"},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.65,
-            max_tokens=1600,
-        )
-        return resp.choices[0].message.content
-    except Exception as e:  # noqa: BLE001
-        logger.error("Morning Brief 生成失败: %s", e)
-        return None
+    prompt = MORNING_BRIEF_PROMPT.format(**context)
+    return _call_llm(
+        messages=[
+            {"role": "system", "content": "你是专业卖方策略师，输出必须是简体中文，分析风格克制专业。"},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.65,
+        max_tokens=1600,
+        prefer=prefer,
+    )
 
 
 def render_evening_recap(
-    api_key: str,
-    context: Dict[str, Any],
+    api_key: str = "",
+    context: Dict[str, Any] = None,
+    *,
+    prefer: str = "deepseek",
 ) -> Optional[str]:
-    """调用 DeepSeek 生成 Evening Recap。"""
-    if not api_key:
+    """调用 LLM 生成 Evening Recap。"""
+    if context is None:
         return None
-    try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
-        prompt = EVENING_RECAP_PROMPT.format(**context)
-        resp = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "你是专业卖方策略师，输出必须是简体中文，分析风格克制专业。"},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.65,
-            max_tokens=2000,
-        )
-        return resp.choices[0].message.content
-    except Exception as e:  # noqa: BLE001
-        logger.error("Evening Recap 生成失败: %s", e)
-        return None
+    prompt = EVENING_RECAP_PROMPT.format(**context)
+    return _call_llm(
+        messages=[
+            {"role": "system", "content": "你是专业卖方策略师，输出必须是简体中文，分析风格克制专业。"},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.65,
+        max_tokens=2000,
+        prefer=prefer,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -827,7 +918,7 @@ def fetch_2y_scorecard() -> Dict[str, Any]:
         # 2Y 用 FRED DGS2 (2-Year Treasury Constant Maturity Rate)
         try:
             from fredapi import Fred
-            fred_key = os.environ.get("FRED_API", "")
+            fred_key = _get_secret("FRED_API")
             if fred_key:
                 fred = Fred(api_key=fred_key)
                 dgs2 = fred.get_series("DGS2", observation_start=(datetime.now() - timedelta(days=30)))
@@ -871,7 +962,7 @@ def fetch_us_debt() -> Dict[str, Any]:
     out: Dict[str, Any] = {"value_trillion": None, "yoy_chg_pct": None, "asof": ""}
     try:
         from fredapi import Fred
-        fred_key = os.environ.get("FRED_API", "")
+        fred_key = _get_secret("FRED_API")
         if not fred_key:
             return {**out, "error": "未配置 FRED_API"}
         fred = Fred(api_key=fred_key)
@@ -904,7 +995,7 @@ def fetch_margin_debt() -> Dict[str, Any]:
     out: Dict[str, Any] = {"value_billion": None, "mom_chg_pct": None, "yoy_chg_pct": None, "signal": "—", "asof": ""}
     try:
         from fredapi import Fred
-        fred_key = os.environ.get("FRED_API", "")
+        fred_key = _get_secret("FRED_API")
         if not fred_key:
             return {**out, "error": "未配置 FRED_API"}
         fred = Fred(api_key=fred_key)
@@ -951,7 +1042,7 @@ def fetch_nfci_leverage() -> Dict[str, Any]:
     out: Dict[str, Any] = {"value": None, "prev": None, "chg": None, "signal": "—", "asof": ""}
     try:
         from fredapi import Fred
-        fred_key = os.environ.get("FRED_API", "")
+        fred_key = _get_secret("FRED_API")
         if not fred_key:
             return {**out, "error": "未配置 FRED_API"}
         fred = Fred(api_key=fred_key)
@@ -1123,7 +1214,7 @@ def fetch_finnhub_news(symbol: str, api_key: str = "", days_back: int = 7) -> Li
     """
     if not api_key:
         return []
-    key = os.environ.get("FINNHUB_API", api_key)
+    key = _get_secret("FINNHUB_API") or api_key
     try:
         today = datetime.now().strftime("%Y-%m-%d")
         start = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
@@ -1154,7 +1245,7 @@ def fetch_newsapi(query: str, api_key: str = "", days_back: int = 3, page_size: 
     """
     if not api_key:
         return []
-    key = os.environ.get("NEWSAPI_KEY", api_key)
+    key = _get_secret("NEWSAPI_KEY") or api_key
     try:
         from_date = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
         params = {
@@ -1275,6 +1366,105 @@ def fetch_eastmoney_global_news(top_n: int = 15) -> List[Dict[str, Any]]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# 6.x 雪球 / 同花顺 / 无 API 的 RSS 源（美股 / 港股 / A 股）
+# ---------------------------------------------------------------------------
+
+def fetch_rss_feed(url: str, source_name: str, top_n: int = 10, timeout: int = 12) -> List[Dict[str, Any]]:
+    """通用 RSS 抓取（用 feedparser）。完全免费、无 key。"""
+    out: List[Dict[str, Any]] = []
+    try:
+        import feedparser
+        resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=timeout)
+        feed = feedparser.parse(resp.content)
+        for e in feed.entries[:top_n]:
+            out.append({
+                "title": (e.get("title") or "").strip(),
+                "link": e.get("link", ""),
+                "source": source_name,
+                "date": e.get("published", e.get("updated", "")),
+                "snippet": (e.get("summary", "") or e.get("description", ""))[:200],
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.debug("RSS[%s] 失败: %s", source_name, e)
+    return out
+
+
+def fetch_10jqka_news(top_n: int = 12) -> List[Dict[str, Any]]:
+    """
+    同花顺快讯（完全免费、无 key、无 cookie）。
+    API: http://kuaixun.10jqka.com.cn/api/kuaixun/1
+    """
+    out: List[Dict[str, Any]] = []
+    try:
+        data = _safe_get_json("http://kuaixun.10jqka.com.cn/api/kuaixun/1", headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
+        items = (data or {}).get("data", []) or (data or [])
+        if isinstance(items, dict):
+            items = items.get("list", [])
+        for it in items[:top_n]:
+            if not isinstance(it, dict):
+                continue
+            title = (it.get("title") or (it.get("content") or "")[:50] or "").strip()
+            out.append({
+                "title": title,
+                "link": it.get("url") or it.get("detailurl") or "http://kuaixun.10jqka.com.cn/",
+                "source": "同花顺快讯",
+                "date": str(it.get("time", it.get("date", ""))),
+                "snippet": (it.get("content") or it.get("digest") or "")[:200],
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.debug("同花顺快讯失败: %s", e)
+    return out
+
+
+def fetch_xueqiu_news(top_n: int = 12) -> List[Dict[str, Any]]:
+    """
+    雪球热帖（完全免费，但雪球接口通常需要 cookie，成功率不保证；失败自动跳过）。
+    抓 https://xueqiu.com/statuses/hot/list.json
+    """
+    out: List[Dict[str, Any]] = []
+    try:
+        import re
+        s = requests.Session()
+        s.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://xueqiu.com/"})
+        try:
+            s.get("https://xueqiu.com/", timeout=8)
+        except Exception:  # noqa: BLE001
+            pass
+        r = s.get("https://xueqiu.com/statuses/hot/list.json?page=1&pre_page=20", timeout=12)
+        r.raise_for_status()
+        data = r.json()
+        items = (data or {}).get("list", []) or []
+        for it in items[:top_n]:
+            if not isinstance(it, dict):
+                continue
+            txt = re.sub(r"<[^>]+>", "", (it.get("text") or "")).strip()
+            if not txt:
+                continue
+            uid = (it.get("user") or {}).get("id", "")
+            out.append({
+                "title": txt[:80],
+                "link": f"https://xueqiu.com/{uid}/{it.get('id', '')}",
+                "source": f"雪球 · {(it.get('user') or {}).get('screen_name', '')}",
+                "date": str(it.get("created_at", "")),
+                "snippet": txt[:200],
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.debug("雪球失败(可能需cookie): %s", e)
+    return out
+
+
+# 美股 / 港股 无 API 的 RSS 源（推荐，完全免费）
+US_HK_RSS_SOURCES: List[Tuple[str, str]] = [
+    ("CNBC", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"),
+    ("MarketWatch", "https://feeds.content.dowjones.io/public/rss/mw_topstories"),
+    ("Seeking Alpha", "https://seekingalpha.com/market_currents.xml"),
+    ("Investing.com", "https://www.investing.com/rss/news.rss"),
+    ("AAStocks 港股", "https://www.aastocks.com/rscs/rss/eng/breakingnews.xml"),
+    ("HKET 香港经济日报", "https://www.hket.com/rss"),
+]
+
+
 # ----- 多源聚合 -----
 def fetch_all_news_multi_source(
     symbols: List[str],
@@ -1339,9 +1529,47 @@ def fetch_all_news_multi_source(
             payload["sources_used"].append("东方财富网")
             has_any = True
     except Exception as e:  # noqa: BLE001
-        payload["errors"].append(f"东方财富: {e}")
+            payload["errors"].append(f"东方财富: {e}")
+
+    # 4.5) 无 API 的 RSS 源（美股/港股宏观 + 市场新闻，完全免费）
+    try:
+        for src_name, src_url in US_HK_RSS_SOURCES:
+            items = fetch_rss_feed(src_url, src_name, top_n=4)
+            payload["macro"].extend(items)
+        payload["sources_used"].append("RSS(CNBC/MarketWatch/AAStocks/HKET...)")
+        has_any = True
+    except Exception as e:  # noqa: BLE001
+        payload["errors"].append(f"RSS: {e}")
+
+    # 4.6) 同花顺快讯 + 雪球热帖（A股/中文宏观，无 key）
+    try:
+        tjqk = fetch_10jqka_news(top_n=10)
+        if tjqk:
+            payload["macro"].extend(tjqk)
+            payload["sources_used"].append("同花顺快讯")
+            has_any = True
+    except Exception as e:  # noqa: BLE001
+        payload["errors"].append(f"同花顺: {e}")
+    try:
+        xq = fetch_xueqiu_news(top_n=10)
+        if xq:
+            payload["macro"].extend(xq)
+            payload["sources_used"].append("雪球")
+            has_any = True
+    except Exception as e:  # noqa: BLE001
+        payload["errors"].append(f"雪球: {e}")
 
     # 5) 个股新闻
+    # A 股个股补充：同花顺/雪球全局快讯（循环外预取一次，避免重复请求）
+    _a_share_extra: List[Dict[str, Any]] = []
+    try:
+        _a_share_extra.extend(fetch_10jqka_news(top_n=5))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        _a_share_extra.extend(fetch_xueqiu_news(top_n=5))
+    except Exception:  # noqa: BLE001
+        pass
     for sym in symbols:
         is_hk = sym.endswith(".HK")
         is_cn = sym.endswith((".SS", ".SZ"))
@@ -1369,16 +1597,19 @@ def fetch_all_news_multi_source(
                 per_sym.extend(fetch_stocktwits(sym))
             except Exception as e:  # noqa: BLE001
                 pass
-        # 东方财富 (A 股)
+        # 东方财富 + 同花顺 + 雪球（A 股）
         if is_cn:
             try:
                 per_sym.extend(fetch_eastmoney_stock_news(sym))
             except Exception as e:  # noqa: BLE001
                 pass
+            if _a_share_extra:
+                per_sym.extend(_a_share_extra)
         payload["stocks"][sym] = _dedup_news(per_sym)[:8]
         if payload["stocks"][sym]:
             has_any = True
 
+    payload["macro"] = _dedup_news(payload["macro"])[:30]
     payload["sources_used"] = list(set(payload["sources_used"]))
     if out_path is not None:
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1456,34 +1687,36 @@ def build_prediction_prompt(
 
 
 def predict_next_week(
-    api_key: str,
-    symbol: str,
-    technical: Dict[str, Any],
-    news: List[Dict[str, Any]],
-    policy_events: List[Dict[str, Any]],
-    fundamentals: Dict[str, Any],
-    options_data: Dict[str, Any],
+    api_key: str = "",
+    symbol: str = "",
+    technical: Optional[Dict[str, Any]] = None,
+    news: Optional[List[Dict[str, Any]]] = None,
+    policy_events: Optional[List[Dict[str, Any]]] = None,
+    fundamentals: Optional[Dict[str, Any]] = None,
+    options_data: Optional[Dict[str, Any]] = None,
+    *,
+    prefer: str = "deepseek",
 ) -> Optional[str]:
-    """调用 DeepSeek 生成下周走势预测。"""
-    if not api_key:
+    """调用 LLM 生成下周走势预测（DeepSeek / OpenRouter）。"""
+    if technical is None or fundamentals is None or options_data is None:
         return None
-    try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
-        prompt = build_prediction_prompt(symbol, technical, news, policy_events, fundamentals, options_data)
-        resp = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "你是专业卖方策略师，输出必须是简体中文，分析风格克制专业。"},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.55,
-            max_tokens=1500,
-        )
-        return resp.choices[0].message.content
-    except Exception as e:  # noqa: BLE001
-        logger.error("预测生成失败 %s: %s", symbol, e)
-        return None
+    prompt = build_prediction_prompt(
+        symbol,
+        technical,
+        news or [],
+        policy_events or [],
+        fundamentals,
+        options_data,
+    )
+    return _call_llm(
+        messages=[
+            {"role": "system", "content": "你是专业卖方策略师，输出必须是简体中文，分析风格克制专业。"},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.55,
+        max_tokens=1500,
+        prefer=prefer,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1499,3 +1732,790 @@ def fetch_extra_indicators() -> Dict[str, Any]:
         "nfci_leverage": fetch_nfci_leverage(),
         "asof": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
+
+
+# ---------------------------------------------------------------------------
+# 18. akshare A股数据采集（中国市场全景 / 指数 / 涨跌家数 / 北向资金 / 个股）
+# ---------------------------------------------------------------------------
+# 接入 github.com/akfamily/akshare — A股最全的开源数据接口
+# 软依赖：未安装时所有 akshare 函数自动 short-circuit 返回空
+
+_AKSHARE_AVAILABLE = False
+try:
+    import akshare as ak  # type: ignore
+
+    _AKSHARE_AVAILABLE = True
+except ImportError:
+    ak = None  # type: ignore
+
+
+def akshare_available() -> bool:
+    """检查 akshare 是否已安装（用于 app 端提示用户安装）。"""
+    return _AKSHARE_AVAILABLE
+
+
+def fetch_a_share_overview() -> Dict[str, Any]:
+    """
+    A股市场全景：
+      - 上证综指 / 深证成指 / 创业板 / 沪深 300 / 中证 500 / 科创 50 实时行情
+      - 涨/平/跌家数
+      - 北向资金净流入
+    """
+    if not _AKSHARE_AVAILABLE:
+        return {"error": "akshare 未安装（pip install akshare）"}
+    out: Dict[str, Any] = {"indices": [], "advance": None, "decline": None, "north_flow": None, "asof": ""}
+    try:
+        # 1. 主指数实时行情
+        df = ak.stock_zh_index_spot_em(symbol="沪深重要指数")
+        if df is not None and not df.empty:
+            keep = ["最新价", "涨跌幅", "涨跌额", "代码", "名称"]
+            df = df[[c for c in keep if c in df.columns]]
+            out["indices"] = df.head(8).to_dict(orient="records")
+        # 2. 涨跌家数（实时）
+        try:
+            ad = ak.stock_market_activity_legu()
+            if ad is not None and not ad.empty:
+                # stock_market_activity_legu 返回一行，包含 '上涨', '下跌', '平盘' 等列
+                cols = ad.columns.tolist()
+                for kw in ["上涨", "下降", "平盘", "涨停", "跌停"]:
+                    for c in cols:
+                        if kw in c:
+                            out[kw] = int(ad[c].iloc[0])
+                out["advance"] = out.get("上涨")
+                out["decline"] = out.get("下降")
+        except Exception as e:  # noqa: BLE001
+            logger.debug("akshare 涨跌家数失败: %s", e)
+        # 3. 北向资金
+        try:
+            nb = ak.stock_hsgt_north_net_flow_in_em(symbol="北向")
+            if nb is not None and not nb.empty:
+                out["north_flow"] = float(nb.iloc[-1, 1]) if nb.shape[1] >= 2 else None
+        except Exception as e:  # noqa: BLE001
+            logger.debug("akshare 北向资金失败: %s", e)
+        out["asof"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("akshare A股全景失败: %s", e)
+        out["error"] = str(e)
+    return out
+
+
+def fetch_a_share_heatmap_data(max_n: int = 30) -> List[Dict[str, Any]]:
+    """
+    A股热力图：实时获取沪深300 + 中证500 成分股的涨跌幅（市值前 max_n）。
+    用于 Dashboard 全市场热力图。
+    """
+    if not _AKSHARE_AVAILABLE:
+        return []
+    try:
+        # 沪深300 实时行情
+        df = ak.stock_zh_a_spot_em()
+        if df is None or df.empty:
+            return []
+        # 必含列：代码 / 名称 / 最新价 / 涨跌幅 / 流通市值
+        keep = ["代码", "名称", "最新价", "涨跌幅", "流通市值"]
+        for c in keep:
+            if c not in df.columns:
+                return []
+        df = df[keep].copy()
+        df["流通市值"] = pd.to_numeric(df["流通市值"], errors="coerce")
+        df = df.dropna(subset=["流通市值"])
+        df = df.nlargest(max_n, "流通市值")
+        return df.to_dict(orient="records")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("akshare A股热力图失败: %s", e)
+        return []
+
+
+def fetch_a_share_kline(symbol: str, days: int = 120) -> pd.DataFrame:
+    """
+    A股个股 K线（akshare 后复权）。
+    symbol 格式：'600519' / '000001' / '300750'（不带后缀）
+    """
+    if not _AKSHARE_AVAILABLE:
+        return pd.DataFrame()
+    try:
+        end = datetime.now().strftime("%Y%m%d")
+        start = (datetime.now() - timedelta(days=days + 30)).strftime("%Y%m%d")
+        df = ak.stock_zh_a_hist(symbol=symbol, period="daily", start_date=start, end_date=end, adjust="hfq")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = df.rename(columns={
+            "日期": "Date", "开盘": "Open", "收盘": "Close",
+            "最高": "High", "最低": "Low", "成交量": "Volume",
+        })
+        df["Date"] = pd.to_datetime(df["Date"])
+        df.set_index("Date", inplace=True)
+        return df.tail(days)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("akshare A股 K线 %s 失败: %s", symbol, e)
+        return pd.DataFrame()
+
+
+def fetch_a_share_quote(symbol: str) -> Dict[str, Any]:
+    """A股个股实时行情（最新价 / 涨跌幅 / 换手率 / 市盈率）。"""
+    if not _AKSHARE_AVAILABLE:
+        return {}
+    try:
+        df = ak.stock_zh_a_spot_em()
+        if df is None or df.empty:
+            return {}
+        row = df[df["代码"] == symbol]
+        if row.empty:
+            return {}
+        keep = ["代码", "名称", "最新价", "涨跌幅", "涨跌额", "成交量", "换手率", "市盈率-动态"]
+        out = {}
+        for c in keep:
+            if c in row.columns:
+                out[c] = row[c].iloc[0]
+        return out
+    except Exception as e:  # noqa: BLE001
+        logger.warning("akshare A股 %s 实时行情失败: %s", symbol, e)
+        return {}
+
+
+def fetch_a_share_top_movers(top_n: int = 10) -> Dict[str, Any]:
+    """A股涨幅榜 / 跌幅榜 / 涨停板 / 跌停板。"""
+    if not _AKSHARE_AVAILABLE:
+        return {}
+    out: Dict[str, Any] = {}
+    try:
+        df = ak.stock_zh_a_spot_em()
+        if df is None or df.empty:
+            return out
+        keep = ["代码", "名称", "最新价", "涨跌幅", "换手率"]
+        for c in keep:
+            if c not in df.columns:
+                return out
+        df = df[keep].copy()
+        df["涨跌幅"] = pd.to_numeric(df["涨跌幅"], errors="coerce")
+        df = df.dropna()
+        out["top_gainers"] = df.nlargest(top_n, "涨跌幅").to_dict(orient="records")
+        out["top_losers"] = df.nsmallest(top_n, "涨跌幅").to_dict(orient="records")
+        # 涨停: 涨跌幅 >= 9.5%（科创 20% 单独处理）
+        out["limit_up"] = df[df["涨跌幅"] >= 9.5].head(top_n).to_dict(orient="records")
+        out["limit_down"] = df[df["涨跌幅"] <= -9.5].head(top_n).to_dict(orient="records")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("akshare A股涨跌榜失败: %s", e)
+    return out
+
+
+
+# ---------------------------------------------------------------------------
+# v2.4 新增：组合策略多空占优、微表情、宏观风险雷达、ZhuLinsen YAML 拼接到 Morning Brief
+# ---------------------------------------------------------------------------
+
+# ---- 微表情 ----
+
+EMOJI_SENTIMENT = {  # 情绪分数 (0-100，越高越贪婪)
+    "extreme_greed": "🤑",
+    "greed": "😀",
+    "neutral": "😐",
+    "fear": "😟",
+    "extreme_fear": "😱",
+}
+
+
+def emoji_for_sentiment(score):
+    """情绪分数 (0-100) → 微表情。"""
+    try:
+        s = float(score)
+    except Exception:
+        return EMOJI_SENTIMENT["neutral"]
+    if s >= 80:
+        return EMOJI_SENTIMENT["extreme_greed"]
+    if s >= 60:
+        return EMOJI_SENTIMENT["greed"]
+    if s >= 40:
+        return EMOJI_SENTIMENT["neutral"]
+    if s >= 20:
+        return EMOJI_SENTIMENT["fear"]
+    return EMOJI_SENTIMENT["extreme_fear"]
+
+
+def emoji_for_panic(vix_value):
+    """恐慌指数 VIX/VXN → 微表情（值越大越恐慌）。"""
+    try:
+        v = float(vix_value)
+    except Exception:
+        return EMOJI_SENTIMENT["neutral"]
+    if v >= 30:
+        return EMOJI_SENTIMENT["extreme_fear"]
+    if v >= 22:
+        return EMOJI_SENTIMENT["fear"]
+    if v >= 14:
+        return EMOJI_SENTIMENT["neutral"]
+    return EMOJI_SENTIMENT["greed"]
+
+
+def emoji_for_market_regime(chg_pct):
+    """一段时间涨跌幅 (%) → 🐂/➡️/🐻。"""
+    try:
+        c = float(chg_pct)
+    except Exception:
+        return "➡️"
+    if c >= 5.0:
+        return "🐂"
+    if c <= -5.0:
+        return "🐻"
+    return "➡️"
+
+
+def emoji_for_dominance(label):
+    return {"多头占优": "📈", "空头占优": "📉", "空仓": "💤", "震荡": "⚖️"}.get(label, "❓")
+
+
+# ---- 组合策略多空占优 ----
+
+PORTFOLIO_DOMINANCE_THRESH = 0.3  # 平均涨跌绝对值小于此阈值视为震荡/空仓
+
+
+def compute_portfolio_dominance(stocks_df):
+    """
+    根据自选股今日涨跌幅判断组合多空占优状态。
+
+    返回:
+      - long_count / short_count / flat_count / total
+      - long_pct / short_pct / flat_pct
+      - avg_chg (所有持股今日平均涨跌 %)
+      - positive_ratio / negative_ratio
+      - etf_count (代码以 ETF/3306/510/511/159 等常见 ETF 前缀计数)
+      - dominance_label: "多头占优" / "空头占优" / "空仓" / "震荡"
+      - emoji: 📈 / 📉 / 💤 / ⚖️
+    """
+    out = {
+        "long_count": 0,
+        "short_count": 0,
+        "flat_count": 0,
+        "total": 0,
+        "long_pct": 0.0,
+        "short_pct": 0.0,
+        "flat_pct": 0.0,
+        "avg_chg": 0.0,
+        "positive_ratio": 0.0,
+        "negative_ratio": 0.0,
+        "etf_count": 0,
+        "dominance_label": "空仓",
+        "emoji": "💤",
+        "error": None,
+    }
+    if stocks_df is None or stocks_df.empty:
+        out["error"] = "stocks_df 为空"
+        return out
+    if "涨跌幅" not in stocks_df.columns:
+        out["error"] = "缺少 '涨跌幅' 列"
+        return out
+    try:
+        chg = pd.to_numeric(stocks_df["涨跌幅"], errors="coerce").fillna(0.0)
+        total = len(chg)
+        if total == 0:
+            out["error"] = "无有效持仓"
+            return out
+        long_count = int((chg > 0.0).sum())
+        short_count = int((chg < 0.0).sum())
+        flat_count = int((chg == 0.0).sum())
+        avg_chg = float(chg.mean())
+
+        # ETF 计数（启发：常见 ETF 代码前缀）
+        etf_prefixes = ("3306", "510", "511", "512", "513", "515", "159", "561", "588")
+        etf_count = 0
+        if "symbol" in stocks_df.columns:
+            for s in stocks_df["symbol"].astype(str).tolist():
+                base = s.split(".")[0]
+                if any(base.startswith(pfx) for pfx in etf_prefixes) or "ETF" in s.upper():
+                    etf_count += 1
+
+        positive_ratio = long_count / total
+        negative_ratio = short_count / total
+        if avg_chg > PORTFOLIO_DOMINANCE_THRESH and positive_ratio >= 0.5:
+            label = "多头占优"
+        elif avg_chg < -PORTFOLIO_DOMINANCE_THRESH and negative_ratio >= 0.5:
+            label = "空头占优"
+        elif total > 0 and positive_ratio == 0 and negative_ratio == 0:
+            label = "空仓"
+        else:
+            label = "震荡"
+
+        out.update({
+            "long_count": long_count,
+            "short_count": short_count,
+            "flat_count": flat_count,
+            "total": total,
+            "long_pct": round(positive_ratio * 100, 1),
+            "short_pct": round(negative_ratio * 100, 1),
+            "flat_pct": round(flat_count / total * 100, 1),
+            "avg_chg": round(avg_chg, 2),
+            "positive_ratio": round(positive_ratio, 3),
+            "negative_ratio": round(negative_ratio, 3),
+            "etf_count": etf_count,
+            "dominance_label": label,
+            "emoji": emoji_for_dominance(label),
+        })
+        return out
+    except Exception as e:
+        out["error"] = str(e)
+        return out
+
+
+# ---- 单只指数实时 quote ----
+
+def fetch_index_quote(symbol):
+    """单只指数实时 quote: {symbol, last, prev_close, chg_pct}。失败返回 {error}。"""
+    try:
+        t = yf.Ticker(symbol)
+        info = t.fast_info
+        last = float(info.last_price) if info.last_price else 0.0
+        prev = float(info.previous_close) if info.previous_close else 0.0
+        chg = (last - prev) / prev * 100.0 if prev else 0.0
+        return {
+            "symbol": symbol,
+            "last": last,
+            "prev_close": prev,
+            "chg_pct": chg,
+        }
+    except Exception as e:
+        return {"symbol": symbol, "error": str(e)}
+
+
+# ---- 宏观风险雷达 ----
+
+def _safe_yf_close(symbol, period="5d"):
+    """快速取某标的最新收盘价，失败返回 None。"""
+    try:
+        t = yf.Ticker(symbol)
+        info = t.fast_info
+        v = info.last_price or info.previous_close
+        return float(v) if v else None
+    except Exception:
+        return None
+
+
+def compute_macro_risk_radar():
+    """
+    宏观风险雷达：6 组信号 (regime / rates / risk / ratios / cross_asset / a_share)。
+    每组: {metrics: {key: value}, signal: "green"|"yellow"|"red", note: str, emoji}
+    overall: 综合灯号 + emoji。
+    """
+    out = {
+        "regime": {},
+        "rates": {},
+        "risk": {},
+        "ratios": {},
+        "cross_asset": {},
+        "a_share": {},
+        "overall": {"signal": "yellow", "note": "数据不足", "emoji": "😐"},
+    }
+    scores = []
+
+    # --- Risk: VIX / VXN / DXY ---
+    vix = _safe_yf_close("^VIX") or 0.0
+    vxn = _safe_yf_close("^VXN") or 0.0
+    dxy = _safe_yf_close("DX-Y.NYB") or _safe_yf_close("^DXY") or 0.0
+    if vix >= 30 or vxn >= 35:
+        risk_signal, risk_note, risk_score = "red", "VIX/VXN 突破警戒，市场恐慌", -2
+    elif vix >= 22 or vxn >= 25:
+        risk_signal, risk_note, risk_score = "yellow", "波动率偏高，情绪偏谨慎", -1
+    else:
+        risk_signal, risk_note, risk_score = "green", "波动率正常，风险偏好稳定", 1
+    out["risk"] = {
+        "metrics": {"VIX": round(vix, 2), "VXN": round(vxn, 2), "DXY": round(dxy, 2)},
+        "signal": risk_signal,
+        "note": risk_note,
+        "emoji": emoji_for_panic(max(vix, vxn)),
+    }
+    scores.append(risk_score)
+
+    # --- Rates: 10Y / 2Y_proxy / spread ---
+    y10 = _safe_yf_close("^TNX") or 0.0
+    y2 = _safe_yf_close("^IRX") or _safe_yf_close("^FVX") or 0.0  # 13W T-Bill 兜底
+    spread = (y10 - y2) if (y10 and y2) else 0.0
+    if spread < 0:
+        rates_signal, rates_note, rates_score = "red", "2s10s 倒挂，衰退预警", -2
+    elif spread < 50:
+        rates_signal, rates_note, rates_score = "yellow", "利差扁平，周期顶部信号", -1
+    else:
+        rates_signal, rates_note, rates_score = "green", "利差健康，曲线正常", 1
+    out["rates"] = {
+        "metrics": {"10Y": round(y10, 2), "2Y_proxy": round(y2, 2), "spread_bps": round(spread, 0)},
+        "signal": rates_signal,
+        "note": rates_note,
+        "emoji": "🐻" if rates_signal == "red" else ("➡️" if rates_signal == "yellow" else "🐂"),
+    }
+    scores.append(rates_score)
+
+    # --- Regime (用 rates + risk 粗略合成) ---
+    regime_score = (rates_score + risk_score) / 2
+    if regime_score <= -1.5:
+        regime_signal, regime_note = "red", "衰退/紧缩信号共振"
+        regime_label = "衰退"
+    elif regime_score >= 1.0:
+        regime_signal, regime_note = "green", "扩张期，利率+波动双低"
+        regime_label = "扩张"
+    else:
+        regime_signal, regime_note = "yellow", "周期过渡期"
+        regime_label = "滞胀/过渡"
+    out["regime"] = {
+        "metrics": {"label": regime_label, "score": round(regime_score, 2)},
+        "signal": regime_signal,
+        "note": regime_note,
+        "emoji": "🐂" if regime_label == "扩张" else ("🐻" if regime_label == "衰退" else "➡️"),
+    }
+    scores.append(regime_score)
+
+    # --- Ratios: 黄金/白银、铜/金 ---
+    gold = _safe_yf_close("GC=F") or _safe_yf_close("^XAU") or 0.0
+    silver = _safe_yf_close("SI=F") or 0.0
+    copper = _safe_yf_close("HG=F") or 0.0
+    au_ag = (gold / silver) if silver else 0.0
+    cu_au = (copper / gold) if gold else 0.0
+    out["ratios"] = {
+        "metrics": {
+            "Gold": round(gold, 1),
+            "Silver": round(silver, 2),
+            "Copper": round(copper, 2),
+            "Au/Ag": round(au_ag, 1),
+            "Cu/Au": round(cu_au, 4),
+        },
+        "signal": "yellow",
+        "note": "Au/Ag " + str(round(au_ag, 1)) + " · Cu/Au " + str(round(cu_au, 4)),
+        "emoji": "➡️",
+    }
+    scores.append(0)
+
+    # --- Cross Asset: BTC / Oil ---
+    btc = _safe_yf_close("BTC-USD") or 0.0
+    oil = _safe_yf_close("CL=F") or 0.0
+    out["cross_asset"] = {
+        "metrics": {"BTC": round(btc, 0), "Oil_WTI": round(oil, 2)},
+        "signal": "yellow",
+        "note": "BTC/原油 = 风险偏好代理",
+        "emoji": "➡️",
+    }
+    scores.append(0)
+
+    # --- A-Share: akshare 拉北向 ---
+    a_signal, a_note, a_emoji, a_metrics = "yellow", "akshare 未启用或拉取失败", "➡️", {}
+    if _AKSHARE_AVAILABLE:
+        try:
+            overview = fetch_a_share_overview()
+            north = overview.get("north_flow")
+            if north is not None:
+                a_metrics["北向_亿"] = round(float(north), 1)
+                a_signal = "green" if north > 0 else "red"
+                a_note = "北向净流入" if north > 0 else "北向净流出"
+                a_emoji = "📈" if north > 0 else "📉"
+        except Exception:
+            pass
+    out["a_share"] = {
+        "metrics": a_metrics,
+        "signal": a_signal,
+        "note": a_note,
+        "emoji": a_emoji,
+    }
+    scores.append(0)
+
+    # --- Overall ---
+    avg = sum(scores) / max(1, len(scores))
+    if avg >= 0.5:
+        overall_signal, overall_note, overall_emoji = "green", "宏观环境偏宽松/扩张", "🟢"
+    elif avg <= -0.5:
+        overall_signal, overall_note, overall_emoji = "red", "宏观环境偏紧缩/衰退", "🔴"
+    else:
+        overall_signal, overall_note, overall_emoji = "yellow", "宏观信号混合，谨慎观望", "🟡"
+    out["overall"] = {"signal": overall_signal, "note": overall_note, "emoji": overall_emoji, "score": round(avg, 2)}
+    return out
+
+
+# ---- ZhuLinsen YAML 加载 + 拼接到 Morning Brief ----
+
+def ensure_zhu_linsen_repo(repo_dir="vendor/daily_stock_analysis"):
+    """
+    若本地无 ZhuLinsen/daily_stock_analysis 仓库，自动从 GitHub 下载 zip 解压。
+    返回最终 strategies/ 目录的父目录路径。
+    """
+    import urllib.request
+    import zipfile
+    import shutil
+
+    p = Path(repo_dir)
+    strategies = p / "strategies"
+    if strategies.exists() and any(strategies.glob("*.yaml")):
+        return str(p)
+    p.mkdir(parents=True, exist_ok=True)
+    zip_path = p / "src.zip"
+    url = "https://github.com/ZhuLinsen/daily_stock_analysis/archive/refs/heads/main.zip"
+    try:
+        urllib.request.urlretrieve(url, zip_path)
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(p)
+        extracted = p / "daily_stock_analysis-main"
+        if extracted.exists() and (extracted / "strategies").exists():
+            target = p / "strategies"
+            if target.exists():
+                shutil.rmtree(target)
+            shutil.move(str(extracted / "strategies"), str(target))
+        return str(p)
+    except Exception as e:
+        logger.warning("下载 ZhuLinsen 仓库失败: %s", e)
+        return str(p)
+
+
+def load_zhu_linsen_strategies(
+    repo_dir="vendor/daily_stock_analysis",
+    only_categories=None,
+    max_total_chars=3000,
+):
+    """
+    读取 ZhuLinsen 仓库 strategies/*.yaml，提取 instructions 字段。
+    - only_categories: 过滤分类 (trend / pattern / reversal / framework / ...)
+    - max_total_chars: 所有 instructions 累计字符上限，避免 prompt 爆炸
+    返回 list[dict]: {name, display_name, category, instructions, file}
+    """
+    try:
+        import yaml as _yaml  # PyYAML
+    except ImportError:
+        logger.warning("PyYAML 未安装，跳过 ZhuLinsen YAML 加载")
+        return []
+    base = ensure_zhu_linsen_repo(repo_dir)
+    strat_dir = Path(base) / "strategies"
+    if not strat_dir.exists():
+        return []
+    out = []
+    for yf_path in sorted(strat_dir.glob("*.yaml")):
+        try:
+            with open(yf_path, encoding="utf-8") as f:
+                d = _yaml.safe_load(f) or {}
+            if not isinstance(d, dict):
+                continue
+            cat = d.get("category", "framework")
+            if only_categories and cat not in only_categories:
+                continue
+            out.append({
+                "name": d.get("name", yf_path.stem),
+                "display_name": d.get("display_name", yf_path.stem),
+                "category": cat,
+                "instructions": (d.get("instructions") or "").strip(),
+                "file": str(yf_path.relative_to(base)),
+            })
+        except Exception as e:
+            logger.warning("加载 %s 失败: %s", yf_path, e)
+    truncated, total = [], 0
+    for s in out:
+        n = len(s["instructions"])
+        if total + n > max_total_chars:
+            remain = max(0, max_total_chars - total)
+            if remain > 0:
+                s = dict(s)
+                s["instructions"] = s["instructions"][:remain] + "\n…(截断)"
+                truncated.append(s)
+            break
+        total += n
+        truncated.append(s)
+    return truncated
+
+
+def splice_strategies_into_prompt(base_prompt, strategies, header="已挂载的策略框架"):
+    """把 strategies 列表的 instructions 拼到 prompt 末尾。"""
+    if not strategies:
+        return base_prompt
+    block = "\n\n【" + header + "（盘前/盘中请参照下列框架评估）】\n"
+    for s in strategies:
+        title = s.get("display_name") or s.get("name") or "?"
+        cat = s.get("category", "")
+        inst = (s.get("instructions") or "").strip()
+        if not inst:
+            continue
+        block += "\n--- " + str(title) + " (" + str(cat) + ") ---\n" + inst + "\n"
+    return base_prompt + block
+
+
+def build_morning_brief_prompt(context, *,
+                                include_zhu_linsen=True,
+                                only_categories=None,
+                                max_chars=3000):
+    """
+    构造最终发给 LLM 的 Morning Brief 用户 prompt。
+    = MORNING_BRIEF_PROMPT.format(**context) + ZhuLinsen YAML instructions
+    include_zhu_linsen=False 时只输出基础 prompt。
+    """
+    base = MORNING_BRIEF_PROMPT.format(**context)
+    if include_zhu_linsen:
+        strategies = load_zhu_linsen_strategies(
+            only_categories=only_categories,
+            max_total_chars=max_chars,
+        )
+        base = splice_strategies_into_prompt(base, strategies)
+    return base
+
+
+# ---- 跨资产：VXN vs VIX 历史对比 ----
+
+def fetch_panic_history(period="10y"):
+    """拉 VIX / VXN 历史 close，用于跨资产对比。"""
+    out = {}
+    for name, sym in (("VIX", "^VIX"), ("VXN", "^VXN")):
+        try:
+            df = yf.download(sym, period=period, progress=False, auto_adjust=True)
+            if df is None or df.empty:
+                continue
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+            close = df["Close"].dropna()
+            if not close.empty:
+                close.name = name
+                out[name] = close
+        except Exception as e:
+            logger.warning("拉取 %s 历史失败: %s", sym, e)
+    return out
+
+
+def fetch_macro_history(period="10y", tickers=None):
+    """通用宏观历史拉取：tickers = {name: yf_symbol}。"""
+    if tickers is None:
+        tickers = {"10Y美债收益率": "^TNX"}
+    out = {}
+    for name, sym in tickers.items():
+        try:
+            df = yf.download(sym, period=period, progress=False, auto_adjust=True)
+            if df is None or df.empty:
+                continue
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+            close = df["Close"].dropna()
+            if not close.empty:
+                close.name = name
+                out[name] = close
+        except Exception as e:
+            logger.warning("拉取 %s 历史失败: %s", sym, e)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# v2.5 新增：统一公司名 + 智能荐股引擎（技术面/估值/动量/杠杆止损）
+# ---------------------------------------------------------------------------
+
+STOCK_NAMES = {
+    "MU": "美光", "AAOI": "应用光电", "GOOGL": "谷歌", "MSFT": "微软", "AMZN": "亚马逊",
+    "MRVL": "迈威尔", "LITE": "Lumentum", "SNDK": "闪迪", "NVDA": "英伟达", "ORCL": "甲骨文",
+    "SPCX": "标普500ETF", "SKHY": "高收益债ETF", "TSLA": "特斯拉",
+    "0700.HK": "腾讯控股", "0883.HK": "中国海洋石油", "3750.HK": "锂业ETF",
+    "07709.HK": "南方两倍做多海力士", "00981.HK": "中芯国际",
+    "688809.SS": "豪威股份", "300408.SZ": "三环集团", "300679.SZ": "电连技术",
+    "000426.SZ": "兴业银锡", "002624.SZ": "完美世界", "601872.SS": "招商轮船",
+    "601975.SS": "招商轮船", "002258.SZ": "利尔化学", "001331.SZ": "胜通能源",
+    "600150.SS": "中国船舶",
+    "00293.HK": "国泰航空", "03690.HK": "美团-W", "01138.HK": "中远海能", "03968.HK": "招商银行",
+    "EUV": "Corgi Lithography", "RKLB": "Rocket Lab", "GEV": "GE Vernova", "FUTU": "富途",
+    "UNH": "联合健康", "NVO": "诺和诺德", "NFLX": "Netflix", "JNJ": "强生", "INTU": "Intuit",
+}
+# yfinance 个别代码归一化（美团在 Yahoo 不带前导零）
+YF_NORMALIZE = {"03690.HK": "3690.HK"}
+
+
+def get_stock_name(symbol: str) -> str:
+    """优先返回中文名映射；否则尝试 yfinance shortName；兜底返回原代码。"""
+    if symbol in STOCK_NAMES:
+        return STOCK_NAMES[symbol]
+    try:
+        t = yf.Ticker(symbol)
+        info = t.info or {}
+        return info.get("shortName") or info.get("longName") or symbol
+    except Exception:
+        return symbol
+
+
+def _yf_sym(symbol: str) -> str:
+    return YF_NORMALIZE.get(symbol, symbol)
+
+
+def fetch_all_metrics(symbols) -> List[Dict[str, Any]]:
+    """批量抓每股指标：last/chgPct/pe/ma20/ma60/atrPct/ret20。失败项给中性占位。"""
+    out: List[Dict[str, Any]] = []
+    syms = list(symbols)
+    # 1) 批量历史（一次请求）算 MA / ATR / 动量
+    hist_map: Dict[str, Any] = {}
+    try:
+        data = yf.download(" ".join(_yf_sym(s) for s in syms), period="3mo",
+                            interval="1d", group_by="ticker", auto_adjust=True,
+                            progress=False, threads=False)
+        for s in syms:
+            try:
+                sub = data[s] if s in data.columns.get_level_values(0) else data.xs(s, level=0, axis=1)
+                closes = sub["Close"].dropna().astype(float).tolist()
+                hist_map[s] = closes
+            except Exception:
+                hist_map[s] = []
+    except Exception:
+        hist_map = {s: [] for s in syms}
+    # 2) PE（best-effort，逐只 .info）
+    pe_map: Dict[str, Optional[float]] = {}
+    for s in syms:
+        pe_map[s] = None
+        try:
+            pe = yf.Ticker(_yf_sym(s)).info.get("trailingPE")
+            pe_map[s] = float(pe) if isinstance(pe, (int, float)) else None
+        except Exception:
+            pass
+    # 3) 组装
+    for s in syms:
+        closes = hist_map.get(s, [])
+        last = None; chgPct = 0.0; ma20 = ma60 = atrPct = ret20 = None
+        if len(closes) >= 2:
+            last = closes[-1]
+            prev = closes[-2]
+            chgPct = (last - prev) / prev * 100.0 if prev else 0.0
+            ma20 = float(pd.Series(closes[-20:]).mean()) if len(closes) >= 2 else None
+            ma60 = float(pd.Series(closes[-60:]).mean()) if len(closes) >= 60 else None
+            rets = [closes[i] / closes[i - 1] - 1 for i in range(1, len(closes))]
+            atrPct = float(pd.Series(rets[-20:]).abs().mean() * 100) if len(rets) >= 2 else None
+            ret20 = (last / ma20 - 1) * 100 if ma20 else None
+        out.append({
+            "symbol": s, "name": get_stock_name(s), "last": last, "chgPct": round(chgPct, 2),
+            "pe": pe_map.get(s), "ma20": ma20, "ma60": ma60,
+            "atrPct": round(atrPct, 2) if atrPct is not None else None,
+            "ret20": round(ret20, 2) if ret20 is not None else None,
+        })
+    return out
+
+
+def recommend_stocks(metrics) -> Dict[str, Any]:
+    """统一荐股评分（与 PWA 同算法）。返回 intraday_t / midterm_hold / buy / details。"""
+    rows = []
+    for e in metrics:
+        last = e.get("last")
+        chg = e.get("chgPct") or 0
+        pe = e.get("pe")
+        ma20 = e.get("ma20"); ma60 = e.get("ma60"); atr = e.get("atrPct"); ret20 = e.get("ret20")
+        tech = 50.0
+        if ma20 is not None:
+            tech = 50 + (ret20 or 0) * 1.5 + (10 if (last and last > ma20) else 0) \
+                   + (10 if (ma60 is not None and ma20 > ma60) else 0) - (8 if (last and last < ma20) else 0)
+            tech = min(100.0, max(0.0, tech))
+        val = 50.0
+        if pe is not None:
+            if 0 < pe < 15:
+                val = 85
+            elif pe < 25:
+                val = 70
+            elif pe < 35:
+                val = 58
+            elif pe < 50:
+                val = 48
+            else:
+                val = 38
+            if pe <= 0:
+                val = 45
+        mom = min(100.0, max(0.0, 50 + chg * 3))
+        comp = min(100.0, max(0.0, 0.5 * tech + 0.25 * val + 0.25 * mom))
+        bias = "看多" if comp >= 60 else ("看空" if comp <= 40 else "震荡")
+        stop = None
+        if last is not None and atr is not None:
+            sp = max(atr * 2.2, 7) / 100.0
+            stop = round(last * (1 - sp), 2)
+        rows.append({**e, "tech": round(tech), "val": round(val), "mom": round(mom),
+                     "comp": round(comp), "bias": bias, "stop": stop})
+    intraday_t = sorted([r for r in rows if r.get("atrPct") and r["atrPct"] >= 2.5],
+                        key=lambda r: -r["atrPct"])[:8]
+    midterm = sorted([r for r in rows if r["comp"] >= 55 or r["bias"] == "看多"],
+                     key=lambda r: -r["comp"])[:8]
+    buy = sorted([r for r in rows if r["comp"] >= 60], key=lambda r: -r["comp"])
+    return {"details": rows, "intraday_t": intraday_t, "midterm_hold": midterm, "buy": buy}

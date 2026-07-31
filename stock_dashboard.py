@@ -50,12 +50,13 @@ logger = logging.getLogger("quant_report")
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Config:
-    fred_api_key: str = field(default_factory=lambda: os.environ.get("FRED_API", ""))
-    alpha_vantage_key: str = field(default_factory=lambda: os.environ.get("ALPHA_API", ""))
-    telegram_bot_token: str = field(default_factory=lambda: os.environ.get("TELEGRAM_BOT_TOKEN", ""))
-    telegram_chat_id: str = field(default_factory=lambda: os.environ.get("TELEGRAM_CHAT_ID", ""))
-    deepseek_api_key: str = field(default_factory=lambda: os.environ.get("DEEPSEEK_API_KEY", ""))
-    serpapi_key: str = field(default_factory=lambda: os.environ.get("SERPAPI", ""))
+    fred_api_key: str = field(default_factory=lambda: U._get_secret("FRED_API"))
+    alpha_vantage_key: str = field(default_factory=lambda: U._get_secret("ALPHA_API"))
+    telegram_bot_token: str = field(default_factory=lambda: U._get_secret("TELEGRAM_BOT_TOKEN"))
+    telegram_chat_id: str = field(default_factory=lambda: U._get_secret("TELEGRAM_CHAT_ID"))
+    deepseek_api_key: str = field(default_factory=lambda: U._get_secret("DEEPSEEK_API_KEY"))
+    openrouter_api_key: str = field(default_factory=lambda: U._get_secret("OPENROUTER_API_KEY"))
+    serpapi_key: str = field(default_factory=lambda: U._get_secret("SERPAPI"))
 
     leverage_levels: Tuple[float, ...] = (1.5, 2.0, 3.0)
     maintenance_margin: float = 0.3
@@ -70,9 +71,18 @@ class Config:
     volume_contract_ratio: float = 0.8
 
     stocks: Tuple[str, ...] = (
+        # 美股
         "MU", "AAOI", "GOOGL", "MSFT", "AMZN", "MRVL", "LITE",
         "SNDK", "NVDA", "ORCL", "SPCX", "SKHY", "TSLA",
-        "0700.HK", "0883.HK", "3750.HK",
+        # 港股
+        "0700.HK", "0883.HK", "3750.HK", "07709.HK", "00981.HK",
+        # A 股（强一股份 / 三环集团 / 电连技术 等）
+        "688809.SS", "300408.SZ", "300679.SZ", "000426.SZ",
+        "002624.SZ", "601872.SS", "601975.SS", "002258.SZ",
+        "001331.SZ", "600150.SS",
+        # v2.5 新增：港股 + 美股
+        "00293.HK", "03690.HK", "01138.HK", "03968.HK",
+        "EUV", "RKLB", "GEV", "FUTU", "UNH", "NVO", "NFLX", "JNJ", "INTU",
     )
 
     macro_indices: Dict[str, str] = field(default_factory=lambda: {
@@ -233,9 +243,39 @@ class DataFetcher:
             logger.warning(f"AKShare {symbol} 失败({e})，回退 Yahoo Finance")
             return self.fetch_yf(symbol, period=f"{self.cfg.lookback_days}d")
 
+    def fetch_a_share(self, symbol: str) -> pd.DataFrame:
+        try:
+            import akshare as ak
+            code = symbol.replace(".SS", "").replace(".SZ", "")
+            df = ak.stock_zh_a_hist(symbol=code, period="daily", adjust="qfq")
+            if df is None or df.empty:
+                raise ValueError("AKShare A股 返回空")
+            rename_map = {
+                "日期": "Date", "开盘": "Open", "收盘": "Close",
+                "最高": "High", "最低": "Low", "成交量": "Volume",
+            }
+            existing = {k: v for k, v in rename_map.items() if k in df.columns}
+            df = df.rename(columns=existing)
+            if "Date" in df.columns:
+                df["Date"] = pd.to_datetime(df["Date"])
+                df = df.set_index("Date")
+            elif not isinstance(df.index, pd.DatetimeIndex):
+                df.index = pd.to_datetime(df.index)
+            df = df.sort_index()
+            required = ["Open", "High", "Low", "Close", "Volume"]
+            df = df[[c for c in required if c in df.columns]]
+            if len(df.columns) < len(required):
+                raise ValueError("AKShare A股 数据列缺失")
+            return df.apply(pd.to_numeric, errors="coerce").dropna().tail(self.cfg.lookback_days)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"AKShare A股 {symbol} 失败({e})，回退 Yahoo Finance")
+            return self.fetch_yf(symbol, period=f"{self.cfg.lookback_days}d")
+
     def get_stock_df(self, symbol: str) -> pd.DataFrame:
         if symbol.endswith(".HK"):
             return self.fetch_hk(symbol)
+        if symbol.endswith((".SS", ".SZ")):
+            return self.fetch_a_share(symbol)
         return self.fetch_yf(symbol, period=f"{self.cfg.lookback_days}d")
 
 
@@ -813,7 +853,7 @@ SOX：最新{sox.get('最新价','N/A')} 回撤{sox.get('回撤','N/A')}% 熊市
             return None
         facts = []
         for sym, data in valid.items():
-            market = "港股" if sym.endswith(".HK") else "美股"
+            market = "港股" if sym.endswith(".HK") else ("A股" if sym.endswith((".SS", ".SZ")) else "美股")
             lev = leverage_dict.get(sym, {})
             mc_str = "；".join([f"{k}强平${v['强平价']:.2f}({v['距强平ATR倍数']}xATR)" for k, v in lev.get("details", {}).items()])
             bf = BottomFishingEngine.score(data)
@@ -950,10 +990,11 @@ class ReportOrchestrator:
                 return sym, None, None
 
         hk = [s for s in self.cfg.stocks if s.endswith(".HK")]
-        us = [s for s in self.cfg.stocks if not s.endswith(".HK")]
+        a_share = [s for s in self.cfg.stocks if s.endswith((".SS", ".SZ"))]
+        us = [s for s in self.cfg.stocks if not s.endswith((".HK", ".SS", ".SZ"))]
 
         with ThreadPoolExecutor(max_workers=4) as ex:
-            for fut in as_completed({ex.submit(worker, s): s for s in us}):
+            for fut in as_completed({ex.submit(worker, s): s for s in us + a_share}):
                 sym, data, lev = fut.result()
                 results[sym] = data
                 if lev:
@@ -1406,8 +1447,8 @@ if __name__ == "__main__":
         result = fetch_all_news_multi_source(
             symbols=symbols,
             serpapi_key=orch.cfg.serpapi_key,
-            finnhub_key=os.environ.get("FINNHUB_API", ""),
-            newsapi_key=os.environ.get("NEWSAPI_KEY", ""),
+            finnhub_key=U._get_secret("FINNHUB_API"),
+            newsapi_key=U._get_secret("NEWSAPI_KEY"),
             out_path=orch.cfg.output_dir / "news.json",
         )
         logger.info(f"✅ 新闻刷新完成: sources={result.get('sources_used', [])} stocks={sum(1 for v in result.get('stocks', {}).values() if v)}/{len(symbols)}")

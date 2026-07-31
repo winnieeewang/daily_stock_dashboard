@@ -1,0 +1,13 @@
+{
+  "name": "Winnie's Daily Stock Dashboard",
+  "short_name": "Winnie看板",
+  "description": "美股 / A股 / 港股 多市场投资看板",
+  "start_url": "index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7fb",
+  "theme_color": "#f6f7fb",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

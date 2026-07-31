@@ -10,3 +10,4 @@ plotly>=5.18.0
 akshare>=1.13.0
 serpapi>=0.1.0
 feedparser>=6.0.10
+PyYAML>=6.0
