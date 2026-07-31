@@ -56,8 +56,11 @@ def get_macro_value(symbol):
     if data.empty:
         return None
     val = data['Close'].iloc[-1]
-    return float(val) if isinstance(val, (np.floating, np.integer)) else val
-
+    try:
+        return float(val)          # 强制转为标量
+    except (TypeError, ValueError):
+        return None
+        
 def get_advance_decline():
     spy = safe_fetch("SPY", period="2d")
     if len(spy) < 2:
@@ -391,6 +394,22 @@ def rebound_or_reversal(data):
         return "震荡：暂无明确方向信号"
 
 def market_sentiment_index(vix, vol_pcr, sox_rsi):
+    # 确保所有输入都是数值，否则使用默认值
+    try:
+        vix = float(vix)
+    except (TypeError, ValueError):
+        vix = 18.0   # 默认中性值
+
+    try:
+        vol_pcr = float(vol_pcr) if vol_pcr else None
+    except:
+        vol_pcr = None
+
+    try:
+        sox_rsi = float(sox_rsi)
+    except:
+        sox_rsi = 50.0
+
     vix_score = max(0, min(100, 100 - (vix - 12) * 4))
     pcr_score = 50
     if vol_pcr:
@@ -399,7 +418,6 @@ def market_sentiment_index(vix, vol_pcr, sox_rsi):
     composite = round(vix_score * 0.4 + pcr_score * 0.3 + rsi_score * 0.3, 1)
     label = "极度贪婪" if composite > 75 else "贪婪" if composite > 55 else "中性" if composite > 45 else "恐惧" if composite > 25 else "极度恐惧"
     return {"情绪指数": composite, "标签": label}
-
 # ---------- SOX ----------
 def get_sox_signals():
     sox = safe_fetch("^SOX", period="3mo")
