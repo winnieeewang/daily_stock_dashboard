@@ -10,7 +10,6 @@ import numpy as np
 
 st.set_page_config(layout="wide", page_title="每日量化看盘 | Winnie Wang", initial_sidebar_state="expanded")
 
-# ==================== 浅色专业主题 CSS ====================
 st.markdown("""
 <style>
     .stApp { background-color: #f8f9fa; }
@@ -118,7 +117,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ==================== 辅助函数（标签生成器） ====================
 def bottom_fishing_badge(score: int):
     if score >= 70:
         return f'<span class="tag bf-strong">🔥 强抄底信号 {score}分</span>'
@@ -137,7 +135,6 @@ def reversal_badge(signal: str, conf: str):
     else:
         return f'<span class="tag tag-none">➖ 无信号</span>'
 
-# ==================== 侧边栏 ====================
 st.sidebar.title("⚙️ 控制面板")
 if st.sidebar.button("🔄 强制刷新数据", use_container_width=True):
     st.cache_data.clear()
@@ -149,7 +146,6 @@ selected_period = st.sidebar.selectbox("📅 K线图周期", list(period_map.key
 st.sidebar.divider()
 st.sidebar.caption("💡 分析师看盘顺序：情绪 → 宏观 → 消息 → 个股结构 → 短中期策略")
 
-# ==================== 数据加载 ====================
 @st.cache_data(ttl=3600)
 def load_all_data():
     out = {}
@@ -162,6 +158,7 @@ def load_all_data():
         "leverage": "data/leverage_risk.json",
         "news": "data/news.json",
         "report": "data/report.md",
+        "weekly": "data/weekly_report.md",
     }
     for key, path in files.items():
         if not os.path.exists(path):
@@ -189,12 +186,55 @@ cards_data = data.get("cards") or {}
 leverage_data = data.get("leverage") or {}
 news_data = data.get("news") or {}
 report_md = data.get("report") or ""
+weekly_report_md = data.get("weekly") or ""
 
 cards_list = cards_data.get("stocks", []) if isinstance(cards_data, dict) else []
 cards_map = {c["symbol"]: c for c in cards_list} if isinstance(cards_list, list) else {}
 leverage_map = leverage_data.get("stocks", {}) if isinstance(leverage_data, dict) else {}
 
-# ==================== 标题 + 作者授权 ====================
+@st.cache_data(ttl=3600)
+def fetch_price_history(symbol: str, period: str = "3mo", interval: str = "1d"):
+    """
+    统一的K线获取函数：
+    - 港股(.HK)优先用 akshare（数据更稳），失败则回退 yfinance
+    - 美股/指数直接用 yfinance
+    - 两个来源都做了 MultiIndex 列展平处理
+      （yfinance 2.51+ 版本起，单只股票的 yf.download 默认也会返回 MultiIndex 列，
+      不展平的话 hist["Open"] 这类取值会失败，K线图会静默变空白——这是之前K线图出不来的主因之一）
+    """
+    df = pd.DataFrame()
+    if symbol.endswith(".HK"):
+        try:
+            import akshare as ak
+            code = symbol.replace(".HK", "").zfill(5)
+            raw = ak.stock_hk_daily(symbol=code, adjust="qfq")
+            if not raw.empty:
+                rename_map = {"日期": "Date", "开盘": "Open", "收盘": "Close", "最高": "High", "最低": "Low", "成交量": "Volume"}
+                raw = raw.rename(columns={k: v for k, v in rename_map.items() if k in raw.columns})
+                raw["Date"] = pd.to_datetime(raw["Date"])
+                raw = raw.set_index("Date").sort_index()
+                need = ["Open", "High", "Low", "Close", "Volume"]
+                if all(c in raw.columns for c in need):
+                    raw = raw[need].apply(pd.to_numeric, errors="coerce").dropna()
+                    days_map = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365}
+                    cutoff = raw.index.max() - pd.Timedelta(days=days_map.get(period, 90))
+                    raw = raw[raw.index >= cutoff]
+                    if interval == "1wk" and len(raw) > 7:
+                        raw = raw.resample("W").agg(
+                            {"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"}
+                        ).dropna()
+                    df = raw
+        except Exception:
+            df = pd.DataFrame()
+    if df.empty:
+        try:
+            df = yf.download(symbol, period=period, interval=interval, progress=False)
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+        except Exception:
+            df = pd.DataFrame()
+    return df
+
 st.markdown(f"""
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
     <div>
@@ -209,7 +249,6 @@ st.markdown(f"""
 <hr class="soft">
 """, unsafe_allow_html=True)
 
-# ==================== 1. 市场情绪仪表盘 ====================
 st.markdown('<div class="section-title">🎚️ 市场情绪仪表盘</div>', unsafe_allow_html=True)
 
 sentiment_score = 50
@@ -288,7 +327,6 @@ with c5:
     </div>
     """, unsafe_allow_html=True)
 
-# ==================== 2. 历史跨资产对比图（3/5/10/15年可调） ====================
 st.markdown('<div class="section-title">📊 历史跨资产对比（标普500 / SOX / 10Y美债 / Mag 7）</div>', unsafe_allow_html=True)
 
 hist_years = st.segmented_control("时间区间", ["3年", "5年", "10年", "15年"], default="10年")
@@ -312,6 +350,8 @@ def fetch_history(period: str):
     for name, sym in tickers.items():
         try:
             df = yf.download(sym, period=period, progress=False)
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
             if not df.empty and len(df) > 1:
                 close = df["Close"].dropna()
                 if len(close) > 0 and close.iloc[0] != 0:
@@ -342,27 +382,15 @@ if hist_data:
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="#ffffff",
         font=dict(color="#5f6368", size=11),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1,
-            font=dict(size=11),
-        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=11)),
         xaxis=dict(gridcolor="#f0f0f0", color="#9e9e9e"),
-        yaxis=dict(
-            gridcolor="#f0f0f0",
-            color="#9e9e9e",
-            title=dict(text="归一化指数 (起点=100)", font=dict(size=11)),
-        ),
+        yaxis=dict(gridcolor="#f0f0f0", color="#9e9e9e", title=dict(text="归一化指数 (起点=100)", font=dict(size=11))),
         hovermode="x unified",
     )
     st.plotly_chart(fig_hist, use_container_width=True, config={"displayModeBar": False})
 else:
     st.info("历史数据加载中...")
 
-# ==================== 3. 宏观速览（带数据来源链接） ====================
 st.markdown('<div class="section-title">🌍 宏观速览 & 政策消息</div>', unsafe_allow_html=True)
 
 SOURCE_LINKS = {
@@ -378,8 +406,6 @@ SOURCE_LINKS = {
     "2年期实际利率（近似）": ("{}", "FRED (DGS2−T5YIE)", "https://fred.stlouisfed.org/series/DGS2"),
     "FINRA保证金债务": ("{}", "FINRA", "https://www.finra.org/rules-guidance/key-topics/margin-accounts"),
     "FINRA保证金债务YoY%": ("{:.1f}%", "FINRA", "https://www.finra.org/rules-guidance/key-topics/margin-accounts"),
-    "Volume PCR": ("{:.2f}", "Alpha Vantage", "https://www.alphavantage.co/documentation/"),
-    "OI PCR": ("{:.2f}", "Alpha Vantage", "https://www.alphavantage.co/documentation/"),
 }
 
 macro_cols = st.columns([2, 1])
@@ -389,7 +415,7 @@ with macro_cols[0]:
         m = macro_df.iloc[0].to_dict()
         keys = ["VIX", "标普500", "纳斯达克100", "黄金", "WTI原油", "美元指数",
                 "10年期美债收益率", "美国国债规模", "芝加哥联储杠杆指数",
-                "2年期实际利率（近似）", "FINRA保证金债务YoY%", "Volume PCR", "OI PCR"]
+                "2年期实际利率（近似）", "FINRA保证金债务YoY%"]
         avail = [k for k in keys if k in m]
         cols_per_row = 4
         for i in range(0, len(avail), cols_per_row):
@@ -431,7 +457,6 @@ with macro_cols[1]:
     else:
         st.caption("暂无新闻数据。如需自动抓取，请配置 SERPAPI_KEY。")
 
-# ==================== 4. SOX + 标普500 双指数信号 ====================
 st.markdown('<div class="section-title">📉 大盘指数信号（SOX + 标普500）</div>', unsafe_allow_html=True)
 
 idx1, idx2 = st.columns(2)
@@ -466,7 +491,6 @@ with idx2:
     else:
         st.info("暂无 标普500 数据")
 
-# ==================== 5. 个股决策卡片（核心作战区） ====================
 st.markdown('<div class="section-title">🎯 个股决策卡片</div>', unsafe_allow_html=True)
 
 if stocks_df is None or stocks_df.empty:
@@ -490,7 +514,6 @@ if cards_map:
     display_df["risks"] = display_df["symbol"].map(lambda x: cards_map.get(x, {}).get("risks", []))
     display_df["sniper"] = display_df["symbol"].map(lambda x: cards_map.get(x, {}).get("sniper", {}))
 
-# 筛选项
 f1, f2, f3, f4 = st.columns(4)
 with f1:
     market_filter = st.selectbox("🏷 市场", ["全部", "美股", "港股"])
@@ -562,7 +585,6 @@ for i in range(0, len(display_df), 3):
                 "震荡": "border-left: 4px solid #faad14;",
             }.get(tr, "border-left: 4px solid #d9d9d9;")
 
-            # 卡片头部
             st.markdown(f"""
             <div style="{trend_color} background:#fafafa; padding:16px; border-radius:8px; margin-bottom:8px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -578,9 +600,8 @@ for i in range(0, len(display_df), 3):
             </div>
             """, unsafe_allow_html=True)
 
-            # ========== 卡片内迷你周K线图 ==========
             try:
-                hist = yf.download(sym, period="3mo", interval="1wk", progress=False)
+                hist = fetch_price_history(sym, period="3mo", interval="1wk")
                 if not hist.empty and len(hist) > 3:
                     fig = go.Figure()
                     fig.add_trace(go.Candlestick(
@@ -595,30 +616,17 @@ for i in range(0, len(display_df), 3):
                     ))
                     if len(hist) >= 10:
                         ma10 = hist["Close"].rolling(10).mean()
-                        fig.add_trace(go.Scatter(
-                            x=hist.index, y=ma10,
-                            line=dict(color="#f9a825", width=1.2),
-                            name="MA10w", showlegend=False
-                        ))
+                        fig.add_trace(go.Scatter(x=hist.index, y=ma10, line=dict(color="#f9a825", width=1.2), name="MA10w", showlegend=False))
                     if len(hist) >= 30:
                         ma30 = hist["Close"].rolling(30).mean()
-                        fig.add_trace(go.Scatter(
-                            x=hist.index, y=ma30,
-                            line=dict(color="#1967d2", width=1.2),
-                            name="MA30w", showlegend=False
-                        ))
+                        fig.add_trace(go.Scatter(x=hist.index, y=ma30, line=dict(color="#1967d2", width=1.2), name="MA30w", showlegend=False))
                     fig.update_layout(
                         height=160,
                         margin=dict(l=0, r=0, t=2, b=0),
                         paper_bgcolor="rgba(0,0,0,0)",
                         plot_bgcolor="rgba(0,0,0,0)",
                         xaxis=dict(visible=False, showgrid=False, rangeslider_visible=False),
-                        yaxis=dict(
-                            visible=True,
-                            showgrid=False,
-                            side="right",
-                            tickfont=dict(size=9, color="#9e9e9e"),
-                        ),
+                        yaxis=dict(visible=True, showgrid=False, side="right", tickfont=dict(size=9, color="#9e9e9e")),
                         showlegend=False,
                         hovermode="x unified",
                     )
@@ -627,35 +635,39 @@ for i in range(0, len(display_df), 3):
                     st.caption(f"📉 {sym} 周K数据不足")
             except Exception:
                 pass
-            # =====================================
 
-            # 核心指标
             m1, m2, m3 = st.columns(3)
             m1.metric("RSI", f"{r.get('RSI_14',0):.1f}")
             m2.metric("MACD", f"{r.get('MACD',0):.3f}")
             m3.metric("PE", r.get("PE_Ratio", "N/A"))
 
-            # 标签：抄底 + 反弹/反转
+            vol_val = r.get("成交量")
+            vol_pcr = r.get("Volume_PCR")
+            oi_pcr = r.get("OI_PCR")
+            vol_disp = f"{int(vol_val):,}" if pd.notna(vol_val) else "N/A"
+            pcr_disp = (
+                f"Vol PCR {vol_pcr:.2f} / OI PCR {oi_pcr:.2f}"
+                if pd.notna(vol_pcr) and pd.notna(oi_pcr)
+                else "PCR 暂无（港股不支持，或未配置 ALPHA_API）"
+            )
+            st.caption(f"📦 成交量: {vol_disp}　·　{pcr_disp}")
+
             st.markdown(
                 f"<div style='margin:6px 0;'>{bottom_fishing_badge(r.get('抄底评分', 0))}  {reversal_badge(r.get('反弹反转信号','无'), r.get('反弹反转置信度','低'))}</div>",
                 unsafe_allow_html=True,
             )
 
-            # 抄底依据
             reasons = r.get("抄底依据", [])
             if reasons and isinstance(reasons, list) and len(reasons) > 0:
                 st.caption("🎯 " + " / ".join(reasons))
 
-            # 反弹反转描述
             desc = r.get("反弹反转描述", "")
             if desc and desc != "暂无明确信号":
                 st.caption(f"📐 {desc}")
 
-            # POC
             if pd.notna(poc) and poc:
                 st.caption(f"💰 POC 资金集中区: **{poc:.2f}** (占比 {conc:.1f}%)")
 
-            # 杠杆预警
             lev_info = leverage_map.get(sym, {})
             lev_details = lev_info.get("details", {})
             max_risk = "低"
@@ -684,12 +696,10 @@ for i in range(0, len(display_df), 3):
                 </div>
             """, unsafe_allow_html=True)
 
-            # AI 核心观点
             core = r.get("核心观点", "")
             if core:
                 st.markdown(f'<div style="font-size:13px;color:#3c4043;margin-top:8px;line-height:1.5;">💡 {core}</div>', unsafe_allow_html=True)
 
-            # 短中期策略
             short_term = r.get("短期建议", "") or card.get("short_term", "")
             mid_term = r.get("中期建议", "") or card.get("mid_term", "")
             if short_term or mid_term:
@@ -700,7 +710,6 @@ for i in range(0, len(display_df), 3):
                     advice_html += f'<div class="advice-title" style="margin-top:6px;">中期策略 (1-4周)</div><div>{mid_term}</div>'
                 st.markdown(f'<div class="advice-box">{advice_html}</div>', unsafe_allow_html=True)
 
-            # 展开详情
             with st.expander("🔍 展开详情"):
                 sniper = r.get("sniper", {}) or card.get("sniper", {})
                 if sniper:
@@ -756,7 +765,6 @@ for i in range(0, len(display_df), 3):
                         title = it.get("title", "") if isinstance(it, dict) else str(it)
                         st.markdown(f'<div class="news-item">• {title}</div>', unsafe_allow_html=True)
 
-# ==================== 6. 个股周K线详细列表 ====================
 st.markdown('<div class="section-title">📊 个股周K线详细走势</div>', unsafe_allow_html=True)
 
 sort_option = st.selectbox("📊 排序方式", ["默认顺序", "涨幅高→低", "涨幅低→高", "PE高→低", "PE低→高", "抄底评分高→低"])
@@ -803,9 +811,8 @@ for _, row in df_list.iterrows():
     </div>
     """, unsafe_allow_html=True)
 
-    # 周K线图
     try:
-        hist = yf.download(sym, period=period_map[selected_period], interval="1wk", progress=False)
+        hist = fetch_price_history(sym, period=period_map[selected_period], interval="1wk")
         if not hist.empty and len(hist) > 3:
             fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.06, row_heights=[0.72, 0.28])
             fig.add_trace(go.Candlestick(
@@ -836,12 +843,19 @@ for _, row in df_list.iterrows():
     except Exception:
         st.caption(f"⚠️ {sym} 周K线图加载失败")
 
-# ==================== 7. AI 大盘总览报告 ====================
 if report_md:
     st.markdown('<div class="section-title">📝 AI 大盘总览</div>', unsafe_allow_html=True)
     st.markdown(f'<div style="background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:20px;color:#3c4043;font-size:14px;line-height:1.7;">{report_md}</div>', unsafe_allow_html=True)
 
-# ==================== 底部 ====================
+if weekly_report_md:
+    st.markdown('<div class="section-title">🗓️ 每周总结 & 下周展望</div>', unsafe_allow_html=True)
+    st.caption("每周五收盘后生成一次，综合基本面（宏观/PE）+ 消息面（新闻）+ 技术面（均线/RSI/MACD结构）")
+    weekly_html = weekly_report_md.replace("\n", "<br>")
+    st.markdown(
+        f'<div style="background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:20px;color:#3c4043;font-size:14px;line-height:1.8;">{weekly_html}</div>',
+        unsafe_allow_html=True,
+    )
+
 st.markdown(f"""
 <div style="text-align:center;color:#9e9e9e;font-size:11px;padding:30px 0 10px;border-top:1px solid #e8eaed;margin-top:30px;">
     ⚡ 数据每日自动更新 · Author: Winnie Wang · {datetime.now().strftime('%Y-%m-%d %H:%M')} · 仅供研究参考，不构成投资建议
