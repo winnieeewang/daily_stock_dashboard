@@ -1454,6 +1454,170 @@ def fetch_xueqiu_news(top_n: int = 12) -> List[Dict[str, Any]]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# 新闻启发式解读（确定性、无需联网/密钥）
+# 说明：基于标题关键词做多空情绪判断，非语义级深度分析，也不构成投顾建议。
+# ---------------------------------------------------------------------------
+def _parse_news_date(s: str) -> Optional[datetime]:
+    """尽力解析新闻日期，支持 RFC822(pubDate)、ISO、常见格式、相对时间。
+
+    返回 None 表示无法解析（调用方会将其归入「日期未知」）。
+    """
+    if not s:
+        return None
+    s = str(s).strip()
+    if not s:
+        return None
+    # 相对时间（如 "3小时前" / "2 days ago"）→ 近似为 now 之前
+    m = re.search(r"(\d+)\s*(分钟|小时|天|min|hour|day|小时前|分钟前)", s, re.IGNORECASE)
+    if m and ("前" in s or "ago" in s.lower()):
+        num = int(m.group(1))
+        unit = m.group(2).lower()
+        if "分钟" in unit or unit == "min":
+            return datetime.now() - timedelta(minutes=num)
+        if "小时" in unit or unit == "hour":
+            return datetime.now() - timedelta(hours=num)
+        return datetime.now() - timedelta(days=num)
+    # RFC822（Yahoo RSS: "Wed, 29 Jul 2026 12:00:00 GMT"）
+    try:
+        from email.utils import parsedate_to_datetime  # 局部导入，避免污染顶层
+
+        dt = parsedate_to_datetime(s)
+        if dt is not None:
+            if dt.tzinfo is not None:
+                dt = dt.replace(tzinfo=None)
+            return dt
+    except Exception:  # noqa: BLE001
+        pass
+    # 常见固定格式
+    for fmt in (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%Y/%m/%d",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M:%SZ",
+        "%Y-%m-%dT%H:%M:%S%z",
+    ):
+        try:
+            return datetime.strptime(s, fmt)
+        except ValueError:
+            continue
+    # ISO 8601（兜底）
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00")).replace(tzinfo=None)
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+# 看多 / 看空 关键词（中英文，覆盖标题常见表述）
+_BULL_KW = [
+    "涨", "升", "利好", "超预期", "上调", "买入", "增持", "增长", "突破", "盈利",
+    "创新高", "新高", "合作", "中标", "获批", "复苏", "反弹", "回暖", "强劲",
+    "beat", "upgrade", "buy", "rally", "surge", "record", "partnership",
+    "approval", "strong", "growth", "profit", "outperform", "看多", "扩容", "中标",
+]
+_BEAR_KW = [
+    "跌", "降", "利空", "不及预期", "下调", "减持", "卖出", "亏损", "裁员", "调查",
+    "诉讼", "风险", "监管", "破位", "暴雷", "下滑", "承压", "警告", "召回", "被查",
+    "miss", "downgrade", "sell", "lawsuit", "probe", "fine", "layoff", "loss",
+    "decline", "weak", "warning", "risk", "recall", "underperform", "看空", "违约", "亏损",
+]
+
+
+def interpret_news(
+    sym: str, news_list: List[Dict[str, Any]], within_days: int = 2
+) -> Dict[str, Any]:
+    """对个股近 N 日新闻做**启发式**解读（基于标题关键词，确定性、无需联网/密钥）。
+
+    注意：这是基于标题关键词的机器解读，非投顾建议，也不是深度语义分析。
+    返回结构：
+        {
+          "total": int, "near_total": int, "has_near": bool,
+          "tone": "看多" | "看空" | "中性" | "信息不足",
+          "score": float,            # 多空净分 [-1,1]
+          "positives": List[str],    # 偏多标题（Top3）
+          "negatives": List[str],    # 偏空标题（Top3）
+          "summary": str,            # 分析师口吻的一句话总结
+        }
+    """
+    result: Dict[str, Any] = {
+        "total": 0, "near_total": 0, "has_near": False,
+        "tone": "信息不足", "score": 0.0,
+        "positives": [], "negatives": [], "summary": "",
+    }
+    if not news_list:
+        result["summary"] = "近 2 日未抓取到有效新闻，无法生成解读。"
+        return result
+
+    now = datetime.now()
+    near_items: List[Dict[str, Any]] = []
+    for n in news_list:
+        d = _parse_news_date(n.get("date", ""))
+        if d is not None and 0 <= (now - d).days <= within_days:
+            near_items.append(n)
+    result["total"] = len(news_list)
+    result["near_total"] = len(near_items)
+    result["has_near"] = len(near_items) > 0
+
+    # 解读样本：优先近 N 日；若不足 2 条则放宽到全部抓取项（仍标注窗口情况）
+    sample = near_items if len(near_items) >= 2 else news_list
+
+    b_scores: List[int] = []
+    pos: List[str] = []
+    neg: List[str] = []
+    for n in sample:
+        title = (n.get("title") or "")
+        if not title:
+            continue
+        low = title.lower()
+        b = sum(1 for k in _BULL_KW if k.lower() in low)
+        r = sum(1 for k in _BEAR_KW if k.lower() in low)
+        b_scores.append(b - r)
+        if b > r:
+            pos.append(title)
+        elif r > b:
+            neg.append(title)
+
+    total_hits = len(b_scores)
+    if total_hits == 0:
+        result["tone"] = "中性"
+        result["summary"] = (
+            f"近 2 日共 {result['near_total']} 条窗口内新闻（合计抓取 {result['total']} 条），"
+            "标题未呈现明显多空倾向，市场对该标的短期消息面偏中性，建议结合量价与技术位综合判断。"
+        )
+        return result
+
+    net = sum(b_scores)
+    score = net / total_hits
+    result["score"] = round(score, 2)
+    result["tone"] = "看多" if score > 0.15 else ("看空" if score < -0.15 else "中性")
+    result["positives"] = pos[:3]
+    result["negatives"] = neg[:3]
+
+    # 焦点句
+    if pos and neg:
+        focus = f"多空交织：偏多线索聚焦「{pos[0][:18]}…」，偏空线索聚焦「{neg[0][:18]}…」。"
+    elif pos:
+        focus = f"消息面整体偏暖，正面催化集中于「{pos[0][:20]}…」。"
+    else:
+        focus = f"消息面承压，负面风险集中于「{neg[0][:20]}…」。"
+
+    window_txt = (
+        f"近 {within_days} 日窗口内抓取 {result['near_total']} 条"
+        if result["has_near"]
+        else f"近 {within_days} 日窗口内无明确日期新闻，已对全部 {result['total']} 条抓取项做解读"
+    )
+    tone_map = {"看多": "偏多", "看空": "偏空", "中性": "中性"}
+    result["summary"] = (
+        f"{window_txt}；标题情绪 {len(pos)} 条偏多 / {len(neg)} 条偏空，"
+        f"综合解读：**消息面{tone_map[result['tone']]}**。"
+        f"{focus}"
+    )
+    return result
+
+
 # 美股 / 港股 无 API 的 RSS 源（推荐，完全免费）
 US_HK_RSS_SOURCES: List[Tuple[str, str]] = [
     ("CNBC", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"),
@@ -2396,8 +2560,8 @@ def fetch_macro_history(period="10y", tickers=None):
 STOCK_NAMES = {
     "MU": "美光", "AAOI": "应用光电", "GOOGL": "谷歌", "MSFT": "微软", "AMZN": "亚马逊",
     "MRVL": "迈威尔", "LITE": "Lumentum", "SNDK": "闪迪", "NVDA": "英伟达", "ORCL": "甲骨文",
-    "SPCX": "标普500ETF", "SKHY": "高收益债ETF", "TSLA": "特斯拉",
-    "0700.HK": "腾讯控股", "0883.HK": "中国海洋石油", "3750.HK": "锂业ETF",
+    "SPCX": "标普500ETF", "SKHY": "SK海力士", "TSLA": "特斯拉",
+    "0700.HK": "腾讯控股", "0883.HK": "中国海洋石油", "3750.HK": "宁德时代",
     "07709.HK": "南方两倍做多海力士", "00981.HK": "中芯国际",
     "688809.SS": "豪威股份", "300408.SZ": "三环集团", "300679.SZ": "电连技术",
     "000426.SZ": "兴业银锡", "002624.SZ": "完美世界", "601872.SS": "招商轮船",

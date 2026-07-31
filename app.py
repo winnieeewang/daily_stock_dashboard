@@ -644,7 +644,7 @@ def page_dashboard():
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>🇺🇸 U.S. National Debt</h4>'
                 f'<div class="big" style="color:#dc2626;">${debt_val:.2f}T</div>'
-                f'<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">同比 +{debt.get("yoy_chg_pct", 0):.1f}% · {debt.get("asof","—")}</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">同比 +{safe_float(debt.get("yoy_chg_pct", 0), 0):.1f}% · {debt.get("asof","—")}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -666,7 +666,7 @@ def page_dashboard():
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>💳 FINRA Margin Debt</h4>'
                 f'<div class="big">${mb_val:.0f}B</div>'
-                f'<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">环比 {margin.get("mom_chg_pct", 0):+.1f}% · 同比 {margin.get("yoy_chg_pct", 0):+.1f}%</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">环比 {safe_float(margin.get("mom_chg_pct", 0), 0):+.1f}% · 同比 {safe_float(margin.get("yoy_chg_pct", 0), 0):+.1f}%</div>'
                 f'<div style="font-size:11px;margin-top:4px;">{margin.get("signal", "—")}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
@@ -1487,33 +1487,7 @@ def page_stock_deepdive():
                 unsafe_allow_html=True,
             )
 
-        # 新闻
-        st.markdown("#### 📰 标的新闻")
-        sym_news: List[Dict[str, Any]] = []
-        if isinstance(NEWS_DATA, dict):
-            sym_news = (NEWS_DATA.get("stocks", {}) or {}).get(sym, []) if isinstance(NEWS_DATA.get("stocks"), dict) else []
-        # 如果缓存里没有，尝试 Yahoo RSS / Stocktwits（免费，无需 key）
-        if not sym_news:
-            with st.spinner(f"实时拉取 {sym} 新闻…"):
-                if sym.endswith((".SS", ".SZ")):
-                    sym_news = (U.fetch_eastmoney_stock_news(sym)
-                                or U.fetch_10jqka_news(top_n=5)
-                                or U.fetch_xueqiu_news(top_n=5))
-                else:
-                    sym_news = U.fetch_yahoo_rss(ticker=sym)
-                    if not sym_news and not sym.endswith(".HK"):
-                        sym_news = U.fetch_stocktwits(sym, limit=8)
-        if sym_news:
-            for n in sym_news[:5]:
-                st.markdown(
-                    f"<div class='news-card'>"
-                    f"<a href='{n.get('link', '#')}' target='_blank' class='title'>{n.get('title','')}</a>"
-                    f"<div class='meta'>{n.get('source','')} · {n.get('date','')}</div>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-        else:
-            st.caption("暂无新闻（SerpApi/免费源 均未拉到）")
+        # 新闻列表与「近2日解读」已移至三栏下方的全宽区（见本函数末尾）
 
         # ===== v2.1 新增：Vol/OI PCR（来自 yfinance 期权）=====
         st.markdown("#### 📊 期权 Vol/OI PCR")
@@ -1555,16 +1529,81 @@ def page_stock_deepdive():
         else:
             st.caption("暂无期权数据（运行 `python stock_dashboard.py --extras` 刷新）")
 
-        # ===== v2.1 新增：下周走势预测 =====
-        st.markdown("#### 🔮 下周走势预测")
-        pred_block = (PREDICTIONS_DATA.get("stocks", {}) or {}).get(sym, {}) if isinstance(PREDICTIONS_DATA, dict) else {}
+        # 下周走势预测已移至三栏下方的全宽区（见本函数末尾）
+
+        # 市场上下文
+        st.markdown("#### 🌍 市场上下文")
+        sectors = card.get("sectors", [])
+        if sectors:
+            st.markdown("**板块**: " + " · ".join(sectors))
+        st.caption(f"VIX {safe_float(MACRO_DF.iloc[0].get('VIX'), 0) if MACRO_DF is not None else 0:.2f} · 10Y {safe_float(MACRO_DF.iloc[0].get('10年期美债收益率'), 0) if MACRO_DF is not None else 0:.2f}%")
+
+    # ============== 全宽区：新闻列表 + 近2日解读 + 下周走势（华尔街分析师排版） ==============
+    if sel:
+        st.divider()
+        st.markdown(
+            '<div class="section-title"><span class="accent">📰</span>'
+            '标的新闻 · 近2日解读 · 下周走势</div>',
+            unsafe_allow_html=True,
+        )
+
+        # 1) 拉取新闻（NEWS_DATA 缓存优先，否则实时免费源）
+        sym_news = []
+        if isinstance(NEWS_DATA, dict):
+            sym_news = (NEWS_DATA.get("stocks", {}) or {}).get(sel, []) if isinstance(NEWS_DATA.get("stocks"), dict) else []
+        if not sym_news:
+            with st.spinner(f"实时拉取 {sel} 新闻…"):
+                if sel.endswith((".SS", ".SZ")):
+                    sym_news = (U.fetch_eastmoney_stock_news(sel)
+                                or U.fetch_10jqka_news(top_n=5)
+                                or U.fetch_xueqiu_news(top_n=5))
+                else:
+                    sym_news = U.fetch_yahoo_rss(ticker=sel)
+                    if not sym_news and not sel.endswith(".HK"):
+                        sym_news = U.fetch_stocktwits(sel, limit=8)
+
+        # 2) 启发式解读（确定性，无需密钥）
+        interp = U.interpret_news(sel, sym_news, within_days=2)
+
+        n_l, n_r = st.columns([1, 1])
+        with n_l:
+            st.markdown("##### 🗞️ 新闻列表（近2日优先）")
+            if sym_news:
+                for n in sym_news[:6]:
+                    st.markdown(
+                        f"<div class='news-card'>"
+                        f"<a href='{n.get('link', '#')}' target='_blank' class='title'>{n.get('title','')}</a>"
+                        f"<div class='meta'>{n.get('source','')} · {n.get('date','')}</div>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.caption("暂无新闻（SerpApi/免费源 均未拉到）")
+        with n_r:
+            st.markdown("##### 🔍 近2日新闻解读（启发式）")
+            tone_color = {"看多": "#16a34a", "看空": "#dc2626", "中性": "#f59e0b", "信息不足": "#9ca3af"}.get(interp["tone"], "#9ca3af")
+            st.markdown(
+                f"<div class='ai-box' style='border-left-color:{tone_color};'>"
+                f"<div class='label' style='color:{tone_color};'>综合情绪：{interp['tone']}（净分 {interp['score']:+.2f}）</div>"
+                f"{interp['summary']}"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+            if interp["positives"]:
+                st.success("**偏多**: " + " · ".join(interp["positives"][:3]))
+            if interp["negatives"]:
+                st.error("**偏空**: " + " · ".join(interp["negatives"][:3]))
+            st.caption("⚠️ 以上为基于标题关键词的机器启发式解读，非投顾建议。")
+
+        # 3) 下周走势预测（全宽，正常排版，不再挤在右侧窄栏）
+        st.markdown("##### 🔮 下周走势预测")
+        pred_block = (PREDICTIONS_DATA.get("stocks", {}) or {}).get(sel, {}) if isinstance(PREDICTIONS_DATA, dict) else {}
         if pred_block and pred_block.get("prediction"):
             pred_md = pred_block["prediction"]
-            with st.expander(f"📅 {pred_block.get('generated_at','')} 生成的预测", expanded=True):
-                st.markdown(
-                    f'<div class="ai-box" style="border-left-color:#7c3aed;font-size:13px;line-height:1.7;">{pred_md.replace(chr(10), "<br>")}</div>',
-                    unsafe_allow_html=True,
-                )
+            st.markdown(
+                f'<div class="ai-box" style="border-left-color:#7c3aed;font-size:13px;line-height:1.7;">{pred_md.replace(chr(10), "<br>")}</div>',
+                unsafe_allow_html=True,
+            )
             tech = pred_block.get("technical", {})
             if tech:
                 st.caption(
@@ -1574,13 +1613,6 @@ def page_stock_deepdive():
                 )
         else:
             st.caption("暂无预测（运行 `python stock_dashboard.py --predictions` 生成）")
-
-        # 市场上下文
-        st.markdown("#### 🌍 市场上下文")
-        sectors = card.get("sectors", [])
-        if sectors:
-            st.markdown("**板块**: " + " · ".join(sectors))
-        st.caption(f"VIX {safe_float(MACRO_DF.iloc[0].get('VIX'), 0) if MACRO_DF is not None else 0:.2f} · 10Y {safe_float(MACRO_DF.iloc[0].get('10年期美债收益率'), 0) if MACRO_DF is not None else 0:.2f}%")
 
 
 # ---------------------------------------------------------------------------

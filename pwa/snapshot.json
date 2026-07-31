@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-07-31T12:22:32.719998+00:00",
+ "generated_at": "2026-07-31T13:19:32.664665+00:00",
  "indices": {
   "000001.SS": {
    "name": "上证指数",
@@ -39,9 +39,9 @@
  },
  "panic": {
   "VIX": {
-   "last": 17.07,
+   "last": 17.17,
    "prevClose": 17.09,
-   "chgPct": -0.12
+   "chgPct": 0.47
   },
   "VXN": {
    "last": 27.55,
@@ -63,7 +63,26 @@
    "hist_atrPct": 5.32,
    "hist_ret20": -4.86,
    "hist_ret60": -5.21,
-   "hist_n": 63
+   "hist_last_close": 874.66,
+   "hist_vol_ratio": 1.34,
+   "hist_vol_state": "放量",
+   "hist_n": 63,
+   "stop_loss": 772.29,
+   "ideal_buy": 851.39,
+   "add_buy": 828.13,
+   "bullish": [
+    "当日上涨 18.36%"
+   ],
+   "bearish": [
+    "现价跌破20日线(919.315)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -4.9%"
+   ],
+   "tech": 35,
+   "val": 50,
+   "mom": 100,
+   "comp": 55,
+   "bias": "震荡"
   },
   {
    "symbol": "AAOI",
@@ -78,7 +97,27 @@
    "hist_atrPct": 7.59,
    "hist_ret20": -16.64,
    "hist_ret60": -40.38,
-   "hist_n": 63
+   "hist_last_close": 90.11,
+   "hist_vol_ratio": 1.23,
+   "hist_vol_state": "放量",
+   "hist_n": 63,
+   "stop_loss": 75.06,
+   "ideal_buy": 86.69,
+   "add_buy": 83.27,
+   "bullish": [
+    "当日上涨 17.76%"
+   ],
+   "bearish": [
+    "现价跌破20日线(108.096)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -16.6%",
+    "ATR 7.6% 波动放大，需收紧风控"
+   ],
+   "tech": 17,
+   "val": 50,
+   "mom": 100,
+   "comp": 46,
+   "bias": "震荡"
   },
   {
    "symbol": "GOOGL",
@@ -93,7 +132,27 @@
    "hist_atrPct": 1.82,
    "hist_ret20": -4.19,
    "hist_ret60": -8.7,
-   "hist_n": 63
+   "hist_last_close": 333.66,
+   "hist_vol_ratio": 1.04,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 310.3,
+   "ideal_buy": 330.62,
+   "add_buy": 327.59,
+   "bullish": [
+    "ATR 1.8% 波动温和"
+   ],
+   "bearish": [
+    "现价跌破20日线(348.243)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "当日下跌 0.91%",
+    "近20日收益 -4.2%"
+   ],
+   "tech": 36,
+   "val": 50,
+   "mom": 47,
+   "comp": 42,
+   "bias": "震荡"
   },
   {
    "symbol": "MSFT",
@@ -108,7 +167,27 @@
    "hist_atrPct": 2.04,
    "hist_ret20": 14.74,
    "hist_ret60": 12.47,
-   "hist_n": 63
+   "hist_last_close": 451.1,
+   "hist_vol_ratio": 3.41,
+   "hist_vol_state": "放量",
+   "hist_n": 63,
+   "stop_loss": 419.52,
+   "ideal_buy": 446.5,
+   "add_buy": 441.9,
+   "bullish": [
+    "现价站上20日线(393.154)，短期趋势向上",
+    "当日上涨 15.51%",
+    "近20日收益 +14.7%",
+    "ATR 2.0% 波动温和"
+   ],
+   "bearish": [
+    "20日线 < 60日线，空头排列"
+   ],
+   "tech": 82,
+   "val": 50,
+   "mom": 97,
+   "comp": 78,
+   "bias": "看多"
   },
   {
    "symbol": "AMZN",
@@ -123,7 +202,27 @@
    "hist_atrPct": 1.32,
    "hist_ret20": -2.85,
    "hist_ret60": -5.88,
-   "hist_n": 63
+   "hist_last_close": 235.5,
+   "hist_vol_ratio": 2.58,
+   "hist_vol_state": "放量",
+   "hist_n": 63,
+   "stop_loss": 219.01,
+   "ideal_buy": 233.95,
+   "add_buy": 232.39,
+   "bullish": [
+    "当日上涨 3.90%",
+    "ATR 1.3% 波动温和"
+   ],
+   "bearish": [
+    "现价跌破20日线(242.412)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -2.9%"
+   ],
+   "tech": 38,
+   "val": 50,
+   "mom": 62,
+   "comp": 47,
+   "bias": "震荡"
   },
   {
    "symbol": "MRVL",
@@ -138,7 +237,26 @@
    "hist_atrPct": 5.1,
    "hist_ret20": -12.44,
    "hist_ret60": -19.57,
-   "hist_n": 63
+   "hist_last_close": 183.3,
+   "hist_vol_ratio": 1.16,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 162.73,
+   "ideal_buy": 178.63,
+   "add_buy": 173.95,
+   "bullish": [
+    "当日上涨 12.18%"
+   ],
+   "bearish": [
+    "现价跌破20日线(209.352)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -12.4%"
+   ],
+   "tech": 23,
+   "val": 50,
+   "mom": 87,
+   "comp": 46,
+   "bias": "震荡"
   },
   {
    "symbol": "LITE",
@@ -153,7 +271,26 @@
    "hist_atrPct": 5.89,
    "hist_ret20": -7.05,
    "hist_ret60": -18.68,
-   "hist_n": 63
+   "hist_last_close": 693.24,
+   "hist_vol_ratio": 1.31,
+   "hist_vol_state": "放量",
+   "hist_n": 63,
+   "stop_loss": 603.41,
+   "ideal_buy": 672.82,
+   "add_buy": 652.41,
+   "bullish": [
+    "当日上涨 15.09%"
+   ],
+   "bearish": [
+    "现价跌破20日线(745.814)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -7.0%"
+   ],
+   "tech": 31,
+   "val": 50,
+   "mom": 95,
+   "comp": 52,
+   "bias": "震荡"
   },
   {
    "symbol": "SNDK",
@@ -168,7 +305,27 @@
    "hist_atrPct": 8.44,
    "hist_ret20": -16.66,
    "hist_ret60": -23.14,
-   "hist_n": 63
+   "hist_last_close": 1279.96,
+   "hist_vol_ratio": 1.57,
+   "hist_vol_state": "放量",
+   "hist_n": 63,
+   "stop_loss": 1042.3,
+   "ideal_buy": 1225.95,
+   "add_buy": 1171.93,
+   "bullish": [
+    "当日上涨 25.99%"
+   ],
+   "bearish": [
+    "现价跌破20日线(1535.894)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -16.7%",
+    "ATR 8.4% 波动放大，需收紧风控"
+   ],
+   "tech": 17,
+   "val": 50,
+   "mom": 100,
+   "comp": 46,
+   "bias": "震荡"
   },
   {
    "symbol": "NVDA",
@@ -183,7 +340,27 @@
    "hist_atrPct": 2.09,
    "hist_ret20": -3.92,
    "hist_ret60": -6.45,
-   "hist_n": 63
+   "hist_last_close": 195.04,
+   "hist_vol_ratio": 0.99,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 181.39,
+   "ideal_buy": 193.0,
+   "add_buy": 190.96,
+   "bullish": [
+    "当日上涨 2.65%",
+    "ATR 2.1% 波动温和"
+   ],
+   "bearish": [
+    "现价跌破20日线(203.0)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -3.9%"
+   ],
+   "tech": 36,
+   "val": 50,
+   "mom": 58,
+   "comp": 45,
+   "bias": "震荡"
   },
   {
    "symbol": "ORCL",
@@ -198,7 +375,27 @@
    "hist_atrPct": 3.26,
    "hist_ret20": -1.42,
    "hist_ret60": -25.06,
-   "hist_n": 63
+   "hist_last_close": 127.56,
+   "hist_vol_ratio": 1.04,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 118.41,
+   "ideal_buy": 125.48,
+   "add_buy": 123.4,
+   "bullish": [
+    "当日上涨 8.34%",
+    "ATR 3.3% 波动温和"
+   ],
+   "bearish": [
+    "现价跌破20日线(129.402)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -1.4%"
+   ],
+   "tech": 40,
+   "val": 50,
+   "mom": 75,
+   "comp": 51,
+   "bias": "震荡"
   },
   {
    "symbol": "SPCX",
@@ -213,12 +410,31 @@
    "hist_atrPct": 3.0,
    "hist_ret20": -14.67,
    "hist_ret60": null,
-   "hist_n": 33
+   "hist_last_close": 112.2,
+   "hist_vol_ratio": 0.75,
+   "hist_vol_state": "缩量",
+   "hist_n": 33,
+   "stop_loss": 104.35,
+   "ideal_buy": 110.52,
+   "add_buy": 108.83,
+   "bullish": [
+    "ATR 3.0% 波动温和"
+   ],
+   "bearish": [
+    "现价跌破20日线(131.493)，短期承压",
+    "当日下跌 0.31%",
+    "近20日收益 -14.7%"
+   ],
+   "tech": 20,
+   "val": 50,
+   "mom": 49,
+   "comp": 35,
+   "bias": "看空"
   },
   {
    "symbol": "SKHY",
    "yf": "SKHY",
-   "name": "高收益债ETF",
+   "name": "SK海力士",
    "market": "美股",
    "last": 149.0,
    "chgPct": 17.52,
@@ -228,7 +444,26 @@
    "hist_atrPct": 9.13,
    "hist_ret20": -5.24,
    "hist_ret60": null,
-   "hist_n": 15
+   "hist_last_close": 149.0,
+   "hist_vol_ratio": 0.93,
+   "hist_vol_state": "平量",
+   "hist_n": 15,
+   "stop_loss": 119.07,
+   "ideal_buy": 142.2,
+   "add_buy": 135.4,
+   "bullish": [
+    "当日上涨 17.52%"
+   ],
+   "bearish": [
+    "现价跌破20日线(157.233)，短期承压",
+    "近20日收益 -5.2%",
+    "ATR 9.1% 波动放大，需收紧风控"
+   ],
+   "tech": 34,
+   "val": 50,
+   "mom": 100,
+   "comp": 55,
+   "bias": "震荡"
   },
   {
    "symbol": "TSLA",
@@ -243,7 +478,27 @@
    "hist_atrPct": 3.15,
    "hist_ret20": -16.08,
    "hist_ret60": -22.33,
-   "hist_n": 63
+   "hist_last_close": 308.85,
+   "hist_vol_ratio": 0.88,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 287.23,
+   "ideal_buy": 303.99,
+   "add_buy": 299.12,
+   "bullish": [
+    "当日上涨 3.53%",
+    "ATR 3.1% 波动温和"
+   ],
+   "bearish": [
+    "现价跌破20日线(368.043)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -16.1%"
+   ],
+   "tech": 18,
+   "val": 50,
+   "mom": 61,
+   "comp": 37,
+   "bias": "看空"
   },
   {
    "symbol": "0700.HK",
@@ -258,7 +513,25 @@
    "hist_atrPct": 2.5,
    "hist_ret20": 2.96,
    "hist_ret60": 5.17,
-   "hist_n": 63
+   "hist_last_close": 475.2,
+   "hist_vol_ratio": 0.9,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 441.94,
+   "ideal_buy": 469.26,
+   "add_buy": 463.32,
+   "bullish": [
+    "现价站上20日线(461.55)，短期趋势向上",
+    "20日线 > 60日线，多头排列",
+    "当日上涨 0.72%",
+    "近20日收益 +3.0%"
+   ],
+   "bearish": [],
+   "tech": 74,
+   "val": 50,
+   "mom": 52,
+   "comp": 63,
+   "bias": "看多"
   },
   {
    "symbol": "0883.HK",
@@ -273,12 +546,32 @@
    "hist_atrPct": 1.59,
    "hist_ret20": 4.0,
    "hist_ret60": -2.27,
-   "hist_n": 63
+   "hist_last_close": 23.82,
+   "hist_vol_ratio": 0.66,
+   "hist_vol_state": "缩量",
+   "hist_n": 63,
+   "stop_loss": 22.15,
+   "ideal_buy": 23.63,
+   "add_buy": 23.44,
+   "bullish": [
+    "现价站上20日线(22.903)，短期趋势向上",
+    "近20日收益 +4.0%",
+    "ATR 1.6% 波动温和"
+   ],
+   "bearish": [
+    "20日线 < 60日线，空头排列",
+    "当日下跌 1.49%"
+   ],
+   "tech": 66,
+   "val": 50,
+   "mom": 46,
+   "comp": 57,
+   "bias": "震荡"
   },
   {
    "symbol": "3750.HK",
    "yf": "3750.HK",
-   "name": "锂业ETF",
+   "name": "宁德时代",
    "market": "港股",
    "last": 622.5,
    "chgPct": 0.24,
@@ -288,7 +581,27 @@
    "hist_atrPct": 2.23,
    "hist_ret20": 0.12,
    "hist_ret60": -7.11,
-   "hist_n": 63
+   "hist_last_close": 622.5,
+   "hist_vol_ratio": 0.58,
+   "hist_vol_state": "缩量",
+   "hist_n": 63,
+   "stop_loss": 578.92,
+   "ideal_buy": 615.56,
+   "add_buy": 608.62,
+   "bullish": [
+    "现价站上20日线(621.725)，短期趋势向上",
+    "当日上涨 0.24%",
+    "近20日收益 +0.1%",
+    "ATR 2.2% 波动温和"
+   ],
+   "bearish": [
+    "20日线 < 60日线，空头排列"
+   ],
+   "tech": 60,
+   "val": 50,
+   "mom": 51,
+   "comp": 55,
+   "bias": "震荡"
   },
   {
    "symbol": "07709.HK",
@@ -296,8 +609,22 @@
    "name": "南方两倍做多海力士",
    "market": "港股",
    "last": 42.52,
-   "chgPct": 67.67,
-   "pe": null
+   "chgPct": 30.0,
+   "pe": null,
+   "stop_loss": null,
+   "ideal_buy": 41.88,
+   "add_buy": 41.24,
+   "bullish": [
+    "当日上涨 30.00%"
+   ],
+   "bearish": [
+    "近20日收益 0.0%"
+   ],
+   "tech": 50,
+   "val": 50,
+   "mom": 100,
+   "comp": 62,
+   "bias": "看多"
   },
   {
    "symbol": "00981.HK",
@@ -306,7 +633,21 @@
    "market": "港股",
    "last": 63.25,
    "chgPct": 2.02,
-   "pe": null
+   "pe": null,
+   "stop_loss": null,
+   "ideal_buy": 62.3,
+   "add_buy": 61.35,
+   "bullish": [
+    "当日上涨 2.02%"
+   ],
+   "bearish": [
+    "近20日收益 0.0%"
+   ],
+   "tech": 50,
+   "val": 50,
+   "mom": 56,
+   "comp": 52,
+   "bias": "震荡"
   },
   {
    "symbol": "688809.SS",
@@ -321,7 +662,27 @@
    "hist_atrPct": 6.67,
    "hist_ret20": -7.37,
    "hist_ret60": -12.83,
-   "hist_n": 63
+   "hist_last_close": 441.03,
+   "hist_vol_ratio": 0.92,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 376.31,
+   "ideal_buy": 426.32,
+   "add_buy": 411.61,
+   "bullish": [
+    "当日上涨 6.79%"
+   ],
+   "bearish": [
+    "现价跌破20日线(476.099)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -7.4%",
+    "ATR 6.7% 波动放大，需收紧风控"
+   ],
+   "tech": 31,
+   "val": 50,
+   "mom": 70,
+   "comp": 46,
+   "bias": "震荡"
   },
   {
    "symbol": "300408.SZ",
@@ -336,7 +697,27 @@
    "hist_atrPct": 6.7,
    "hist_ret20": -1.75,
    "hist_ret60": -9.64,
-   "hist_n": 63
+   "hist_last_close": 111.68,
+   "hist_vol_ratio": 1.36,
+   "hist_vol_state": "放量",
+   "hist_n": 63,
+   "stop_loss": 95.22,
+   "ideal_buy": 107.94,
+   "add_buy": 104.2,
+   "bullish": [
+    "当日上涨 6.06%"
+   ],
+   "bearish": [
+    "现价跌破20日线(113.668)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -1.8%",
+    "ATR 6.7% 波动放大，需收紧风控"
+   ],
+   "tech": 39,
+   "val": 50,
+   "mom": 68,
+   "comp": 49,
+   "bias": "震荡"
   },
   {
    "symbol": "300679.SZ",
@@ -351,7 +732,26 @@
    "hist_atrPct": 5.73,
    "hist_ret20": -21.35,
    "hist_ret60": -32.9,
-   "hist_n": 63
+   "hist_last_close": 36.52,
+   "hist_vol_ratio": 0.88,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 31.92,
+   "ideal_buy": 35.47,
+   "add_buy": 34.43,
+   "bullish": [
+    "当日上涨 3.90%"
+   ],
+   "bearish": [
+    "现价跌破20日线(46.432)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -21.4%"
+   ],
+   "tech": 10,
+   "val": 50,
+   "mom": 62,
+   "comp": 33,
+   "bias": "看空"
   },
   {
    "symbol": "000426.SZ",
@@ -366,7 +766,26 @@
    "hist_atrPct": 4.54,
    "hist_ret20": 0.51,
    "hist_ret60": -14.74,
-   "hist_n": 63
+   "hist_last_close": 31.8,
+   "hist_vol_ratio": 1.09,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 28.62,
+   "ideal_buy": 31.08,
+   "add_buy": 30.36,
+   "bullish": [
+    "现价站上20日线(31.639)，短期趋势向上",
+    "当日上涨 0.95%",
+    "近20日收益 +0.5%"
+   ],
+   "bearish": [
+    "20日线 < 60日线，空头排列"
+   ],
+   "tech": 61,
+   "val": 50,
+   "mom": 53,
+   "comp": 56,
+   "bias": "震荡"
   },
   {
    "symbol": "002624.SZ",
@@ -381,7 +800,27 @@
    "hist_atrPct": 3.15,
    "hist_ret20": 2.44,
    "hist_ret60": -14.34,
-   "hist_n": 63
+   "hist_last_close": 10.97,
+   "hist_vol_ratio": 1.29,
+   "hist_vol_state": "放量",
+   "hist_n": 63,
+   "stop_loss": 10.2,
+   "ideal_buy": 10.8,
+   "add_buy": 10.62,
+   "bullish": [
+    "现价站上20日线(10.709)，短期趋势向上",
+    "当日上涨 6.40%",
+    "近20日收益 +2.4%",
+    "ATR 3.1% 波动温和"
+   ],
+   "bearish": [
+    "20日线 < 60日线，空头排列"
+   ],
+   "tech": 64,
+   "val": 50,
+   "mom": 69,
+   "comp": 62,
+   "bias": "看多"
   },
   {
    "symbol": "601872.SS",
@@ -396,7 +835,27 @@
    "hist_atrPct": 3.06,
    "hist_ret20": 7.57,
    "hist_ret60": 0.99,
-   "hist_n": 63
+   "hist_last_close": 16.79,
+   "hist_vol_ratio": 0.79,
+   "hist_vol_state": "缩量",
+   "hist_n": 63,
+   "stop_loss": 15.61,
+   "ideal_buy": 16.53,
+   "add_buy": 16.28,
+   "bullish": [
+    "现价站上20日线(15.609)，短期趋势向上",
+    "当日上涨 1.94%",
+    "近20日收益 +7.6%",
+    "ATR 3.1% 波动温和"
+   ],
+   "bearish": [
+    "20日线 < 60日线，空头排列"
+   ],
+   "tech": 71,
+   "val": 50,
+   "mom": 56,
+   "comp": 62,
+   "bias": "看多"
   },
   {
    "symbol": "601975.SS",
@@ -411,7 +870,27 @@
    "hist_atrPct": 2.29,
    "hist_ret20": 3.84,
    "hist_ret60": -14.31,
-   "hist_n": 63
+   "hist_last_close": 3.64,
+   "hist_vol_ratio": 0.74,
+   "hist_vol_state": "缩量",
+   "hist_n": 63,
+   "stop_loss": 3.39,
+   "ideal_buy": 3.6,
+   "add_buy": 3.56,
+   "bullish": [
+    "现价站上20日线(3.506)，短期趋势向上",
+    "当日上涨 0.55%",
+    "近20日收益 +3.8%",
+    "ATR 2.3% 波动温和"
+   ],
+   "bearish": [
+    "20日线 < 60日线，空头排列"
+   ],
+   "tech": 66,
+   "val": 50,
+   "mom": 52,
+   "comp": 58,
+   "bias": "震荡"
   },
   {
    "symbol": "002258.SZ",
@@ -426,7 +905,27 @@
    "hist_atrPct": 3.27,
    "hist_ret20": 14.4,
    "hist_ret60": 20.24,
-   "hist_n": 63
+   "hist_last_close": 15.9,
+   "hist_vol_ratio": 3.23,
+   "hist_vol_state": "放量",
+   "hist_n": 63,
+   "stop_loss": 14.76,
+   "ideal_buy": 15.64,
+   "add_buy": 15.38,
+   "bullish": [
+    "现价站上20日线(13.899)，短期趋势向上",
+    "20日线 > 60日线，多头排列",
+    "近20日收益 +14.4%",
+    "ATR 3.3% 波动温和"
+   ],
+   "bearish": [
+    "当日下跌 1.73%"
+   ],
+   "tech": 92,
+   "val": 50,
+   "mom": 45,
+   "comp": 70,
+   "bias": "看多"
   },
   {
    "symbol": "001331.SZ",
@@ -441,7 +940,26 @@
    "hist_atrPct": 5.29,
    "hist_ret20": -21.6,
    "hist_ret60": -18.36,
-   "hist_n": 63
+   "hist_last_close": 38.92,
+   "hist_vol_ratio": 0.96,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 34.39,
+   "ideal_buy": 37.89,
+   "add_buy": 36.86,
+   "bullish": [
+    "20日线 > 60日线，多头排列",
+    "当日上涨 4.91%"
+   ],
+   "bearish": [
+    "现价跌破20日线(49.646)，短期承压",
+    "近20日收益 -21.6%"
+   ],
+   "tech": 20,
+   "val": 50,
+   "mom": 65,
+   "comp": 38,
+   "bias": "看空"
   },
   {
    "symbol": "600150.SS",
@@ -456,7 +974,27 @@
    "hist_atrPct": 1.94,
    "hist_ret20": 2.11,
    "hist_ret60": -2.66,
-   "hist_n": 63
+   "hist_last_close": 35.18,
+   "hist_vol_ratio": 0.81,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 32.72,
+   "ideal_buy": 34.84,
+   "add_buy": 34.5,
+   "bullish": [
+    "现价站上20日线(34.453)，短期趋势向上",
+    "当日上涨 1.59%",
+    "近20日收益 +2.1%",
+    "ATR 1.9% 波动温和"
+   ],
+   "bearish": [
+    "20日线 < 60日线，空头排列"
+   ],
+   "tech": 63,
+   "val": 50,
+   "mom": 55,
+   "comp": 58,
+   "bias": "震荡"
   },
   {
    "symbol": "00293.HK",
@@ -465,7 +1003,21 @@
    "market": "港股",
    "last": 14.6,
    "chgPct": 0.76,
-   "pe": null
+   "pe": null,
+   "stop_loss": null,
+   "ideal_buy": 14.38,
+   "add_buy": 14.16,
+   "bullish": [
+    "当日上涨 0.76%"
+   ],
+   "bearish": [
+    "近20日收益 0.0%"
+   ],
+   "tech": 50,
+   "val": 50,
+   "mom": 52,
+   "comp": 51,
+   "bias": "震荡"
   },
   {
    "symbol": "03690.HK",
@@ -480,7 +1032,27 @@
    "hist_atrPct": 2.52,
    "hist_ret20": 9.53,
    "hist_ret60": 15.91,
-   "hist_n": 63
+   "hist_last_close": 92.5,
+   "hist_vol_ratio": 0.83,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 86.02,
+   "ideal_buy": 91.33,
+   "add_buy": 90.17,
+   "bullish": [
+    "现价站上20日线(84.45)，短期趋势向上",
+    "20日线 > 60日线，多头排列",
+    "近20日收益 +9.5%",
+    "ATR 2.5% 波动温和"
+   ],
+   "bearish": [
+    "当日下跌 0.16%"
+   ],
+   "tech": 84,
+   "val": 50,
+   "mom": 50,
+   "comp": 67,
+   "bias": "看多"
   },
   {
    "symbol": "01138.HK",
@@ -489,7 +1061,20 @@
    "market": "港股",
    "last": 13.91,
    "chgPct": -0.43,
-   "pe": null
+   "pe": null,
+   "stop_loss": null,
+   "ideal_buy": 13.7,
+   "add_buy": 13.49,
+   "bullish": [],
+   "bearish": [
+    "当日下跌 0.43%",
+    "近20日收益 0.0%"
+   ],
+   "tech": 50,
+   "val": 50,
+   "mom": 49,
+   "comp": 50,
+   "bias": "震荡"
   },
   {
    "symbol": "03968.HK",
@@ -498,7 +1083,20 @@
    "market": "港股",
    "last": 50.9,
    "chgPct": -0.59,
-   "pe": null
+   "pe": null,
+   "stop_loss": null,
+   "ideal_buy": 50.14,
+   "add_buy": 49.37,
+   "bullish": [],
+   "bearish": [
+    "当日下跌 0.59%",
+    "近20日收益 0.0%"
+   ],
+   "tech": 50,
+   "val": 50,
+   "mom": 48,
+   "comp": 50,
+   "bias": "震荡"
   },
   {
    "symbol": "EUV",
@@ -513,7 +1111,25 @@
    "hist_atrPct": 4.24,
    "hist_ret20": -8.63,
    "hist_ret60": null,
-   "hist_n": 59
+   "hist_last_close": 22.88,
+   "hist_vol_ratio": 0.86,
+   "hist_vol_state": "平量",
+   "hist_n": 59,
+   "stop_loss": 20.75,
+   "ideal_buy": 22.39,
+   "add_buy": 21.91,
+   "bullish": [
+    "当日上涨 10.64%"
+   ],
+   "bearish": [
+    "现价跌破20日线(25.041)，短期承压",
+    "近20日收益 -8.6%"
+   ],
+   "tech": 29,
+   "val": 50,
+   "mom": 82,
+   "comp": 48,
+   "bias": "震荡"
   },
   {
    "symbol": "RKLB",
@@ -528,7 +1144,26 @@
    "hist_atrPct": 4.51,
    "hist_ret20": -12.78,
    "hist_ret60": -35.27,
-   "hist_n": 63
+   "hist_last_close": 64.68,
+   "hist_vol_ratio": 0.91,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 58.26,
+   "ideal_buy": 63.22,
+   "add_buy": 61.76,
+   "bullish": [
+    "当日上涨 10.38%"
+   ],
+   "bearish": [
+    "现价跌破20日线(74.161)，短期承压",
+    "20日线 < 60日线，空头排列",
+    "近20日收益 -12.8%"
+   ],
+   "tech": 23,
+   "val": 50,
+   "mom": 81,
+   "comp": 44,
+   "bias": "震荡"
   },
   {
    "symbol": "GEV",
@@ -543,7 +1178,27 @@
    "hist_atrPct": 3.19,
    "hist_ret20": -5.8,
    "hist_ret60": -4.85,
-   "hist_n": 63
+   "hist_last_close": 981.98,
+   "hist_vol_ratio": 1.05,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 913.06,
+   "ideal_buy": 966.32,
+   "add_buy": 950.65,
+   "bullish": [
+    "20日线 > 60日线，多头排列",
+    "当日上涨 9.07%",
+    "ATR 3.2% 波动温和"
+   ],
+   "bearish": [
+    "现价跌破20日线(1042.458)，短期承压",
+    "近20日收益 -5.8%"
+   ],
+   "tech": 43,
+   "val": 50,
+   "mom": 77,
+   "comp": 53,
+   "bias": "震荡"
   },
   {
    "symbol": "FUTU",
@@ -558,7 +1213,27 @@
    "hist_atrPct": 2.54,
    "hist_ret20": 4.44,
    "hist_ret60": -3.66,
-   "hist_n": 63
+   "hist_last_close": 103.42,
+   "hist_vol_ratio": 0.61,
+   "hist_vol_state": "缩量",
+   "hist_n": 63,
+   "stop_loss": 96.18,
+   "ideal_buy": 102.11,
+   "add_buy": 100.79,
+   "bullish": [
+    "现价站上20日线(99.022)，短期趋势向上",
+    "当日上涨 1.51%",
+    "近20日收益 +4.4%",
+    "ATR 2.5% 波动温和"
+   ],
+   "bearish": [
+    "20日线 < 60日线，空头排列"
+   ],
+   "tech": 67,
+   "val": 50,
+   "mom": 55,
+   "comp": 59,
+   "bias": "震荡"
   },
   {
    "symbol": "UNH",
@@ -573,7 +1248,27 @@
    "hist_atrPct": 1.36,
    "hist_ret20": -0.8,
    "hist_ret60": 3.94,
-   "hist_n": 63
+   "hist_last_close": 421.47,
+   "hist_vol_ratio": 0.64,
+   "hist_vol_state": "缩量",
+   "hist_n": 63,
+   "stop_loss": 391.97,
+   "ideal_buy": 418.6,
+   "add_buy": 415.74,
+   "bullish": [
+    "20日线 > 60日线，多头排列",
+    "当日上涨 0.21%",
+    "ATR 1.4% 波动温和"
+   ],
+   "bearish": [
+    "现价跌破20日线(424.884)，短期承压",
+    "近20日收益 -0.8%"
+   ],
+   "tech": 51,
+   "val": 50,
+   "mom": 51,
+   "comp": 51,
+   "bias": "震荡"
   },
   {
    "symbol": "NVO",
@@ -588,7 +1283,25 @@
    "hist_atrPct": 1.42,
    "hist_ret20": 3.71,
    "hist_ret60": 10.72,
-   "hist_n": 63
+   "hist_last_close": 51.61,
+   "hist_vol_ratio": 1.19,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 48.0,
+   "ideal_buy": 51.24,
+   "add_buy": 50.88,
+   "bullish": [
+    "现价站上20日线(49.762)，短期趋势向上",
+    "20日线 > 60日线，多头排列",
+    "当日上涨 0.06%",
+    "近20日收益 +3.7%"
+   ],
+   "bearish": [],
+   "tech": 76,
+   "val": 50,
+   "mom": 50,
+   "comp": 63,
+   "bias": "看多"
   },
   {
    "symbol": "NFLX",
@@ -603,7 +1316,27 @@
    "hist_atrPct": 1.59,
    "hist_ret20": 0.79,
    "hist_ret60": -7.56,
-   "hist_n": 63
+   "hist_last_close": 73.17,
+   "hist_vol_ratio": 1.09,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 68.05,
+   "ideal_buy": 72.59,
+   "add_buy": 72.01,
+   "bullish": [
+    "现价站上20日线(72.599)，短期趋势向上",
+    "近20日收益 +0.8%",
+    "ATR 1.6% 波动温和"
+   ],
+   "bearish": [
+    "20日线 < 60日线，空头排列",
+    "当日下跌 0.62%"
+   ],
+   "tech": 61,
+   "val": 50,
+   "mom": 48,
+   "comp": 55,
+   "bias": "震荡"
   },
   {
    "symbol": "JNJ",
@@ -618,7 +1351,27 @@
    "hist_atrPct": 1.58,
    "hist_ret20": -0.89,
    "hist_ret60": 5.93,
-   "hist_n": 63
+   "hist_last_close": 255.82,
+   "hist_vol_ratio": 1.02,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 237.91,
+   "ideal_buy": 253.8,
+   "add_buy": 251.78,
+   "bullish": [
+    "20日线 > 60日线，多头排列",
+    "ATR 1.6% 波动温和"
+   ],
+   "bearish": [
+    "现价跌破20日线(258.125)，短期承压",
+    "当日下跌 3.66%",
+    "近20日收益 -0.9%"
+   ],
+   "tech": 51,
+   "val": 50,
+   "mom": 39,
+   "comp": 48,
+   "bias": "震荡"
   },
   {
    "symbol": "INTU",
@@ -633,19 +1386,39 @@
    "hist_atrPct": 2.75,
    "hist_ret20": 8.82,
    "hist_ret60": 1.77,
-   "hist_n": 63
+   "hist_last_close": 315.5,
+   "hist_vol_ratio": 1.07,
+   "hist_vol_state": "平量",
+   "hist_n": 63,
+   "stop_loss": 293.41,
+   "ideal_buy": 311.16,
+   "add_buy": 306.82,
+   "bullish": [
+    "现价站上20日线(289.924)，短期趋势向上",
+    "近20日收益 +8.8%",
+    "ATR 2.8% 波动温和"
+   ],
+   "bearish": [
+    "20日线 < 60日线，空头排列",
+    "当日下跌 5.29%"
+   ],
+   "tech": 73,
+   "val": 50,
+   "mom": 34,
+   "comp": 58,
+   "bias": "震荡"
   }
  ],
  "risk": {
   "10Y": {
-   "last": 4.663,
-   "prevClose": 4.622,
-   "chgPct": 0.89
+   "last": 4.698,
+   "prevClose": 4.663,
+   "chgPct": 0.75
   },
   "DXY": {
-   "last": 100.36,
+   "last": 100.341,
    "prevClose": 99.864,
-   "chgPct": 0.5
+   "chgPct": 0.48
   }
  },
  "vix_history": {
@@ -1172,7 +1945,7 @@
    "2026-07-13": 18.77,
    "2026-07-20": 18.58,
    "2026-07-27": 17.09,
-   "2026-07-31": 17.06
+   "2026-07-31": 17.19
   },
   "VXN": {
    "2016-08-01": 13.77,
@@ -1699,5 +2472,11 @@
    "2026-07-27": 27.55,
    "2026-07-30": 27.55
   }
+ },
+ "sentiment": {
+  "score": 60,
+  "label": "中性偏多",
+  "note": "VIX 15-20 市场平稳",
+  "vix": 17.17
  }
 }

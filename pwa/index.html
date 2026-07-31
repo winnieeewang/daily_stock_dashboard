@@ -37,9 +37,8 @@ header.top .sub{font-size:11px;color:var(--text-faint)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
   padding:13px 14px;box-shadow:var(--shadow)}
 .grid{display:grid;gap:10px}
-.grid.c2{grid-template-columns:1fr 1fr}
-.grid.c3{grid-template-columns:1fr 1fr 1fr}
 .grid.c5{grid-template-columns:repeat(5,1fr)}
+.grid.c2{grid-template-columns:1fr 1fr}
 @media(max-width:420px){.grid.c5{grid-template-columns:repeat(3,1fr)}}
 .mini{text-align:center;padding:9px 4px}
 .mini .nm{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -56,10 +55,6 @@ header.top .sub{font-size:11px;color:var(--text-faint)}
 .kpi{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0}
 .kpi .k{color:var(--text-dim);font-size:12px}
 .kpi .v{font-weight:700;font-size:14px}
-.dom-bar{display:flex;height:14px;border-radius:8px;overflow:hidden;margin-top:10px;font-size:0}
-.dom-bar>div{height:100%}
-.dom-bar .l{background:var(--up)} .dom-bar .s{background:var(--down)} .dom-bar .f{background:#cbd2dc}
-.dom-legend{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-top:5px}
 .gauge{position:relative;width:120px;height:66px;margin:6px auto 0}
 .gauge .txt{position:absolute;left:0;right:0;top:18px;text-align:center}
 .gauge .emo{position:absolute;left:0;right:0;top:0;text-align:center;font-size:18px}
@@ -69,10 +64,12 @@ header.top .sub{font-size:11px;color:var(--text-faint)}
 .radar .grp .note{font-size:11px;color:var(--text-dim);margin-top:3px}
 .radar .grp .mt{font-size:11px;color:var(--text);margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 10px}
 .radar .grp .mt span{font-variant-numeric:tabular-nums}
-.chart-wrap{width:100%;overflow:hidden}
+.svgwrap{width:100%;overflow:hidden}
 svg{display:block;width:100%;height:auto}
 .legend{display:flex;gap:14px;font-size:11px;color:var(--text-dim);margin-top:6px;flex-wrap:wrap}
 .legend i{display:inline-block;width:10px;height:3px;border-radius:2px;vertical-align:middle;margin-right:4px}
+.foot{margin-top:22px;font-size:11px;color:var(--text-faint);text-align:center;line-height:1.6}
+.src-amber{color:var(--warn);font-weight:600}
 .settings{position:fixed;inset:0;background:rgba(20,24,33,.45);z-index:50;display:none;
   align-items:flex-end;justify-content:center}
 .settings.show{display:flex}
@@ -87,26 +84,44 @@ svg{display:block;width:100%;height:auto}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f2533;color:#fff;
   padding:9px 16px;border-radius:22px;font-size:13px;z-index:60;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
-.foot{margin-top:22px;font-size:11px;color:var(--text-faint);text-align:center;line-height:1.6}
-.src-amber{color:var(--warn);font-weight:600}
-.rec-row{display:flex;justify-content:space-between;align-items:center;padding:8px 2px;border-bottom:1px solid var(--line)}
-.rec-row:last-child{border-bottom:none}
-.rec-l{display:flex;flex-direction:column;gap:1px}
-.rec-l b{font-size:13px}
-.rec-l .nm{font-size:11px;color:var(--text-dim)}
-.rec-r{text-align:right;font-size:12px;display:flex;flex-direction:column;gap:1px;align-items:flex-end}
-.rec-r .sc{font-weight:700}
-.rec-r .sub{font-size:10px;color:var(--text-dim)}
-details{margin-top:10px}
-details summary{cursor:pointer;font-size:12px;color:var(--accent);font-weight:600;list-style:none}
-details summary::-webkit-details-marker{display:none}
-details summary:before{content:"▸ ";}
-details[open] summary:before{content:"▾ ";}
-.wl-row{display:flex;justify-content:space-between;padding:5px 2px;border-bottom:1px dashed var(--line);font-size:12px}
-.wl-row .wl-l b{font-size:12px}
-.wl-row .wl-l .nm{color:var(--text-dim);font-size:10px;margin-left:4px}
 .pooh{vertical-align:middle;margin-right:4px}
 .author{margin-top:14px;font-size:11px;color:var(--text-dim);text-align:center}
+
+/* ===== 荐股卡片 / 个股详情 ===== */
+.rec-card{margin-bottom:10px}
+.rec-card .sd-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.sd-sym{font-size:14px;font-weight:700}
+.sd-nm{font-size:10px;color:var(--text-dim);margin-left:3px}
+.sd-price{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.sd-tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.sb-wrap{display:flex;flex-direction:column;gap:5px;margin:8px 0}
+.sb{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-dim)}
+.sb span{width:30px}
+.sb .sbar{flex:1;height:7px;background:#eef0f4;border-radius:5px;overflow:hidden}
+.sb .sbar i{display:block;height:100%;background:var(--accent)}
+.sb b{width:26px;text-align:right;color:var(--text);font-variant-numeric:tabular-nums}
+.lv-wrap{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:8px 0}
+.lv{background:#f7f8fb;border:1px solid var(--line);border-radius:10px;padding:7px 4px;text-align:center}
+.lv span{display:block;font-size:10px;color:var(--text-dim)}
+.lv b{font-size:13px;font-variant-numeric:tabular-nums}
+.lv.stop b{color:var(--danger)}
+.bb{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.bb-h{font-size:12px;font-weight:700;margin-bottom:3px}
+.bb-h.up{color:var(--ok)} .bb-h.down{color:var(--danger)}
+.bull,.bear{margin:0;padding-left:15px;font-size:11px;line-height:1.5}
+.bull li{color:#15803d;margin-bottom:2px} .bear li{color:#b91c1c;margin-bottom:2px}
+
+/* ===== 自选股列表（可展开）===== */
+.srch{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;margin-bottom:8px}
+.wl-item{border-bottom:1px solid var(--line)}
+.wl-row{display:flex;justify-content:space-between;align-items:center;padding:9px 2px;cursor:pointer}
+.wl-row:active{background:#f0f2f7}
+.wl-l b{font-size:13px}
+.wl-l .nm{font-size:10px;color:var(--text-dim);margin-left:4px}
+.wl-r{text-align:right;font-size:12px;display:flex;align-items:center;gap:8px}
+.wl-r .sc{font-weight:700;font-variant-numeric:tabular-nums}
+.wl-detail{padding:6px 2px 12px;border-top:1px dashed var(--line);display:none}
+.wl-detail.open{display:block}
 </style>
 </head>
 <body>
@@ -120,22 +135,46 @@ details[open] summary:before{content:"▾ ";}
     <div class="icon-btn" id="btnRefresh" title="刷新实时数据">🔄</div>
   </header>
 
+  <!-- 市场情绪（突出） -->
+  <div class="section">
+    <h2>🌡️ 市场情绪 <span class="tag" id="sentTag">—</span></h2>
+    <div class="grid c2" id="sentimentGrid"></div>
+  </div>
+
   <!-- 组合策略 -->
   <div class="section">
     <h2>🎯 组合策略 <span class="tag">多空占优</span></h2>
     <div class="card" id="portfolioCard">…</div>
   </div>
 
+  <!-- 智能荐股（核心） -->
+  <div class="section">
+    <h2>📊 智能荐股 <span class="tag">核心 · 仅供参考</span></h2>
+    <div class="card" style="margin-bottom:10px">
+      <div class="muted">综合 <b>技术面</b>(MA20/60 趋势) · <b>估值</b>(PE) · <b>动量</b>(当日) · <b>杠杆止损位</b> 量化初筛。下方每张卡片含：实时价、量能(放量/缩量)、综合评分、操作价位(理想买入/二次加仓/止损)、利好/利空。</div>
+    </div>
+    <h3 style="font-size:13px;margin:12px 0 6px">✅ 综合买入信号（评分≥60）</h3>
+    <div id="recBuy"></div>
+    <h3 style="font-size:13px;margin:14px 0 6px">📈 中期持股推荐（综合高 + 看多）</h3>
+    <div id="recHold"></div>
+    <h3 style="font-size:13px;margin:14px 0 6px">⚡ 日内做T候选（高波动波段）</h3>
+    <div id="recT"></div>
+    <div class="muted" style="margin-top:8px">⚠️ 量化初筛，<b>不构成投资建议</b>。止损位 ≈ 2.2×ATR 或 7% 下限。</div>
+  </div>
+
+  <!-- 自选股一览 -->
+  <div class="section">
+    <h2>📋 自选股一览 <span class="tag" id="wlCount">—</span></h2>
+    <div class="card">
+      <input class="srch" id="srch" placeholder="搜索代码 / 公司名…" />
+      <div id="watchlistAll"></div>
+    </div>
+  </div>
+
   <!-- 全球主指数 -->
   <div class="section">
     <h2>🌍 全球主指数</h2>
     <div class="grid c5" id="indicesGrid"></div>
-  </div>
-
-  <!-- 情绪 -->
-  <div class="section">
-    <h2>🌡️ 市场情绪</h2>
-    <div class="grid c2" id="sentimentGrid"></div>
   </div>
 
   <!-- 宏观风险雷达 -->
@@ -148,7 +187,7 @@ details[open] summary:before{content:"▾ ";}
   <div class="section">
     <h2>😱 恐慌指数对比 <span class="tag">VIX vs VXN</span></h2>
     <div class="card">
-      <div class="chart-wrap" id="vixChart"></div>
+      <div class="svgwrap" id="vixChart"></div>
       <div class="legend">
         <span><i style="background:#7c3aed"></i>VXN（纳指恐慌）</span>
         <span><i style="background:#e0414c"></i>VIX（标普恐慌）</span>
@@ -156,32 +195,6 @@ details[open] summary:before{content:"▾ ";}
       </div>
       <div id="vixStats" class="muted" style="margin-top:8px"></div>
     </div>
-  </div>
-
-  <!-- 自选股一览 -->
-  <div class="section">
-    <h2>📋 自选股一览 <span class="tag">41 只</span></h2>
-    <div class="card">
-      <details>
-        <summary>展开全部自选股（代码 · 公司名 · 涨跌）</summary>
-        <div id="watchlistAll" style="margin-top:8px"></div>
-      </details>
-    </div>
-  </div>
-
-  <!-- 智能荐股 -->
-  <div class="section">
-    <h2>📊 智能荐股 <span class="tag">仅供参考</span></h2>
-    <div class="card" style="margin-bottom:10px">
-      <div class="muted">综合 <b>技术面</b>(MA20/60 趋势) · <b>估值</b>(PE) · <b>动量</b>(当日) · <b>杠杆止损位</b>，量化初筛三类建议。PE 由手机端实时补抓，若被网络拦截则估值项取中性。</div>
-    </div>
-    <h3 style="font-size:13px;margin:12px 0 6px">⚡ 日内做T候选（高波动，适合波段）</h3>
-    <div class="card" id="recT"></div>
-    <h3 style="font-size:13px;margin:14px 0 6px">📈 中期持股推荐（综合评分高 + 看多）</h3>
-    <div class="card" id="recHold"></div>
-    <h3 style="font-size:13px;margin:14px 0 6px">✅ 综合买入信号（评分≥60）</h3>
-    <div class="card" id="recBuy"></div>
-    <div class="muted" style="margin-top:8px">⚠️ 以上为量化初筛，<b>仅供参考，不构成投资建议</b>。杠杆斩杀点 = 参考止损位（约 2.2×ATR 或 7% 下限）。</div>
   </div>
 
   <div class="foot" id="foot"></div>
@@ -225,6 +238,7 @@ function emojiPanic(v){ if(v==null) return "😐"; if(v>=30) return "😱"; if(v
 function emojiSentiment(s){ if(s==null) return "😐"; if(s>=80) return "🤑"; if(s>=60) return "😀"; if(s>=40) return "😐"; if(s>=20) return "😟"; return "😱"; }
 function emojiRegime(c){ if(c==null) return "➡️"; if(c>=5) return "🐂"; if(c<=-5) return "🐻"; return "➡️"; }
 function emojiDom(label){ return {"多头占优":"📈","空头占优":"📉","空仓":"💤","震荡":"⚖️"}[label]||"❓"; }
+function biasEmoji(b){ return b==='看多'?'🐂':b==='看空'?'🐻':'➡️'; }
 function fmtTime(iso){ try{ const d=new Date(iso); return "数据时间 "+d.toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});}catch(e){return iso;} }
 
 /* ---------- 组合多空占优 ---------- */
@@ -255,57 +269,40 @@ function renderPortfolio(){
     </div>
     <div class="kpi"><span class="k">持仓数</span><span class="v">${d.total}</span></div>
     <div class="kpi"><span class="k">多头 / 空头 / 空仓</span><span class="v">${d.long} / ${d.short} / ${d.flat}</span></div>
-    <div class="dom-bar">
-      <div class="l" style="width:${d.longPct}%"></div>
-      <div class="s" style="width:${d.shortPct}%"></div>
-      <div class="f" style="width:${d.flatPct}%"></div>
+    <div class="dom-bar" style="display:flex;height:14px;border-radius:8px;overflow:hidden;margin-top:10px;font-size:0">
+      <div class="l" style="width:${d.longPct}%;background:var(--up);height:100%"></div>
+      <div class="s" style="width:${d.shortPct}%;background:var(--down);height:100%"></div>
+      <div class="f" style="width:${d.flatPct}%;background:#cbd2dc;height:100%"></div>
     </div>
-    <div class="dom-legend"><span class="up">多头 ${d.longPct.toFixed(0)}%</span><span class="down">空头 ${d.shortPct.toFixed(0)}%</span><span>空仓 ${d.flatPct.toFixed(0)}%</span></div>`;
+    <div class="dom-legend" style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-top:5px">
+      <span class="up">多头 ${d.longPct.toFixed(0)}%</span><span class="down">空头 ${d.shortPct.toFixed(0)}%</span><span>空仓 ${d.flatPct.toFixed(0)}%</span></div>`;
 }
 
-/* ---------- 全球主指数 ---------- */
-function renderIndices(){
-  const g=document.getElementById("indicesGrid");
-  g.innerHTML="";
-  Object.values(SNAP.indices).forEach(ix=>{
-    const c1m=ix.chg1m, p=ix.chgPct;
-    const pcls=pct(p).c, ptx=pct(p).t;
-    const reg=emojiRegime(c1m), rtxt=c1m==null?"":(c1m>=5?"牛市":(c1m<=-5?"熊市":"震荡"));
-    const div=document.createElement("div"); div.className="card mini";
-    div.innerHTML=`<div class="nm">${ix.name} ${reg}</div>
-      <div class="vl">${(ix.last||0).toLocaleString()}</div>
-      <div class="ch ${pcls}">${ptx}</div>
-      <div class="muted">${rtxt}${c1m!=null?(" · "+ (c1m>0?"+":"")+c1m.toFixed(1)+"% (1M)"):""}</div>`;
-    g.appendChild(div);
-  });
-}
-
-/* ---------- 情绪（F&G / 自建 / VIX / VXN）---------- */
+/* ---------- 市场情绪（服务端计算）---------- */
 function renderSentiment(){
+  const s=SNAP.sentiment||{};
   const vix=SNAP.panic.VIX?.last, vxn=SNAP.panic.VXN?.last;
   const fng=clamp(Math.round(100-(vix-12)*4.5),0,100);
   const fngLabel=fng>=80?"极度贪婪":fng>=60?"贪婪":fng>=40?"中性":fng>=20?"恐惧":"极度恐惧";
-  const sent=clamp(Math.round(100-(((vix+vxn)/2)-12)*4),0,100);
-  const sentLabel=sent>=80?"极度贪婪":sent>=60?"贪婪":sent>=40?"中性":sent>=20?"恐惧":"极度恐惧";
-  const g=document.getElementById("sentimentGrid");
-  g.innerHTML=`
+  document.getElementById("sentTag").textContent = (s.label||"—")+" · VIX "+(vix!=null?vix.toFixed(1):"—");
+  document.getElementById("sentimentGrid").innerHTML=`
+    <div class="card" style="text-align:center">
+      <h4 style="margin:0 0 2px;font-size:13px">🌡️ 综合市场情绪</h4>
+      <div class="gauge">${gaugeSVG(s.score!=null?s.score:fng)}<div class="txt big">${s.score!=null?s.score:fng}</div><div class="emo">${emojiSentiment(s.score!=null?s.score:fng)}</div></div>
+      <div class="pill ${(s.score!=null?s.score:0)>=60?'green':((s.score!=null?s.score:0)>=40?'yellow':'red')}" style="margin-top:4px">${s.label||fngLabel}</div>
+      <div class="muted" style="margin-top:4px">${s.note||""}</div>
+    </div>
     <div class="card" style="text-align:center">
       <h4 style="margin:0 0 2px;font-size:13px">😨 Fear &amp; Greed</h4>
       <div class="gauge">${gaugeSVG(fng)}<div class="txt big">${fng}</div><div class="emo">${emojiSentiment(fng)}</div></div>
       <div class="pill ${fng>=60?'green':(fng>=40?'yellow':'red')}" style="margin-top:4px">${fngLabel}</div>
-    </div>
-    <div class="card" style="text-align:center">
-      <h4 style="margin:0 0 2px;font-size:13px">🌡️ 自建情绪指数</h4>
-      <div class="gauge">${gaugeSVG(sent)}<div class="txt big">${sent}</div><div class="emo">${emojiSentiment(sent)}</div></div>
-      <div class="pill ${sent>=60?'green':(sent>=40?'yellow':'red')}" style="margin-top:4px">${sentLabel}</div>
-    </div>
-    <div class="card mini"><div class="nm">🌪️ VIX</div><div class="vl ${vix>25?'up':'flat'}">${vix?.toFixed(2)}</div><div class="ch">${emojiPanic(vix)} ${vix>25?'⚠️警戒':'正常'}</div></div>
-    <div class="card mini"><div class="nm">😱 VXN</div><div class="vl ${vxn>25?'up':'flat'}">${vxn?.toFixed(2)}</div><div class="ch">${emojiPanic(vxn)} ${vxn>25?'⚠️警戒':'正常'}</div></div>`;
+      <div class="card mini" style="margin-top:8px;box-shadow:none"><div class="nm">🌪️ VIX / 😱 VXN</div><div class="vl">${vix?.toFixed(2)} / ${vxn?.toFixed(2)}</div><div class="ch">${emojiPanic(Math.max(vix||0,vxn||0))}</div></div>
+    </div>`;
 }
 function gaugeSVG(val){
   const pct=clamp(val,0,100)/100;
   const w=120,h=66,r=50,cx=60,cy=60;
-  const a0=Math.PI, a1=0; // 180°→0°
+  const a0=Math.PI, a1=0;
   const ang=a0+(a1-a0)*pct;
   const x=cx+r*Math.cos(ang), y=cy-r*Math.sin(ang);
   const col=val>=60?"#16a34a":val>=40?"#f59e0b":"#dc2626";
@@ -321,38 +318,31 @@ function renderRadar(live){
   const tnx=(live&&live.DGS10!=null)?live.DGS10:(SNAP.risk["10Y"]?.last||0);
   const y2=(live&&live.DGS2!=null)?live.DGS2:(tnx-1.5);
   const spread=tnx-y2;
-  // risk
-  let rs, rn, rsig;
-  if(vix>=30||vxn>=35){rsig="red";rn="VIX/VXN 突破警戒，市场恐慌";}
-  else if(vix>=22||vxn>=25){rsig="yellow";rn="波动率偏高，情绪偏谨慎";}
-  else{rsig="green";rn="波动率正常，风险偏好稳定";}
-  // rates
+  let rs, rn;
+  if(vix>=30||vxn>=35){rs="red";rn="VIX/VXN 突破警戒，市场恐慌";}
+  else if(vix>=22||vxn>=25){rs="yellow";rn="波动率偏高，情绪偏谨慎";}
+  else{rs="green";rn="波动率正常，风险偏好稳定";}
   let ysig,yn;
   if(spread<0){ysig="red";yn=`2s10s 倒挂 ${spread.toFixed(0)}bps，衰退预警`;}
   else if(spread<50){ysig="yellow";yn=`利差扁平 ${spread.toFixed(0)}bps`;}
   else{ysig="green";yn=`利差 ${spread.toFixed(0)}bps，曲线健康`;}
-  // regime composite
-  const score=((rsig==="red"?-2:rsig==="yellow"?-1:1)+(ysig==="red"?-2:ysig==="yellow"?-1:1))/2;
+  const score=((rs==="red"?-2:rs==="yellow"?-1:1)+(ysig==="red"?-2:ysig==="yellow"?-1:1))/2;
   let regsig,ren;
   if(score<=-1.5){regsig="red";ren="衰退/紧缩共振";}
   else if(score>=1){regsig="green";ren="扩张期";}
   else{regsig="yellow";ren="周期过渡";}
-  // debt / leverage (FRED live only)
-  const debt=(live&&live.GFDEBTN!=null)?live.GFDEBTN:null;
   const lev=(live&&live.NFCILEVERAGE!=null)?live.NFCILEVERAGE:null;
   const debtS=live? (lev!=null&&lev>1.5?"red":lev!=null&&lev>0.5?"yellow":"green") : "yellow";
   const debtN=live? (lev!=null&&lev>1.5?"杠杆偏高，金融脆弱":lev!=null&&lev>0.5?"杠杆温和上行":"杠杆平稳") : "未配置 FRED Key";
-
   const groups=[
     {name:"Regime 周期",sig:regsig,note:ren,emoji:regsig==="green"?"🐂":regsig==="red"?"🐻":"➡️",mt:[]},
     {name:"Rates 利率",sig:ysig,note:yn,emoji:"🏛️",mt:[["10Y",tnx.toFixed(2)+"%"],["2Y*",y2.toFixed(2)+"%"],["利差",spread.toFixed(0)+"bps"]]},
-    {name:"Risk 波动",sig:rsig,note:rn,emoji:emojiPanic(Math.max(vix,vxn)),mt:[["VIX",vix.toFixed(2)],["VXN",vxn.toFixed(2)],["DXY",dxy.toFixed(2)]]},
-    {name:"US Debt 美债",sig:debtS,note:debtN,emoji:"🏦",mt: live? [["国债总额",(debt/1000).toFixed(1)+"T$"],["杠杆",lev?.toFixed(2)]] : [["状态","需 FRED Key"]]},
+    {name:"Risk 波动",sig:rs,note:rn,emoji:emojiPanic(Math.max(vix,vxn)),mt:[["VIX",vix.toFixed(2)],["VXN",vxn.toFixed(2)],["DXY",dxy.toFixed(2)]]},
+    {name:"US Debt 美债",sig:debtS,note:debtN,emoji:"🏦",mt: live? [["杠杆",lev?.toFixed(2)]] : [["状态","需 FRED Key"]]},
     {name:"A-Share A股",sig:"yellow",note:"需 akshare / 北向数据",emoji:"🇨🇳",mt:[["状态","未接入"]]},
     {name:"Cross 跨资产",sig:"yellow",note:"BTC/原油为风险偏好代理",emoji:"🪙",mt:[["状态","需实时源"]]},
   ];
-  const g=document.getElementById("radarGrid");
-  g.innerHTML=groups.map(gr=>`
+  document.getElementById("radarGrid").innerHTML=groups.map(gr=>`
     <div class="grp">
       <div class="gh"><span class="dot" style="background:${dotColor(gr.sig)}"></span>${gr.emoji} ${gr.name}</div>
       <div class="note">${gr.note}</div>
@@ -373,34 +363,115 @@ function renderVixChart(){
   const lo=Math.min(...all)*0.9, hi=Math.max(...all)*1.05;
   const X=i=>padL+(W-padL-padR)*i/(xs.length-1);
   const Y=v=>padT+(H-padT-padB)*(1-(v-lo)/(hi-lo));
-  const line=(arr,col)=>arr.map((v,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" ");
-  // 30 警戒带
+  const line=(arr)=>arr.map((v,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" ");
   const y30=Y(30);
   const band=(hi<30)?``:`<rect x="${padL}" y="${padT}" width="${W-padL-padR}" height="${(y30-padT).toFixed(1)}" fill="#f59e0b" opacity="0.10"/>`;
-  const svg=`<svg viewBox="0 0 ${W} ${H}">
-    ${band}
+  document.getElementById("vixChart").innerHTML=`<svg viewBox="0 0 ${W} ${H}">${band}
     <line x1="${padL}" y1="${y30.toFixed(1)}" x2="${W-padR}" y2="${y30.toFixed(1)}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4 3"/>
-    <path d="${line(ysN,'#7c3aed')}" fill="none" stroke="#7c3aed" stroke-width="1.8"/>
-    <path d="${line(ysV,'#e0414c')}" fill="none" stroke="#e0414c" stroke-width="1.8"/>
+    <path d="${line(ysN)}" fill="none" stroke="#7c3aed" stroke-width="1.8"/>
+    <path d="${line(ysV)}" fill="none" stroke="#e0414c" stroke-width="1.8"/>
     <text x="4" y="${(padT+6)}" fill="#9aa1ad" font-size="9">${hi.toFixed(0)}</text>
-    <text x="4" y="${H-padB}" fill="#9aa1ad" font-size="9">${lo.toFixed(0)}</text>
-    <text x="${W-30}" y="${(padT+6)}" fill="#9aa1ad" font-size="9">${hi.toFixed(0)}</text>
-  </svg>`;
-  document.getElementById("vixChart").innerHTML=svg;
-  // 统计
-  const n=xs.length;
-  const lastV=ysV[n-1],lastN=ysN[n-1];
-  const diff=lastN-lastV;
-  const over30=ysV.filter(v=>v>=30).length/ n*100;
+    <text x="4" y="${H-padB}" fill="#9aa1ad" font-size="9">${lo.toFixed(0)}</text></svg>`;
+  const n=xs.length, lastV=ysV[n-1],lastN=ysN[n-1], diff=lastN-lastV, over30=ysV.filter(v=>v>=30).length/n*100;
   document.getElementById("vixStats").innerHTML=
     `最新 VXN <b>${lastN.toFixed(2)}</b> / VIX <b>${lastV.toFixed(2)}</b> · 差 <b class="${diff>=0?'up':'down'}">${diff>=0?'+':''}${diff.toFixed(2)}</b> · 十年中 VIX≥30 占比 <b>${over30.toFixed(1)}%</b>`;
 }
 
-/* ---------- 实时刷新（客户端）---------- */
+/* ---------- 全球主指数 ---------- */
+function renderIndices(){
+  const g=document.getElementById("indicesGrid");
+  g.innerHTML="";
+  Object.values(SNAP.indices).forEach(ix=>{
+    const pcls=pct(ix.chgPct).c, ptx=pct(ix.chgPct).t;
+    const c1m=ix.chg1m, reg=emojiRegime(c1m), rtxt=c1m==null?"":(c1m>=5?"牛市":(c1m<=-5?"熊市":"震荡"));
+    const div=document.createElement("div"); div.className="card mini";
+    div.innerHTML=`<div class="nm">${ix.name} ${reg}</div>
+      <div class="vl">${(ix.last||0).toLocaleString()}</div>
+      <div class="ch ${pcls}">${ptx}</div>
+      <div class="muted">${rtxt}${c1m!=null?(" · "+(c1m>0?"+":"")+c1m.toFixed(1)+"% (1M)"):""}</div>`;
+    g.appendChild(div);
+  });
+}
+
+/* ---------- 个股详情 HTML ---------- */
+function stockDetailHTML(e){
+  const p=pct(e.chgPct);
+  const vol=e.hist_vol_state||"—";
+  const volCls = vol==="放量"?"up":vol==="缩量"?"down":"flat";
+  const bias=e.bias||"震荡";
+  const biasCls = bias==="看多"?"green":bias==="看空"?"red":"yellow";
+  const comp=e.comp??"—";
+  const sb=(lab,v)=>`<div class="sb"><span>${lab}</span><div class="sbar"><i style="width:${clamp(v||0,0,100)}%"></i></div><b>${v??"—"}</b></div>`;
+  const bull=(e.bullish&&e.bullish.length)?e.bullish.map(x=>`<li>${x}</li>`).join(""):"<li>—</li>";
+  const bear=(e.bearish&&e.bearish.length)?e.bearish.map(x=>`<li>${x}</li>`).join(""):"<li>—</li>";
+  return `
+   <div class="sd-top">
+     <div><b class="sd-sym">${e.symbol}</b><span class="sd-nm">${e.name}</span></div>
+     <div style="text-align:right"><div class="sd-price">${e.last??"—"}</div><div class="${p.c}">${p.t}</div></div>
+   </div>
+   <div class="sd-tags">
+     <span class="pill ${biasCls}">${biasEmoji(bias)} ${bias}</span>
+     <span class="pill gray">量 <b class="${volCls}">${vol}</b></span>
+     <span class="pill gray">综合 <b>${comp}</b></span>
+     <span class="pill gray">PE <b>${e.pe!=null?e.pe:"—"}</b></span>
+   </div>
+   <div class="sb-wrap">${sb("技术",e.tech)}${sb("估值",e.val)}${sb("动量",e.mom)}</div>
+   <div class="lv-wrap">
+     <div class="lv"><span>理想买入</span><b>${e.ideal_buy??"—"}</b></div>
+     <div class="lv"><span>二次加仓</span><b>${e.add_buy??"—"}</b></div>
+     <div class="lv stop"><span>止损位</span><b>${e.stop_loss??"—"}</b></div>
+   </div>
+   <div class="bb">
+     <div class="bb-col"><div class="bb-h up">✅ 利好</div><ul class="bull">${bull}</ul></div>
+     <div class="bb-col"><div class="bb-h down">⚠️ 利空</div><ul class="bear">${bear}</ul></div>
+   </div>`;
+}
+function recalc(e){
+  const pe=e.pe; let val=50;
+  if(pe!=null){ if(pe>0&&pe<15)val=85; else if(pe<25)val=70; else if(pe<35)val=58; else if(pe<50)val=48; else val=38; if(pe<=0)val=45; }
+  const last=e.last, chg=e.chgPct||0, ma20=e.hist_ma20, ma60=e.hist_ma60, ret20=e.hist_ret20;
+  let tech=50; if(ma20!=null){ tech=50+(ret20||0)*1.5+(last>ma20?10:0)+(ma20&&ma60&&ma20>ma60?10:0)-(last<ma20?8:0); tech=clamp(tech,0,100); }
+  const mom=clamp(50+chg*3,0,100);
+  e.val=Math.round(val); e.tech=Math.round(tech); e.mom=Math.round(mom);
+  e.comp=Math.round(clamp(0.5*tech+0.25*val+0.25*mom,0,100));
+  e.bias=e.comp>=60?'看多':e.comp<=40?'看空':'震荡';
+}
+
+/* ---------- 智能荐股（核心）---------- */
+function renderRecommend(){
+  const arr=SNAP.watchlist.slice();
+  const card=e=>`<div class="card rec-card">${stockDetailHTML(e)}</div>`;
+  const buy=arr.filter(e=>e.comp>=60).sort((a,b)=>b.comp-a.comp);
+  document.getElementById('recBuy').innerHTML = buy.length? buy.map(card).join('') : '<div class="muted" style="padding:8px">当前无综合评分≥60 的标的</div>';
+  const hold=arr.filter(e=>e.comp>=55||e.bias==='看多').sort((a,b)=>b.comp-a.comp).slice(0,8);
+  document.getElementById('recHold').innerHTML = hold.map(card).join('');
+  const t=arr.filter(e=>e.hist_atrPct!=null&&e.hist_atrPct>=2.5).sort((a,b)=>b.hist_atrPct-a.hist_atrPct).slice(0,8);
+  document.getElementById('recT').innerHTML = t.length? t.map(card).join('') : '<div class="muted" style="padding:8px">暂无高波动标的（需 ATR≥2.5%）</div>';
+}
+function renderWatchlistAll(){
+  const q=(document.getElementById('srch').value||"").trim().toLowerCase();
+  const list=SNAP.watchlist.filter(e=>(e.symbol+" "+e.name).toLowerCase().includes(q));
+  document.getElementById("wlCount").textContent=list.length+" 只";
+  document.getElementById('watchlistAll').innerHTML=list.map(e=>{
+    const p=pct(e.chgPct);
+    const vol=e.hist_vol_state||"—";
+    const volCls=vol==="放量"?"up":vol==="缩量"?"down":"flat";
+    return `<div class="wl-item">
+      <div class="wl-row" onclick="toggleDetail('d-${e.symbol}')">
+        <div class="wl-l"><b>${e.symbol}</b><span class="nm">${e.name}</span></div>
+        <div class="wl-r"><span class="${p.c}">${p.t}</span><span class="sc">${e.last??"—"}</span>
+          <span class="pill gray">${vol}</span><span class="pill gray">${e.comp??"—"}</span></div>
+      </div>
+      <div class="wl-detail" id="d-${e.symbol}">${stockDetailHTML(e)}</div>
+    </div>`;
+  }).join('');
+}
+function toggleDetail(id){ const el=document.getElementById(id); if(el) el.classList.toggle('open'); }
+
+/* ---------- 实时刷新 ---------- */
 async function liveRefresh(){
   toast("正在刷新实时数据…");
   try{
-    // FRED 宏观
     let live=null;
     if(FRED){
       live={};
@@ -414,10 +485,8 @@ async function liveRefresh(){
       }));
     }
     renderRadar(live);
-    // Yahoo 实时（经 CORS 代理；失败则保留快照）
     await fetchYahoo("^VIX",v=>{ if(v!=null){SNAP.panic.VIX=v;} });
     await fetchYahoo("^VXN",v=>{ if(v!=null){SNAP.panic.VXN=v;} });
-    Object.values(SNAP.indices).forEach(ix=>{});
     renderSentiment();
     toast(FRED?"✅ 已更新宏观 + 恐慌指数":"✅ 已更新恐慌指数（未配 FRED Key）");
   }catch(e){ toast("⚠️ 实时刷新部分失败，已用快照兜底"); }
@@ -432,47 +501,6 @@ async function fetchYahoo(sym,cb){
       cb({last,chgPct:last&&prev?((last-prev)/prev*100):null}); }
   }catch(e){ cb(null); }
 }
-
-/* ---------- 智能荐股 ---------- */
-function biasEmoji(b){ return b==='看多'?'🐂':b==='看空'?'🐻':'➡️'; }
-function fmtStop(e){ if(e.last==null||e.hist_atrPct==null) return '—'; const sp=Math.max(e.hist_atrPct*2.2,7)/100; return (e.last*(1-sp)).toFixed(2); }
-function computeRec(){
-  return SNAP.watchlist.map(e=>{
-    const last=e.last, chg=e.chgPct||0, pe=e.pe, ma20=e.hist_ma20, ma60=e.hist_ma60, atr=e.hist_atrPct, ret20=e.hist_ret20;
-    let tech=50;
-    if(ma20!=null){ tech=50+(ret20||0)*1.5+(last>ma20?10:0)+(ma20&&ma60&&ma20>ma60?10:0)-(last<ma20?8:0); tech=clamp(tech,0,100); }
-    let val=50;
-    if(pe!=null){ if(pe>0&&pe<15)val=85; else if(pe<25)val=70; else if(pe<35)val=58; else if(pe<50)val=48; else val=38; if(pe<=0)val=45; }
-    const mom=clamp(50+chg*3,0,100);
-    const comp=clamp(0.5*tech+0.25*val+0.25*mom,0,100);
-    const bias=comp>=60?'看多':comp<=40?'看空':'震荡';
-    return {...e,tech:Math.round(tech),val:Math.round(val),mom:Math.round(mom),comp:Math.round(comp),bias};
-  });
-}
-function recRow(e, sub){
-  const p=pct(e.chgPct);
-  return `<div class="rec-row"><div class="rec-l"><b>${e.symbol}</b><span class="nm">${e.name}</span></div>
-    <div class="rec-r"><span class="${p.c}">${p.t}</span><span class="sub">${sub}</span></div></div>`;
-}
-function renderRecommend(){
-  const arr=computeRec();
-  const t=arr.filter(e=>e.hist_atrPct!=null&&e.hist_atrPct>=2.5).sort((a,b)=>b.hist_atrPct-a.hist_atrPct).slice(0,8);
-  document.getElementById('recT').innerHTML = t.length? t.map(e=>{
-    const lo=e.last*(1-e.hist_atrPct/100), up=e.last*(1+e.hist_atrPct/100);
-    return recRow(e, `波动 ${e.hist_atrPct}% · T区间 ↓${lo.toFixed(2)} ↑${up.toFixed(2)}`);
-  }).join('') : '<div class="muted" style="padding:8px">暂无高波动标的（需 ATR≥2.5%）</div>';
-  const hold=arr.filter(e=>e.comp>=55||e.bias==='看多').sort((a,b)=>b.comp-a.comp).slice(0,8);
-  document.getElementById('recHold').innerHTML = hold.map(e=>recRow(e, `评分 ${e.comp} ${biasEmoji(e.bias)} · PE ${e.pe!=null?e.pe:'—'} · 止损 ${fmtStop(e)}`)).join('');
-  const buy=arr.filter(e=>e.comp>=60).sort((a,b)=>b.comp-a.comp);
-  document.getElementById('recBuy').innerHTML = buy.length? buy.map(e=>recRow(e, `评分 ${e.comp} ${biasEmoji(e.bias)} · PE ${e.pe!=null?e.pe:'—'}`)).join('') : '<div class="muted" style="padding:8px">当前无综合评分≥60 的标的</div>';
-}
-function renderWatchlistAll(){
-  document.getElementById('watchlistAll').innerHTML=SNAP.watchlist.map(e=>{
-    const p=pct(e.chgPct);
-    return `<div class="wl-row"><div class="wl-l"><b>${e.symbol}</b><span class="nm">${e.name}</span></div>
-      <div><span class="${p.c}">${p.t}</span>${e.pe!=null?(' · PE '+e.pe):''}</div></div>`;
-  }).join('');
-}
 async function fetchPE(){
   await Promise.allSettled(SNAP.watchlist.map(async e=>{
     if(!e.yf) return;
@@ -483,7 +511,7 @@ async function fetchPE(){
       const q=j?.quoteSummary?.result?.[0];
       const sd=q?.summaryDetail, dk=q?.defaultKeyStatistics;
       const pe=sd?.trailingPE?.raw ?? dk?.trailingPE?.raw;
-      if(pe!=null && typeof pe==='number'){ e.pe=Math.round(pe*10)/10; }
+      if(pe!=null && typeof pe==='number'){ e.pe=Math.round(pe*10)/10; recalc(e); }
     }catch(e){}
   }));
 }
@@ -495,14 +523,14 @@ async function init(){
   }catch(e){ document.getElementById("updated").textContent="❌ 加载 snapshot.json 失败"; return; }
   document.getElementById("updated").textContent=fmtTime(SNAP.generated_at||new Date().toISOString());
   document.getElementById("foot").innerHTML=
-    `数据来源：Yahoo Finance 快照（服务端生成）+ FRED 实时（可选）<br>`+
+    `数据来源：Yahoo Finance 快照（服务端生成，统一时间维度）+ FRED 实时（可选）<br>`+
     `本页为手机网页版 PWA，可「添加到主屏幕」当作小程序使用。<br>`+
     `<span class="src-amber">提示</span>：实时行情依赖 CORS 代理，若被网络拦截将自动使用最新快照。`;
-  renderPortfolio(); renderIndices(); renderSentiment(); renderRadar(null); renderVixChart();
-  renderWatchlistAll(); renderRecommend();
-  // 后台补抓 PE（手机端经代理），成功后重渲染荐股与列表
+  renderSentiment(); renderPortfolio(); renderIndices(); renderRadar(null); renderVixChart();
+  renderRecommend(); renderWatchlistAll();
   fetchPE().then(()=>{ renderRecommend(); renderWatchlistAll(); }).catch(()=>{});
 }
+document.getElementById("srch").addEventListener("input", renderWatchlistAll);
 document.getElementById("btnRefresh").onclick=liveRefresh;
 document.getElementById("btnSet").onclick=()=>{ document.getElementById("fredKey").value=FRED; document.getElementById("settings").classList.add("show"); };
 document.getElementById("setCancel").onclick=()=>document.getElementById("settings").classList.remove("show");
