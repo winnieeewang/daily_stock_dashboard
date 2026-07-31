@@ -39,7 +39,7 @@ class Config:
     serpapi_key: str = field(default_factory=lambda: os.environ.get("SERPAPI", ""))
 
     leverage_levels: Tuple[float, ...] = (1.5, 2.0, 3.0)
-    maintenance_margin: float = 0.25  # 美股/港股监管最低标准，富途实际比例可能更高
+    maintenance_margin: float = 0.3  # 美股/港股监管最低标准，富途实际比例可能更高
     lookback_days: int = 60
     output_dir: Path = field(default_factory=lambda: Path("data"))
 
