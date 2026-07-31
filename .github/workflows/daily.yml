@@ -2,8 +2,8 @@ name: 每日股票看板
 
 on:
   schedule:
-    - cron: '30 13 * * *'          # 每日 UTC 13:30（北京时间 21:30）
-  workflow_dispatch:               # 支持手动触发
+    - cron: '30 13 * * *'
+  workflow_dispatch:
 
 jobs:
   run-dashboard:
@@ -12,7 +12,7 @@ jobs:
       contents: write
     steps:
       - name: 检出代码
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
 
       - name: 设置 Python
         uses: actions/setup-python@v6
@@ -25,13 +25,14 @@ jobs:
       - name: 运行看板
         run: python stock_dashboard.py
         env:
-          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-          ALPHA_VANTAGE_KEY: ${{ secrets.ALPHA_VANTAGE_KEY }}
+          FRED_API: ${{ secrets.FRED_API }}
+          ALPHA_API: ${{ secrets.ALPHA_API }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
-      - name: 提交数据文件
+          SERPAPI: ${{ secrets.SERPAPI }}
+
+      - name: 提交数据文件到仓库
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
