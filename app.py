@@ -36,19 +36,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- 侧边栏：控制面板 ----------
+# ---------- 侧边栏 ----------
 st.sidebar.title("⚙️ 控制面板")
 if st.sidebar.button("🔄 强制刷新数据"):
     st.cache_data.clear()
     st.rerun()
 
-# 视图切换
 view = st.sidebar.radio("📌 导航", ["📊 大盘概览", "📈 个股详情", "🎯 AI决策卡片", "📝 每日报告"])
 
-# K线图周期
 period_map = {"1个月": "1mo", "3个月": "3mo", "6个月": "6mo", "1年": "1y"}
 selected_period = st.sidebar.selectbox("📅 K线图周期", list(period_map.keys()), index=1)
-
 sort_option = st.sidebar.selectbox("📊 个股排序", ["默认顺序", "涨幅高→低", "涨幅低→高", "PE高→低", "PE低→高"])
 
 # ---------- 标题 ----------
@@ -110,7 +107,7 @@ def score_gauge(score, operation):
                        paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
     return fig
 
-# ---------- 视图切换 ----------
+# ---------- 视图：大盘概览 ----------
 if view == "📊 大盘概览":
     # 宏观数据
     st.markdown('<div class="section-title">🌍 宏观数据</div>', unsafe_allow_html=True)
@@ -191,6 +188,7 @@ if view == "📊 大盘概览":
         except Exception as e:
             st.caption(f"⚠️ {name} 错误: {str(e)[:50]}")
 
+# ---------- 视图：个股详情 ----------
 elif view == "📈 个股详情":
     st.markdown('<div class="section-title">📊 个股数据</div>', unsafe_allow_html=True)
     if stocks_df is not None and not stocks_df.empty:
@@ -237,41 +235,50 @@ elif view == "📈 个股详情":
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            # K线图（增强错误处理）
+
+            # ---------- K线图（增强调试） ----------
+            st.caption(f"⏳ 正在加载 {sym} 数据（周期: {selected_period}）...")
             try:
                 period = period_map[selected_period]
-                # 打印调试信息（可查看 Streamlit 日志）
-                st.caption(f"⏳ 正在加载 {sym} 数据...")
                 hist = yf.download(sym, period=period, progress=False)
-                if hist is None or hist.empty:
-                    st.error(f"❌ {sym} 无数据（可能网络问题或代码无效）")
-                else:
-                    st.caption(f"✅ {sym} 数据条数: {len(hist)}")
-                    if len(hist) > 5:
-                        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.06,
-                                            row_heights=[0.7, 0.3])
-                        fig.add_trace(go.Candlestick(x=hist.index, open=hist['Open'], high=hist['High'],
-                                                     low=hist['Low'], close=hist['Close'], name=sym,
-                                                     increasing_line_color='#00e676', decreasing_line_color='#ff5252'), row=1, col=1)
-                        ma20_hist = hist['Close'].rolling(20).mean()
-                        ma50_hist = hist['Close'].rolling(50).mean()
-                        fig.add_trace(go.Scatter(x=hist.index, y=ma20_hist, line=dict(color='#ffd54f', width=1.5), name="MA20"), row=1, col=1)
-                        fig.add_trace(go.Scatter(x=hist.index, y=ma50_hist, line=dict(color='#00d4ff', width=1.5), name="MA50"), row=1, col=1)
-                        fig.add_trace(go.Bar(x=hist.index, y=hist['Volume'], name="成交量", marker_color='rgba(0,212,255,0.2)'), row=2, col=1)
-                        fig.update_layout(height=350, margin=dict(l=10, r=10, t=10, b=10),
-                                          paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                          xaxis_rangeslider_visible=False, showlegend=False,
-                                          font=dict(color='rgba(255,255,255,0.3)'))
-                        fig.update_xaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.2)')
-                        fig.update_yaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.2)')
-                        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                # 显示调试信息
+                with st.expander(f"🔍 {sym} 调试信息"):
+                    st.write(f"数据类型: {type(hist)}")
+                    st.write(f"数据是否为空: {hist.empty if hist is not None else 'hist is None'}")
+                    if hist is not None and not hist.empty:
+                        st.write(f"数据条数: {len(hist)}")
+                        st.write("数据列:", hist.columns.tolist())
+                        st.write("数据样本:", hist.head(3))
                     else:
-                        st.warning(f"📉 {sym} 数据不足（{len(hist)}条记录），尝试更换周期")
+                        st.warning("无数据")
+                
+                if hist is not None and not hist.empty and 'Open' in hist.columns and len(hist) > 5:
+                    # 绘制K线图
+                    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.06,
+                                        row_heights=[0.7, 0.3])
+                    fig.add_trace(go.Candlestick(x=hist.index, open=hist['Open'], high=hist['High'],
+                                                 low=hist['Low'], close=hist['Close'], name=sym,
+                                                 increasing_line_color='#00e676', decreasing_line_color='#ff5252'), row=1, col=1)
+                    ma20_hist = hist['Close'].rolling(20).mean()
+                    ma50_hist = hist['Close'].rolling(50).mean()
+                    fig.add_trace(go.Scatter(x=hist.index, y=ma20_hist, line=dict(color='#ffd54f', width=1.5), name="MA20"), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=hist.index, y=ma50_hist, line=dict(color='#00d4ff', width=1.5), name="MA50"), row=1, col=1)
+                    fig.add_trace(go.Bar(x=hist.index, y=hist['Volume'], name="成交量", marker_color='rgba(0,212,255,0.2)'), row=2, col=1)
+                    fig.update_layout(height=350, margin=dict(l=10, r=10, t=10, b=10),
+                                      paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                                      xaxis_rangeslider_visible=False, showlegend=False,
+                                      font=dict(color='rgba(255,255,255,0.3)'))
+                    fig.update_xaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.2)')
+                    fig.update_yaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.2)')
+                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                else:
+                    st.warning(f"⚠️ {sym} 数据不足（{len(hist) if hist is not None else 0}条记录）或列名不匹配，无法绘制K线图")
             except Exception as e:
-                st.error(f"⚠️ {sym} K线图加载失败: {str(e)}")
+                st.error(f"❌ {sym} K线图加载失败: {str(e)}")
     else:
         st.warning("⚠️ 暂无个股数据")
 
+# ---------- 视图：AI决策卡片 ----------
 elif view == "🎯 AI决策卡片":
     st.markdown('<div class="section-title">🎯 AI 决策卡片</div>', unsafe_allow_html=True)
     if cards_data and cards_data.get("stocks"):
@@ -328,11 +335,37 @@ elif view == "🎯 AI决策卡片":
                     st.markdown(f'<div style="margin:8px 0 20px 0;">{tags}</div>', unsafe_allow_html=True)
                 else:
                     st.markdown('<div style="margin-bottom:20px;"></div>', unsafe_allow_html=True)
+                
+                # ---------- 增加“查看分析依据” ----------
+                with st.expander("📊 查看分析依据（原始技术指标）"):
+                    stock_row = stocks_df[stocks_df['symbol'] == sym]
+                    if not stock_row.empty:
+                        row = stock_row.iloc[0]
+                        fields = ['收盘价', '涨跌幅%', '成交量', '量比状态', 'RSI(14)', 'MACD', 'MACD信号', 
+                                  'MA5', 'MA20', 'MA50', 'MA200', '布林上轨', '布林中轨', '布林下轨', 'ATR', 'PE Ratio']
+                        st.markdown("**技术指标**：")
+                        cols = st.columns(4)
+                        for idx, field in enumerate(fields):
+                            val = row.get(field, 'N/A')
+                            if isinstance(val, float):
+                                val = f"{val:.2f}"
+                            with cols[idx % 4]:
+                                st.metric(field, val)
+                        # 强平价格
+                        st.markdown("**强平价格（斩仓线）**：")
+                        lev_cols = st.columns(3)
+                        for lev, col in zip(['2x', '3x', '5x'], lev_cols):
+                            col_name = f'强平价格_{lev}'
+                            if col_name in row:
+                                col.metric(lev, row[col_name])
+                    else:
+                        st.warning("暂无原始数据")
             with col_right:
                 st.plotly_chart(score_gauge(card.get("score", 50), op), use_container_width=True, config={'displayModeBar': False})
     else:
         st.info("📌 决策卡片尚未生成，请等待每日数据更新（需配置 DEEPSEEK_API_KEY）")
 
+# ---------- 视图：每日报告 ----------
 elif view == "📝 每日报告":
     st.markdown("---")
     st.markdown('<div class="section-title">📝 每日大盘总览</div>', unsafe_allow_html=True)
