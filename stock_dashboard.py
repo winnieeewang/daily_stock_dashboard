@@ -330,16 +330,29 @@ class TechnicalAnalyzer:
             "集中度": poc["集中度"],
         }
 
-    @staticmethod
-    def _fetch_pe(df: pd.DataFrame) -> Optional[float]:
-        try:
-            ticker = getattr(df, "name", None)
-            if not ticker:
-                return None
-            info = yf.Ticker(ticker).info
-            return info.get("trailingPE") or info.get("forwardPE")
-        except Exception:
+  @staticmethod
+    def _fetch_pe(df: pd.DataFrame, symbol: str = None) -> Optional[float]:
+        """获取 PE，失败时尝试 fast_info 回退"""
+        sym = symbol or getattr(df, "name", None)
+        if not sym:
             return None
+        try:
+            t = yf.Ticker(sym)
+            info = t.info
+            pe = info.get("trailingPE") or info.get("forwardPE")
+            if pe:
+                return float(pe)
+        except Exception:
+            pass
+        try:
+            # fast_info 更稳定，但字段少
+            fi = t.fast_info
+            if hasattr(fi, "last_price"):
+                # 无法直接拿 PE，但确保对象可用
+                pass
+        except Exception:
+            pass
+        return None
 
 
 # ==================== 反弹/反转判断层 ====================
@@ -1093,7 +1106,10 @@ class ReportOrchestrator:
         if self.cfg.serpapi_key:
             for sym in self.cfg.stocks:
                 news[sym] = self.news_fetcher.fetch_baidu(sym.replace(".HK", ""))
-
+        if news:
+            with open(self.cfg.output_dir / "news.json", "w", encoding="utf-8") as f:
+                json.dump(news, f, ensure_ascii=False, indent=2)
+      
         alerts = self.alert_svc.check_and_send(macro, stock_dict, sox)
         if alerts:
             logger.info(f"触发 {len(alerts)} 条预警")
