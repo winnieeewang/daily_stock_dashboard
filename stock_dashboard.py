@@ -31,8 +31,8 @@ logger = logging.getLogger("quant_report")
 # ==================== 配置层 ====================
 @dataclass(frozen=True)
 class Config:
-    fred_api_key: str = field(default_factory=lambda: os.environ.get("FRED_API_KEY", ""))
-    alpha_vantage_key: str = field(default_factory=lambda: os.environ.get("ALPHA_VANTAGE_KEY", ""))
+    fred_api_key: str = field(default_factory=lambda: os.environ.get("FRED_API", ""))
+    alpha_vantage_key: str = field(default_factory=lambda: os.environ.get("ALPHA_API", ""))
     telegram_bot_token: str = field(default_factory=lambda: os.environ.get("TELEGRAM_BOT_TOKEN", ""))
     telegram_chat_id: str = field(default_factory=lambda: os.environ.get("TELEGRAM_CHAT_ID", ""))
     deepseek_api_key: str = field(default_factory=lambda: os.environ.get("DEEPSEEK_API_KEY", ""))
