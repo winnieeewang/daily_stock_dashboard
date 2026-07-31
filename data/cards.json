@@ -1,379 +1,529 @@
 {
-  "generated_at": "2026-07-31 03:40",
+  "generated_at": "2026-07-31 04:48",
   "stocks": [
     {
-      "symbol": "AAOI",
-      "score": 45,
-      "operation": "观望",
-      "trend": "看空",
-      "core_view": "股价反弹但均线空头排列，MACD深负，趋势偏弱，需等待企稳信号。",
-      "catalysts": [
-        "超跌反弹动能",
-        "AI光模块需求长期向好"
-      ],
-      "risks": [
-        "均线压制明显",
-        "MACD负值扩大，下行风险未消"
-      ],
-      "sniper": {
-        "ideal_buy": "82.46附近（布林下轨）",
-        "second_buy": "90.55（MA5）站稳后",
-        "stop_loss": "78.00下方",
-        "target": "108.10（MA20）"
-      },
-      "sectors": [
-        "光通信",
-        "AI硬件"
-      ]
-    },
-    {
       "symbol": "GOOGL",
-      "score": 50,
+      "score": 25,
       "operation": "观望",
       "trend": "震荡",
-      "core_view": "股价处于均线下方，RSI中性，MACD负值，短期震荡筑底，等待方向选择。",
+      "core_view": "股价在MA5上方反弹但受MA20压制，MACD绿柱收敛，RSI回升，短期或延续震荡反弹，需关注量能配合。",
       "catalysts": [
-        "AI业务持续增长",
-        "云业务盈利改善"
+        "MACD绿柱收敛，下跌动能减弱",
+        "RSI从超卖区回升，技术性反弹"
       ],
       "risks": [
-        "宏观不确定性",
-        "搜索业务监管压力"
+        "股价仍低于MA20和MA50，中期趋势偏弱",
+        "反弹力度不足，可能再度回落"
       ],
       "sniper": {
-        "ideal_buy": "317.49（布林下轨）",
-        "second_buy": "330.08（MA5）附近",
-        "stop_loss": "310.00下方",
-        "target": "348.24（MA20）"
+        "ideal_buy": "330.08 (MA5附近)",
+        "second_buy": "317.49 (布林下轨)",
+        "stop_loss": "317.49 (跌破布林下轨)",
+        "target": "348.24 (MA20附近)"
       },
       "sectors": [
-        "互联网",
-        "人工智能"
-      ]
+        "科技",
+        "互联网"
+      ],
+      "bottom_fishing": {
+        "score": 0,
+        "reasons": [
+          "无明确抄底信号"
+        ]
+      },
+      "reversal": {
+        "signal": "反弹",
+        "confidence": "低"
+      }
     },
     {
       "symbol": "MSFT",
       "score": 75,
       "operation": "买入",
       "trend": "看多",
-      "core_view": "股价强势突破布林上轨，RSI超买但趋势强劲，MACD金叉，量能配合，有望继续上行。",
+      "core_view": "放量突破，MACD金叉，RSI进入强势区，短期趋势强劲，有望继续上行，但需警惕高位回调风险。",
       "catalysts": [
-        "云业务强劲",
-        "AI商业化加速"
+        "MACD金叉，趋势转强",
+        "放量突破，资金关注度高"
       ],
       "risks": [
-        "短期超买回调",
-        "估值偏高"
+        "RSI达72，短期超买",
+        "股价远离MA5，存在回调需求"
       ],
       "sniper": {
-        "ideal_buy": "422.16（布林上轨）回踩",
-        "second_buy": "401.16（MA5）附近",
-        "stop_loss": "393.15（MA20）下方",
-        "target": "480.00"
+        "ideal_buy": "401.16 (MA5附近)",
+        "second_buy": "393.15 (MA20附近)",
+        "stop_loss": "393.15 (跌破MA20)",
+        "target": "422.16 (布林上轨)"
       },
       "sectors": [
-        "软件",
-        "云计算"
-      ]
+        "科技",
+        "软件"
+      ],
+      "bottom_fishing": {
+        "score": 0,
+        "reasons": [
+          "无抄底信号，已处于上涨趋势"
+        ]
+      },
+      "reversal": {
+        "signal": "反转",
+        "confidence": "高"
+      }
+    },
+    {
+      "symbol": "AAOI",
+      "score": 35,
+      "operation": "观望",
+      "trend": "看空",
+      "core_view": "股价跌破MA20和MA50，MACD绿柱收敛，RSI偏低，存在超跌反弹可能，但中期趋势仍偏空，谨慎参与。",
+      "catalysts": [
+        "RSI偏低，存在超跌反弹需求",
+        "MACD绿柱收敛，下跌动能减弱"
+      ],
+      "risks": [
+        "股价远低于MA20和MA50，趋势偏空",
+        "反弹可能受限于MA5附近压力"
+      ],
+      "sniper": {
+        "ideal_buy": "82.46 (布林下轨)",
+        "second_buy": "80.10 (3x强平线附近)",
+        "stop_loss": "80.10 (跌破强平线)",
+        "target": "90.55 (MA5附近)"
+      },
+      "sectors": [
+        "科技",
+        "光通信"
+      ],
+      "bottom_fishing": {
+        "score": 15,
+        "reasons": [
+          "RSI偏低"
+        ]
+      },
+      "reversal": {
+        "signal": "无",
+        "confidence": "低"
+      }
     },
     {
       "symbol": "MU",
-      "score": 42,
+      "score": 30,
       "operation": "观望",
       "trend": "看空",
-      "core_view": "股价反弹但均线空头，MACD深负，反弹力度存疑，趋势仍偏弱。",
+      "core_view": "股价反弹至MA5上方，但MACD绿柱收敛，RSI中性，整体仍受MA20压制，反弹力度或有限。",
       "catalysts": [
-        "存储涨价周期",
-        "AI需求拉动"
+        "MACD绿柱收敛，下跌动能减弱",
+        "站上MA5，短期企稳"
       ],
       "risks": [
-        "高波动性",
-        "行业周期性下行"
+        "股价低于MA20和MA50，中期趋势偏空",
+        "反弹可能遭遇MA20附近压力"
       ],
       "sniper": {
-        "ideal_buy": "786.45（布林下轨）",
-        "second_buy": "851.07（MA5）站稳后",
-        "stop_loss": "750.00下方",
-        "target": "919.31（MA20）"
+        "ideal_buy": "786.45 (布林下轨)",
+        "second_buy": "777.48 (3x强平线附近)",
+        "stop_loss": "777.48 (跌破强平线)",
+        "target": "919.31 (MA20附近)"
       },
       "sectors": [
-        "半导体",
-        "存储"
-      ]
+        "科技",
+        "半导体"
+      ],
+      "bottom_fishing": {
+        "score": 0,
+        "reasons": [
+          "无明确抄底信号"
+        ]
+      },
+      "reversal": {
+        "signal": "无",
+        "confidence": "低"
+      }
     },
     {
       "symbol": "AMZN",
-      "score": 55,
-      "operation": "观望",
+      "score": 50,
+      "operation": "买入",
       "trend": "震荡",
-      "core_view": "股价在布林中轨附近震荡，RSI中性，MACD负值但收窄，等待方向突破。",
+      "core_view": "股价接近资金集中区，获得支撑，MACD绿柱收敛，RSI回升，放量确认，短期反弹概率较大。",
       "catalysts": [
-        "电商业务稳定",
-        "AWS增长"
+        "接近资金集中区，主力成本支撑",
+        "MACD绿柱收敛，RSI回升，放量确认"
       ],
       "risks": [
-        "消费疲软",
-        "竞争加剧"
+        "股价仍低于MA20和MA50，中期趋势偏弱",
+        "反弹可能受限于MA20附近压力"
       ],
       "sniper": {
-        "ideal_buy": "227.20（布林下轨）",
-        "second_buy": "231.30（MA5）附近",
-        "stop_loss": "222.00下方",
-        "target": "242.41（MA20）"
+        "ideal_buy": "231.30 (MA5附近)",
+        "second_buy": "227.20 (布林下轨)",
+        "stop_loss": "227.20 (跌破布林下轨)",
+        "target": "242.41 (MA20附近)"
       },
       "sectors": [
-        "电商",
-        "云计算"
-      ]
-    },
-    {
-      "symbol": "MRVL",
-      "score": 40,
-      "operation": "观望",
-      "trend": "看空",
-      "core_view": "股价反弹但均线空头排列，MACD深负，趋势未反转，需谨慎。",
-      "catalysts": [
-        "数据中心需求",
-        "定制芯片业务"
+        "科技",
+        "电商"
       ],
-      "risks": [
-        "半导体周期下行",
-        "高波动性"
-      ],
-      "sniper": {
-        "ideal_buy": "161.07（布林下轨）",
-        "second_buy": "180.91（MA5）站稳后",
-        "stop_loss": "155.00下方",
-        "target": "209.34（MA20）"
+      "bottom_fishing": {
+        "score": 30,
+        "reasons": [
+          "接近资金集中区（240.13，主力成本支撑）"
+        ]
       },
-      "sectors": [
-        "半导体",
-        "数据中心"
-      ]
+      "reversal": {
+        "signal": "反弹",
+        "confidence": "中"
+      }
     },
     {
       "symbol": "SNDK",
-      "score": 38,
+      "score": 30,
       "operation": "观望",
       "trend": "看空",
-      "core_view": "股价反弹但均线空头，MACD深负，趋势极弱，反弹可能短暂。",
+      "core_view": "股价反弹至MA5上方，但MACD绿柱收敛，RSI中性，整体仍受MA20压制，反弹力度或有限。",
       "catalysts": [
-        "存储涨价预期",
-        "AI存储需求"
+        "MACD绿柱收敛，下跌动能减弱",
+        "站上MA5，短期企稳"
       ],
       "risks": [
-        "高波动性",
-        "行业竞争激烈"
+        "股价远低于MA20和MA50，趋势偏空",
+        "反弹可能遭遇MA20附近压力"
       ],
       "sniper": {
-        "ideal_buy": "1058.23（布林下轨）",
-        "second_buy": "1221.35（MA5）站稳后",
-        "stop_loss": "1000.00下方",
-        "target": "1535.89（MA20）"
+        "ideal_buy": "1058.23 (布林下轨)",
+        "second_buy": "1137.74 (3x强平线附近)",
+        "stop_loss": "1137.74 (跌破强平线)",
+        "target": "1535.89 (MA20附近)"
       },
       "sectors": [
-        "存储",
+        "科技",
         "半导体"
-      ]
+      ],
+      "bottom_fishing": {
+        "score": 0,
+        "reasons": [
+          "无明确抄底信号"
+        ]
+      },
+      "reversal": {
+        "signal": "反弹",
+        "confidence": "低"
+      }
     },
     {
       "symbol": "LITE",
-      "score": 45,
+      "score": 30,
       "operation": "观望",
       "trend": "看空",
-      "core_view": "股价反弹但均线空头，MACD深负，趋势偏弱，等待企稳信号。",
+      "core_view": "股价反弹至MA5上方，但MACD绿柱收敛，RSI中性，整体仍受MA20压制，反弹力度或有限。",
       "catalysts": [
-        "光模块需求",
-        "AI数据中心建设"
+        "MACD绿柱收敛，下跌动能减弱",
+        "站上MA5，短期企稳"
       ],
       "risks": [
-        "行业竞争",
-        "高波动性"
+        "股价低于MA20和MA50，中期趋势偏空",
+        "反弹可能遭遇MA20附近压力"
       ],
       "sniper": {
-        "ideal_buy": "624.85（布林下轨）",
-        "second_buy": "684.49（MA5）站稳后",
-        "stop_loss": "600.00下方",
-        "target": "745.81（MA20）"
+        "ideal_buy": "624.85 (布林下轨)",
+        "second_buy": "616.21 (3x强平线附近)",
+        "stop_loss": "616.21 (跌破强平线)",
+        "target": "745.81 (MA20附近)"
       },
       "sectors": [
-        "光通信",
-        "AI硬件"
-      ]
+        "科技",
+        "光通信"
+      ],
+      "bottom_fishing": {
+        "score": 0,
+        "reasons": [
+          "无明确抄底信号"
+        ]
+      },
+      "reversal": {
+        "signal": "反弹",
+        "confidence": "低"
+      }
+    },
+    {
+      "symbol": "MRVL",
+      "score": 35,
+      "operation": "观望",
+      "trend": "看空",
+      "core_view": "股价反弹至MA5上方，但MACD绿柱收敛，RSI偏低，存在超跌反弹可能，但中期趋势仍偏空，谨慎参与。",
+      "catalysts": [
+        "RSI偏低，存在超跌反弹需求",
+        "MACD绿柱收敛，下跌动能减弱"
+      ],
+      "risks": [
+        "股价远低于MA20和MA50，趋势偏空",
+        "反弹可能受限于MA5附近压力"
+      ],
+      "sniper": {
+        "ideal_buy": "161.07 (布林下轨)",
+        "second_buy": "162.93 (3x强平线附近)",
+        "stop_loss": "162.93 (跌破强平线)",
+        "target": "180.91 (MA5附近)"
+      },
+      "sectors": [
+        "科技",
+        "半导体"
+      ],
+      "bottom_fishing": {
+        "score": 15,
+        "reasons": [
+          "RSI偏低"
+        ]
+      },
+      "reversal": {
+        "signal": "反弹",
+        "confidence": "低"
+      }
     },
     {
       "symbol": "SPCX",
-      "score": 30,
-      "operation": "卖出",
-      "trend": "看空",
-      "core_view": "RSI超卖，MACD深负，均线空头，趋势极弱，反弹乏力，建议规避。",
-      "catalysts": [
-        "超跌反弹可能"
-      ],
-      "risks": [
-        "基本面不明",
-        "高波动性"
-      ],
-      "sniper": {
-        "ideal_buy": "98.84（布林下轨）",
-        "second_buy": "113.95（MA5）站稳后",
-        "stop_loss": "95.00下方",
-        "target": "131.49（MA20）"
-      },
-      "sectors": [
-        "航空航天",
-        "军工"
-      ]
-    },
-    {
-      "symbol": "NVDA",
-      "score": 52,
+      "score": 25,
       "operation": "观望",
-      "trend": "震荡",
-      "core_view": "股价处于均线下方，RSI中性，MACD负值收窄，短期震荡，等待突破。",
+      "trend": "看空",
+      "core_view": "RSI接近超卖，MACD绿柱收敛，但股价仍受MA5和MA20压制，反弹信号较弱，观望为主。",
       "catalysts": [
-        "AI芯片需求旺盛",
-        "新产品周期"
+        "RSI接近超卖，存在超跌反弹需求",
+        "MACD绿柱收敛，下跌动能减弱"
       ],
       "risks": [
-        "高估值",
-        "出口管制"
+        "股价远低于MA20，趋势偏空",
+        "反弹信号较弱，可能继续下跌"
       ],
       "sniper": {
-        "ideal_buy": "189.81（布林下轨）",
-        "second_buy": "197.08（MA5）附近",
-        "stop_loss": "185.00下方",
-        "target": "203.00（MA20）"
+        "ideal_buy": "98.84 (布林下轨)",
+        "second_buy": "99.73 (3x强平线附近)",
+        "stop_loss": "99.73 (跌破强平线)",
+        "target": "113.95 (MA5附近)"
       },
       "sectors": [
-        "半导体",
-        "人工智能"
-      ]
+        "科技",
+        "航天"
+      ],
+      "bottom_fishing": {
+        "score": 15,
+        "reasons": [
+          "RSI偏低"
+        ]
+      },
+      "reversal": {
+        "signal": "无",
+        "confidence": "低"
+      }
     },
     {
       "symbol": "ORCL",
-      "score": 45,
-      "operation": "观望",
-      "trend": "看空",
-      "core_view": "股价反弹但均线空头，MACD深负，趋势偏弱，需等待企稳。",
+      "score": 55,
+      "operation": "买入",
+      "trend": "震荡",
+      "core_view": "股价接近资金集中区，获得支撑，MACD金叉，RSI回升，站上MA5，短期反弹概率较大。",
       "catalysts": [
-        "云业务增长",
-        "AI数据库需求"
+        "接近资金集中区，主力成本支撑",
+        "MACD金叉，RSI回升，站上MA5"
       ],
       "risks": [
-        "竞争加剧",
-        "宏观经济影响"
+        "股价仍低于MA20和MA50，中期趋势偏弱",
+        "反弹可能受限于MA20附近压力"
       ],
       "sniper": {
-        "ideal_buy": "111.23（布林下轨）",
-        "second_buy": "120.03（MA5）站稳后",
-        "stop_loss": "108.00下方",
-        "target": "129.28（MA20）"
+        "ideal_buy": "120.03 (MA5附近)",
+        "second_buy": "111.23 (布林下轨)",
+        "stop_loss": "111.23 (跌破布林下轨)",
+        "target": "129.28 (MA20附近)"
       },
       "sectors": [
-        "软件",
-        "云计算"
-      ]
+        "科技",
+        "软件"
+      ],
+      "bottom_fishing": {
+        "score": 30,
+        "reasons": [
+          "接近资金集中区（124.62，主力成本支撑）"
+        ]
+      },
+      "reversal": {
+        "signal": "反弹",
+        "confidence": "中"
+      }
+    },
+    {
+      "symbol": "NVDA",
+      "score": 25,
+      "operation": "观望",
+      "trend": "震荡",
+      "core_view": "RSI从超卖区回升，但MACD绿柱未明显收敛，股价受MA5压制，反弹信号较弱，观望为主。",
+      "catalysts": [
+        "RSI从超卖区回升，存在超跌反弹需求"
+      ],
+      "risks": [
+        "股价仍低于MA5、MA20和MA50，趋势偏弱",
+        "反弹信号较弱，可能继续震荡"
+      ],
+      "sniper": {
+        "ideal_buy": "189.81 (布林下轨)",
+        "second_buy": "173.37 (3x强平线附近)",
+        "stop_loss": "173.37 (跌破强平线)",
+        "target": "203.00 (MA20附近)"
+      },
+      "sectors": [
+        "科技",
+        "半导体"
+      ],
+      "bottom_fishing": {
+        "score": 0,
+        "reasons": [
+          "无明确抄底信号"
+        ]
+      },
+      "reversal": {
+        "signal": "无",
+        "confidence": "低"
+      }
     },
     {
       "symbol": "TSLA",
       "score": 35,
-      "operation": "卖出",
+      "operation": "观望",
       "trend": "看空",
-      "core_view": "RSI超卖，MACD深负，均线空头，趋势极弱，反弹乏力，建议规避。",
+      "core_view": "RSI接近超卖，MACD绿柱收敛，股价站上MA5，存在超跌反弹可能，但中期趋势仍偏空，谨慎参与。",
       "catalysts": [
-        "超跌反弹可能",
-        "新车型发布"
+        "RSI偏低，存在超跌反弹需求",
+        "MACD绿柱收敛，下跌动能减弱"
       ],
       "risks": [
-        "需求疲软",
-        "竞争加剧"
+        "股价远低于MA20和MA50，趋势偏空",
+        "反弹可能受限于MA5附近压力"
       ],
       "sniper": {
-        "ideal_buy": "287.81（布林下轨）",
-        "second_buy": "307.37（MA5）站稳后",
-        "stop_loss": "280.00下方",
-        "target": "368.04（MA20）"
+        "ideal_buy": "287.81 (布林下轨)",
+        "second_buy": "274.53 (3x强平线附近)",
+        "stop_loss": "274.53 (跌破强平线)",
+        "target": "307.37 (MA5附近)"
       },
       "sectors": [
-        "新能源汽车",
-        "自动驾驶"
-      ]
+        "科技",
+        "汽车"
+      ],
+      "bottom_fishing": {
+        "score": 15,
+        "reasons": [
+          "RSI偏低"
+        ]
+      },
+      "reversal": {
+        "signal": "反弹",
+        "confidence": "低"
+      }
     },
     {
       "symbol": "0700.HK",
-      "score": 68,
+      "score": 70,
       "operation": "买入",
       "trend": "看多",
-      "core_view": "股价站上均线，RSI偏强，MACD金叉，量能配合，有望继续上行。",
+      "core_view": "放量突破，MACD金叉，RSI进入强势区，站上MA5，短期趋势强劲，有望继续上行，但需警惕高位回调风险。",
       "catalysts": [
-        "游戏业务复苏",
-        "广告业务增长"
+        "MACD金叉，趋势转强",
+        "放量突破，资金关注度高"
       ],
       "risks": [
-        "监管风险",
-        "宏观经济不确定性"
+        "RSI达56.1，短期可能回调",
+        "股价远离MA5，存在回调需求"
       ],
       "sniper": {
-        "ideal_buy": "452.60（MA5）附近",
-        "second_buy": "459.35（MA20）回踩",
-        "stop_loss": "429.31（布林下轨）下方",
-        "target": "489.39（布林上轨）"
+        "ideal_buy": "452.60 (MA5附近)",
+        "second_buy": "429.31 (布林下轨)",
+        "stop_loss": "429.31 (跌破布林下轨)",
+        "target": "489.39 (布林上轨)"
       },
       "sectors": [
-        "互联网",
-        "游戏"
-      ]
+        "科技",
+        "互联网"
+      ],
+      "bottom_fishing": {
+        "score": 0,
+        "reasons": [
+          "无抄底信号，已处于上涨趋势"
+        ]
+      },
+      "reversal": {
+        "signal": "反弹",
+        "confidence": "中"
+      }
     },
     {
       "symbol": "0883.HK",
       "score": 65,
       "operation": "买入",
       "trend": "看多",
-      "core_view": "股价突破布林中轨，RSI偏强，MACD金叉，量能配合，趋势向好。",
+      "core_view": "MACD金叉，RSI进入强势区，站上短期均线，趋势转强，有望继续上行，但需关注量能配合。",
       "catalysts": [
-        "油价上涨",
-        "需求回暖"
+        "MACD金叉，趋势转强",
+        "RSI进入强势区，站上短期均线"
       ],
       "risks": [
-        "油价波动",
-        "地缘政治风险"
+        "RSI达59.2，短期可能回调",
+        "股价接近布林上轨，存在压力"
       ],
       "sniper": {
-        "ideal_buy": "23.48（MA5）附近",
-        "second_buy": "22.77（MA20）回踩",
-        "stop_loss": "20.75（布林下轨）下方",
-        "target": "24.79（布林上轨）"
+        "ideal_buy": "23.48 (MA5附近)",
+        "second_buy": "20.75 (布林下轨)",
+        "stop_loss": "20.75 (跌破布林下轨)",
+        "target": "24.79 (布林上轨)"
       },
       "sectors": [
         "能源",
         "石油"
-      ]
+      ],
+      "bottom_fishing": {
+        "score": 0,
+        "reasons": [
+          "无抄底信号，已处于上涨趋势"
+        ]
+      },
+      "reversal": {
+        "signal": "反弹",
+        "confidence": "中"
+      }
     },
     {
       "symbol": "3750.HK",
-      "score": 48,
+      "score": 30,
       "operation": "观望",
       "trend": "震荡",
-      "core_view": "股价在布林中轨附近震荡，RSI中性，MACD负值，等待方向选择。",
+      "core_view": "缩量企稳，MACD金叉，站上MA5，但股价仍受MA20压制，反弹力度或有限，观望为主。",
       "catalysts": [
-        "新能源政策",
-        "行业需求增长"
+        "缩量企稳，恐慌盘衰竭",
+        "MACD金叉，站上MA5"
       ],
       "risks": [
-        "行业竞争",
-        "政策变化"
+        "股价低于MA50，中期趋势偏弱",
+        "反弹可能受限于MA20附近压力"
       ],
       "sniper": {
-        "ideal_buy": "582.27（布林下轨）",
-        "second_buy": "620.20（MA5）附近",
-        "stop_loss": "570.00下方",
-        "target": "624.38（MA20）"
+        "ideal_buy": "582.27 (布林下轨)",
+        "second_buy": "552.00 (3x强平线附近)",
+        "stop_loss": "552.00 (跌破强平线)",
+        "target": "624.38 (MA20附近)"
       },
       "sectors": [
-        "新能源汽车",
-        "电池"
-      ]
+        "科技",
+        "互联网"
+      ],
+      "bottom_fishing": {
+        "score": 15,
+        "reasons": [
+          "恐慌盘衰竭（缩量企稳）"
+        ]
+      },
+      "reversal": {
+        "signal": "反弹",
+        "confidence": "低"
+      }
     }
   ]
 }
