@@ -30,7 +30,7 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
+          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
       - name: 提交数据文件
         run: |
           git config user.name "github-actions"
