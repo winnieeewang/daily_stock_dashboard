@@ -198,6 +198,9 @@ def load_static_data() -> Dict[str, Any]:
         "weekly": DATA_DIR / "weekly_report.md",
         "morning": DATA_DIR / "morning_brief.md",
         "evening": DATA_DIR / "evening_recap.md",
+        "extra_indicators": DATA_DIR / "extra_indicators.json",
+        "options_pcr": DATA_DIR / "options_pcr.json",
+        "predictions": DATA_DIR / "predictions.json",
     }
     for key, p in files.items():
         if not p.exists():
@@ -225,9 +228,19 @@ SOX_DF: Optional[pd.DataFrame] = DATA.get("sox")
 SP500_DF: Optional[pd.DataFrame] = DATA.get("sp500")
 CARDS_DATA = DATA.get("cards") or {}
 NEWS_DATA = DATA.get("news") or {}
+EXTRA_DATA = DATA.get("extra_indicators") or {}
+PCR_DATA = DATA.get("options_pcr") or {}
+PREDICTIONS_DATA = DATA.get("predictions") or {}
 CARDS_LIST = CARDS_DATA.get("stocks", []) if isinstance(CARDS_DATA, dict) else []
 CARDS_MAP = {c.get("symbol"): c for c in CARDS_LIST} if isinstance(CARDS_LIST, list) else {}
 LEV_MAP = (DATA.get("leverage") or {}).get("stocks", {}) if isinstance(DATA.get("leverage"), dict) else {}
+
+
+# ---------------------------------------------------------------------------
+# API key 集合（v2.1：多源支持）
+# ---------------------------------------------------------------------------
+FINNHUB_KEY = os.environ.get("FINNHUB_API", "") or (st.secrets.get("FINNHUB_API", "") if hasattr(st, "secrets") else "")
+NEWSAPI_KEY = os.environ.get("NEWSAPI_KEY", "") or (st.secrets.get("NEWSAPI_KEY", "") if hasattr(st, "secrets") else "")
 
 
 # ---------------------------------------------------------------------------
@@ -376,6 +389,103 @@ def page_dashboard():
             f'<div class="card" style="text-align:center;"><h4>🏛️ 10Y 美债</h4><div class="big">{tnx:.2f}%</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">利率风向标</div></div>',
             unsafe_allow_html=True,
         )
+
+    # ===== v2.1 新增：第二行 4 张指标卡 =====
+    y2c = EXTRA_DATA.get("2y_scorecard") or {}
+    debt = EXTRA_DATA.get("us_debt") or {}
+    margin = EXTRA_DATA.get("margin_debt") or {}
+    nfci = EXTRA_DATA.get("nfci_leverage") or {}
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        y2 = y2c.get("y2")
+        spread = y2c.get("spread_bps")
+        signal = y2c.get("signal", "—")
+        if y2 is not None and spread is not None:
+            spread_color = "#dc2626" if spread < 0 else ("#16a34a" if spread > 75 else "#f59e0b")
+            st.markdown(
+                f'<div class="card" style="text-align:center;">'
+                f'<h4>📊 2-Year Scorecard</h4>'
+                f'<div style="font-size:13px;color:var(--text-dim);">2Y: <b style="font-size:18px;color:var(--text);">{y2:.2f}%</b> · 10Y: <b style="font-size:18px;color:var(--text);">{y2c.get("y10", 0):.2f}%</b></div>'
+                f'<div style="font-size:22px;font-weight:800;color:{spread_color};margin-top:6px;">{spread:.0f} bps</div>'
+                f'<div style="font-size:11px;margin-top:4px;">{signal}</div>'
+                f'<div style="font-size:9px;color:var(--text-dim);margin-top:2px;">5d 变化: {y2c.get("spread_5d_chg", "—")} bps · {y2c.get("asof","—")}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f'<div class="card" style="text-align:center;">'
+                f'<h4>📊 2-Year Scorecard</h4>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 数据缺失 (需 FRED_API)</div>'
+                f'<div style="font-size:10px;color:var(--text-dim);">DGS2 / ^TNX</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    with c2:
+        debt_val = debt.get("value_trillion")
+        if debt_val is not None:
+            st.markdown(
+                f'<div class="card" style="text-align:center;">'
+                f'<h4>🇺🇸 U.S. National Debt</h4>'
+                f'<div class="big" style="color:#dc2626;">${debt_val:.2f}T</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">同比 +{debt.get("yoy_chg_pct", 0):.1f}% · {debt.get("asof","—")}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f'<div class="card" style="text-align:center;">'
+                f'<h4>🇺🇸 U.S. National Debt</h4>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 需 FRED_API</div>'
+                f'<div style="font-size:10px;color:var(--text-dim);">GFDEBTN</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    with c3:
+        mb_val = margin.get("value_billion")
+        if mb_val is not None:
+            st.markdown(
+                f'<div class="card" style="text-align:center;">'
+                f'<h4>💳 FINRA Margin Debt</h4>'
+                f'<div class="big">${mb_val:.0f}B</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">环比 {margin.get("mom_chg_pct", 0):+.1f}% · 同比 {margin.get("yoy_chg_pct", 0):+.1f}%</div>'
+                f'<div style="font-size:11px;margin-top:4px;">{margin.get("signal", "—")}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f'<div class="card" style="text-align:center;">'
+                f'<h4>💳 FINRA Margin Debt</h4>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 需 FRED_API</div>'
+                f'<div style="font-size:10px;color:var(--text-dim);">MDEBT</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    with c4:
+        nfci_v = nfci.get("value")
+        if nfci_v is not None:
+            nfci_chg = nfci.get("chg", 0)
+            chg_color = "#16a34a" if nfci_chg < 0 else "#dc2626"  # 下降 = 宽松 = 利好
+            st.markdown(
+                f'<div class="card" style="text-align:center;">'
+                f'<h4>🏦 NFCI Leverage</h4>'
+                f'<div class="big" style="color:{"#dc2626" if nfci_v > 0.5 else "#16a34a"};">{nfci_v:+.2f}</div>'
+                f'<div style="font-size:11px;color:{chg_color};font-weight:600;margin-top:4px;">较上周 {nfci_chg:+.3f}</div>'
+                f'<div style="font-size:11px;margin-top:4px;">{nfci.get("signal","—")}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f'<div class="card" style="text-align:center;">'
+                f'<h4>🏦 NFCI Leverage</h4>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 需 FRED_API</div>'
+                f'<div style="font-size:10px;color:var(--text-dim);">NFCILEVERAGE</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
     # ===== 第二行：今日重点 + Top 机会 + Top 风险 =====
     st.markdown('<div class="section-title">🎯 今日重点 & 自选扫描</div>', unsafe_allow_html=True)
@@ -815,13 +925,15 @@ def page_stock_deepdive():
 
         # 新闻
         st.markdown("#### 📰 标的新闻")
-        if SERPAPI_KEY:
-            with st.spinner(f"拉取 {sym} 新闻…"):
-                sym_news = U.fetch_stock_news(sym, SERPAPI_KEY, is_hk=sym.endswith(".HK"), top_n=5)
-        else:
-            sym_news = []
-        if not sym_news and isinstance(NEWS_DATA, dict):
-            sym_news = NEWS_DATA.get("stocks", {}).get(sym, []) if isinstance(NEWS_DATA.get("stocks"), dict) else []
+        sym_news: List[Dict[str, Any]] = []
+        if isinstance(NEWS_DATA, dict):
+            sym_news = (NEWS_DATA.get("stocks", {}) or {}).get(sym, []) if isinstance(NEWS_DATA.get("stocks"), dict) else []
+        # 如果缓存里没有，尝试 Yahoo RSS / Stocktwits（免费，无需 key）
+        if not sym_news:
+            with st.spinner(f"实时拉取 {sym} 新闻…"):
+                sym_news = U.fetch_yahoo_rss(ticker=sym)
+                if not sym_news and not sym.endswith(".HK"):
+                    sym_news = U.fetch_stocktwits(sym, limit=8)
         if sym_news:
             for n in sym_news[:5]:
                 st.markdown(
@@ -832,7 +944,67 @@ def page_stock_deepdive():
                     unsafe_allow_html=True,
                 )
         else:
-            st.caption("暂无新闻（请配置 SERPAPI）")
+            st.caption("暂无新闻（SerpApi/免费源 均未拉到）")
+
+        # ===== v2.1 新增：Vol/OI PCR（来自 yfinance 期权）=====
+        st.markdown("#### 📊 期权 Vol/OI PCR")
+        pcr = PCR_DATA.get(sym, {}) if isinstance(PCR_DATA, dict) else {}
+        if pcr and (pcr.get("vol_pcr") is not None or pcr.get("oi_pcr") is not None):
+            vol_pcr = pcr.get("vol_pcr")
+            oi_pcr = pcr.get("oi_pcr")
+            # 颜色：PCR > 1.0 = 看空；< 0.7 = 看多
+            def pcr_color(v):
+                if v is None: return "#9ca3af"
+                if v > 1.0: return "#16a34a"  # 偏高（看空保护）
+                if v < 0.7: return "#dc2626"  # 偏低（看多情绪）
+                return "#f59e0b"
+            st.markdown(
+                f'<div class="card" style="font-size:13px;">'
+                f'<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+                f'<span>到期日</span><b>{pcr.get("expiry","—")}</b></div>'
+                f'<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+                f'<span>Vol PCR</span><b style="color:{pcr_color(vol_pcr)};font-size:18px;">{vol_pcr:.2f if vol_pcr is not None else "—"}</b></div>'
+                f'<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+                f'<span>OI PCR</span><b style="color:{pcr_color(oi_pcr)};font-size:18px;">{oi_pcr:.2f if oi_pcr is not None else "—"}</b></div>'
+                f'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);">'
+                f'<span>Call/Put Vol</span><span>{pcr.get("call_volume", 0):,} / {pcr.get("put_volume", 0):,}</span></div>'
+                f'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);">'
+                f'<span>Call/Put OI</span><span>{pcr.get("call_oi", 0):,} / {pcr.get("put_oi", 0):,}</span></div>'
+                f'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-top:4px;">'
+                f'<span>IV (C/P)</span><span>{pcr.get("iv_call", "—")} / {pcr.get("iv_put", "—")}</span></div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            # 解读
+            v = pcr.get("vol_pcr", 0) or 0
+            if v > 1.2:
+                st.caption("📉 Vol PCR > 1.2：Put 成交活跃，看空/对冲情绪重")
+            elif v > 0.8:
+                st.caption("➡️ 0.8-1.2：多空均衡")
+            else:
+                st.caption("📈 Vol PCR < 0.8：Call 主导，市场偏多")
+        else:
+            st.caption("暂无期权数据（运行 `python stock_dashboard.py --extras` 刷新）")
+
+        # ===== v2.1 新增：下周走势预测 =====
+        st.markdown("#### 🔮 下周走势预测")
+        pred_block = (PREDICTIONS_DATA.get("stocks", {}) or {}).get(sym, {}) if isinstance(PREDICTIONS_DATA, dict) else {}
+        if pred_block and pred_block.get("prediction"):
+            pred_md = pred_block["prediction"]
+            with st.expander(f"📅 {pred_block.get('generated_at','')} 生成的预测", expanded=True):
+                st.markdown(
+                    f'<div class="ai-box" style="border-left-color:#7c3aed;font-size:13px;line-height:1.7;">{pred_md.replace(chr(10), "<br>")}</div>',
+                    unsafe_allow_html=True,
+                )
+            tech = pred_block.get("technical", {})
+            if tech:
+                st.caption(
+                    f"基线技术: ${tech.get('close', 0):.2f} · "
+                    f"RSI {tech.get('rsi', 0):.0f} · "
+                    f"ATR {tech.get('atr', 0):.2f}"
+                )
+        else:
+            st.caption("暂无预测（运行 `python stock_dashboard.py --predictions` 生成）")
 
         # 市场上下文
         st.markdown("#### 🌍 市场上下文")
@@ -958,22 +1130,49 @@ def page_cross_asset():
 def page_news_center():
     st.markdown('<div class="section-title"><span class="accent">📰</span>新闻与消息中心</div>', unsafe_allow_html=True)
 
-    if not SERPAPI_KEY:
-        st.warning("⚠️ 未配置 SERPAPI_KEY。在 GitHub Secrets 添加 SERPAPI，或在 .streamlit/secrets.toml 设置 SERPAPI。")
-        st.info("如已配置但仍未抓到，请检查：\n1. Secret 名是否为 `SERPAPI`（大写）\n2. workflow env 是否传入 SERPAPI（看 stock_dashboard.py run 那段的 env）\n3. SerpApi 账户是否还有免费额度（每月 100 次）")
-    c1, c2, c3 = st.columns(3)
-    if st.button("🔄 立即抓取一次新闻", use_container_width=True):
-        with st.spinner("抓取宏观/政策/个股新闻…"):
+    # ===== v2.1：多源状态面板 =====
+    sources_status = []
+    if SERPAPI_KEY: sources_status.append(("SerpApi (付费)", "✅", "宏观/政策/个股"))
+    else: sources_status.append(("SerpApi (付费)", "❌", "需 SERPAPI secret"))
+    if FINNHUB_KEY: sources_status.append(("Finnhub", "✅", "美股个股新闻"))
+    else: sources_status.append(("Finnhub", "⚠️ 可选", "60 calls/min 免费"))
+    if NEWSAPI_KEY: sources_status.append(("NewsAPI", "✅", "宏观新闻"))
+    else: sources_status.append(("NewsAPI", "⚠️ 可选", "100/day 免费"))
+    sources_status.append(("Yahoo Finance RSS", "✅", "始终免费"))
+    sources_status.append(("Stocktwits API", "✅", "始终免费（散户情绪）"))
+    sources_status.append(("东方财富网", "✅", "始终免费（中文宏观）"))
+
+    with st.expander("🔌 数据源状态", expanded=False):
+        cols = st.columns(2)
+        for i, (name, status, desc) in enumerate(sources_status):
+            with cols[i % 2]:
+                st.markdown(f"- {status} **{name}** — {desc}")
+
+    if not any([SERPAPI_KEY, FINNHUB_KEY, NEWSAPI_KEY]):
+        st.warning("⚠️ 未配置任何付费 API。但 Yahoo RSS / Stocktwits / 东方财富 仍可获取新闻，点击下方按钮试试。")
+
+    if st.button("🔄 立即抓取一次新闻（多源）", use_container_width=True):
+        with st.spinner("多源抓取中…"):
             symbols = STOCKS_DF["symbol"].tolist() if STOCKS_DF is not None else []
-            res = U.fetch_all_news(SERPAPI_KEY, symbols, DATA_DIR / "news.json")
+            res = U.fetch_all_news_multi_source(
+                symbols=symbols,
+                serpapi_key=SERPAPI_KEY,
+                finnhub_key=FINNHUB_KEY,
+                newsapi_key=NEWSAPI_KEY,
+                out_path=DATA_DIR / "news.json",
+            )
             st.session_state["_news_res"] = res
-            st.success(f"抓取完成: 宏观 {len(res['macro'])} / 政策 {len(res['policy'])} / 个股 {sum(len(v) for v in res['stocks'].values())}")
+            used = ", ".join(res.get("sources_used", [])) or "无"
+            st.success(
+                f"✅ 抓取完成 · 使用源: {used} · "
+                f"宏观 {len(res.get('macro', []))} / 政策 {len(res.get('policy', []))} / "
+                f"个股 {sum(1 for v in res.get('stocks', {}).values() if v)}/{len(symbols)}"
+            )
 
     res = st.session_state.get("_news_res") or NEWS_DATA
 
     if isinstance(res, dict):
         if "macro" in res or "policy" in res:
-            # 新结构（来自 fetch_all_news）
             tab_m, tab_p, tab_s = st.tabs(["🌍 宏观", "🏛️ 政策", "📊 自选股"])
             with tab_m:
                 _show_news_list(res.get("macro", []))
@@ -983,7 +1182,6 @@ def page_news_center():
                 sym = st.selectbox("选择股票", list(res.get("stocks", {}).keys()) if res.get("stocks") else [])
                 _show_news_list(res.get("stocks", {}).get(sym, []) if sym else [])
         else:
-            # 旧结构（仅个股）
             st.caption("只检测到个股新闻（无宏观/政策）— 点击上方按钮重新抓取")
             sym = st.selectbox("选择股票", list(res.keys()) if res else [])
             _show_news_list(res.get(sym, []) if sym else [])
@@ -1011,13 +1209,15 @@ def page_diagnostics():
     st.markdown('<div class="section-title"><span class="accent">⚙️</span>数据诊断 & Secret 检查</div>', unsafe_allow_html=True)
 
     rows = [
-        ("FRED_API", FRED_KEY),
-        ("DEEPSEEK_API_KEY", DEEPSEEK_KEY),
-        ("SERPAPI", SERPAPI_KEY),
+        ("FRED_API (新增)", FRED_KEY, "FRED 是 4 张新指标卡 + AI 宏观的源"),
+        ("DEEPSEEK_API_KEY", DEEPSEEK_KEY, "AI 报告 / 预测"),
+        ("SERPAPI (付费)", SERPAPI_KEY, "主力新闻源（100/月免费）"),
+        ("FINNHUB_API (新增可选)", FINNHUB_KEY, "美股个股新闻（60/min 免费）"),
+        ("NEWSAPI_KEY (新增可选)", NEWSAPI_KEY, "宏观新闻（100/day 免费）"),
     ]
-    for name, v in rows:
-        ok = "✅" if v else "❌"
-        st.markdown(f"- {ok} **{name}**: {'已配置 (' + str(len(v)) + ' 字符)' if v else '未配置'}")
+    for name, v, desc in rows:
+        ok = "✅" if v else ("⚠️" if "可选" in name else "❌")
+        st.markdown(f"- {ok} **{name}**: {'已配置 (' + str(len(v)) + ' 字符)' if v else '未配置'} — {desc}")
 
     st.divider()
     st.markdown("#### 📁 data/ 目录文件状态")
@@ -1025,6 +1225,7 @@ def page_diagnostics():
         "macro.csv", "stocks.csv", "sox.csv", "sp500.csv",
         "cards.json", "leverage_risk.json", "news.json",
         "report.md", "weekly_report.md", "morning_brief.md", "evening_recap.md",
+        "extra_indicators.json (新增)", "options_pcr.json (新增)", "predictions.json (新增)",
     ]
     for f in files:
         p = DATA_DIR / f
@@ -1036,19 +1237,46 @@ def page_diagnostics():
             st.markdown(f"- ❌ **{f}** — 缺失（运行 `python stock_dashboard.py` 生成）")
 
     st.divider()
-    st.markdown("#### 🔥 一键测试 SerpApi")
-    if st.button("测试 SerpApi 是否能拉到宏观新闻"):
-        if not SERPAPI_KEY:
-            st.error("SERPAPI 未配置")
-        else:
+    st.markdown("#### 🛠️ 一键测试各项数据源")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("🧪 测试 SerpApi", use_container_width=True):
+            if not SERPAPI_KEY:
+                st.error("SERPAPI 未配置")
+            else:
+                with st.spinner("测试中…"):
+                    test = U.fetch_macro_news(SERPAPI_KEY, top_n=3)
+                if test:
+                    st.success(f"成功拉到 {len(test)} 条")
+                else:
+                    st.error("未拉到任何结果")
+    with c2:
+        if st.button("🧪 测试 Yahoo RSS (免费)", use_container_width=True):
             with st.spinner("测试中…"):
-                test = U.fetch_macro_news(SERPAPI_KEY, top_n=3)
+                test = U.fetch_yahoo_rss(query="Federal Reserve")
             if test:
                 st.success(f"成功拉到 {len(test)} 条")
-                for n in test:
-                    st.markdown(f"- [{n.get('title','')}]({n.get('link','')})")
             else:
-                st.error("未拉到任何结果 — 检查：1) Key 是否有效 2) 引擎是否支持 google_news 3) 额度")
+                st.error("未拉到（可能在中国大陆被墙）")
+    with c3:
+        if st.button("🧪 测试 Stocktwits (免费)", use_container_width=True):
+            with st.spinner("测试中…"):
+                test = U.fetch_stocktwits("AAPL")
+            if test:
+                st.success(f"成功拉到 {len(test)} 条")
+            else:
+                st.error("未拉到")
+
+    st.divider()
+    st.markdown("#### 💡 推荐免费 API 注册（按优先级）")
+    st.markdown("""
+| API | 免费额度 | 用途 | 注册 |
+|---|---|---|---|
+| **FRED** | 120 req/min | 4 张新指标卡 + 利率 | https://fred.stlouisfed.org/docs/api/api_key.html |
+| **Finnhub** | 60 req/min | 美股个股新闻 | https://finnhub.io/register |
+| **NewsAPI** | 100 req/day | 宏观新闻 | https://newsapi.org/register |
+| SerpApi | 100/月 | 主力宏观/政策 | https://serpapi.com/ |
+""")
 
 
 # ---------------------------------------------------------------------------

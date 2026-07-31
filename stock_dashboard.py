@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -1128,6 +1129,153 @@ class ReportOrchestrator:
             logger.info("Evening Recap 已写入 data/evening_recap.md")
         return recap
 
+    # ===== v2.1 升级点 5: 4 张新 Dashboard 指标卡 =====
+    def _fetch_extra_indicators_and_save(self):
+        """
+        拉取并保存 4 张新指标：
+          - 2-Year Real-Time Scorecard (^TNX + FRED DGS2)
+          - U.S. National Debt (FRED GFDEBTN)
+          - FINRA Retail Margin Debt (FRED MDEBT)
+          - Chicago Fed NFCI Leverage Subindex (FRED NFCILEVERAGE)
+        """
+        logger.info("📊 拉取 4 张新指标卡...")
+        try:
+            data = U.fetch_extra_indicators()
+            (self.cfg.output_dir / "extra_indicators.json").write_text(
+                json.dumps(data, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            logger.info(f"✅ 4 张指标卡已写入 data/extra_indicators.json")
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"❌ 4 张指标卡失败: {e}")
+
+    # ===== v2.1 升级点 6: Vol/OI PCR（每只个股）=====
+    def _fetch_options_pcr_and_save(self):
+        """并发拉每只自选股的 Vol/OI PCR。"""
+        logger.info("📈 拉取 Vol/OI PCR...")
+        try:
+            result = U.fetch_all_pcr(list(self.cfg.stocks), out_path=self.cfg.output_dir / "options_pcr.json")
+            valid = sum(1 for v in result.values() if v.get("vol_pcr") is not None)
+            logger.info(f"✅ Vol/OI PCR 已写入 data/options_pcr.json ({valid}/{len(result)} 有效)")
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"❌ Vol/OI PCR 失败: {e}")
+
+    # ===== v2.1 升级点 7: 下周走势预测（综合四维）=====
+    def _generate_predictions_and_save(self):
+        """
+        为每只自选股生成下周走势预测，结合：
+          - 技术面 (RSI/MACD/MA/ATR)
+          - 消息面 (该股最近新闻)
+          - 政策面 (未来 1-2 周事件)
+          - 基本面 (PE/财报)
+          - 期权 (Vol/OI PCR)
+        """
+        if not self.cfg.deepseek_api_key:
+            logger.info("未配置 DEEPSEEK_API_KEY，跳过预测")
+            return
+        logger.info("🎯 生成下周走势预测...")
+
+        # 读已有数据
+        try:
+            news_data = json.loads((self.cfg.output_dir / "news.json").read_text(encoding="utf-8")) if (self.cfg.output_dir / "news.json").exists() else {}
+        except Exception:  # noqa: BLE001
+            news_data = {}
+        try:
+            pcr_data = json.loads((self.cfg.output_dir / "options_pcr.json").read_text(encoding="utf-8")) if (self.cfg.output_dir / "options_pcr.json").exists() else {}
+        except Exception:  # noqa: BLE001
+            pcr_data = {}
+        try:
+            cards_data = json.loads((self.cfg.output_dir / "cards.json").read_text(encoding="utf-8")) if (self.cfg.output_dir / "cards.json").exists() else {"stocks": []}
+        except Exception:  # noqa: BLE001
+            cards_data = {"stocks": []}
+
+        calendar = U.fetch_economic_calendar(self.cfg.serpapi_key)[:8]
+        predictions: Dict[str, Any] = {"asof": datetime.now().strftime("%Y-%m-%d %H:%M"), "stocks": {}}
+
+        for sym in self.cfg.stocks:
+            try:
+                # 技术面（重新拉一次确保最新）
+                hist = yf.download(sym, period="3mo", progress=False, auto_adjust=True)
+                if hist is None or hist.empty or len(hist) < 20:
+                    logger.warning(f"{sym} 数据不足，跳过预测")
+                    continue
+                if isinstance(hist.columns, pd.MultiIndex):
+                    hist.columns = hist.columns.get_level_values(0)
+                close = hist["Close"].dropna()
+                close_last = float(close.iloc[-1])
+                prev_close = float(close.iloc[-2])
+                change_pct = (close_last / prev_close - 1) * 100
+                ma20 = float(close.rolling(20).mean().iloc[-1])
+                ma50 = float(close.rolling(50).mean().iloc[-1]) if len(close) >= 50 else ma20
+                delta = close.diff()
+                gain = delta.clip(lower=0).rolling(14).mean()
+                loss = (-delta.clip(upper=0)).rolling(14).mean()
+                rs = gain / loss.replace(0, 1e-9)
+                rsi = float(100 - 100 / (1 + rs.iloc[-1])) if pd.notna(rs.iloc[-1]) else 50
+                ema12 = close.ewm(span=12).mean()
+                ema26 = close.ewm(span=26).mean()
+                macd = float((ema12 - ema26).iloc[-1])
+                macd_signal = float((ema12 - ema26).ewm(span=9).mean().iloc[-1])
+                # ATR
+                high = hist["High"]
+                low = hist["Low"]
+                tr = pd.concat([(high - low), (high - close.shift()).abs(), (low - close.shift()).abs()], axis=1).max(axis=1)
+                atr = float(tr.rolling(14).mean().iloc[-1])
+
+                technical = {
+                    "close": round(close_last, 2),
+                    "change_pct": round(change_pct, 2),
+                    "rsi": round(rsi, 1),
+                    "macd": round(macd, 3),
+                    "macd_signal": round(macd_signal, 3),
+                    "ma20": round(ma20, 2),
+                    "ma50": round(ma50, 2),
+                    "atr": round(atr, 2),
+                }
+
+                # 消息面
+                news = (news_data.get("stocks", {}) or {}).get(sym, [])[:5]
+
+                # 基本面 (从 cards.json 取)
+                card = next((c for c in (cards_data.get("stocks") or []) if c.get("symbol") == sym), {})
+
+                # 期权
+                opt = pcr_data.get(sym, {})
+
+                # 生成
+                pred_md = U.predict_next_week(
+                    self.cfg.deepseek_api_key,
+                    sym,
+                    technical=technical,
+                    news=news,
+                    policy_events=calendar,
+                    fundamentals={
+                        "pe_ratio": card.get("PE_Ratio", "N/A"),
+                        "last_earnings": card.get("last_earnings", "—"),
+                        "sector": card.get("sector", "—"),
+                    },
+                    options_data=opt,
+                )
+                if pred_md:
+                    predictions["stocks"][sym] = {
+                        "prediction": pred_md,
+                        "technical": technical,
+                        "vol_pcr": opt.get("vol_pcr"),
+                        "oi_pcr": opt.get("oi_pcr"),
+                        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    }
+                    logger.info(f"  ✅ {sym} 预测完成")
+                time.sleep(0.3)  # 避免 DeepSeek 限流
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"  ⚠️ {sym} 预测失败: {e}")
+                continue
+
+        (self.cfg.output_dir / "predictions.json").write_text(
+            json.dumps(predictions, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        logger.info(f"✅ 预测已写入 data/predictions.json ({len(predictions['stocks'])} 只)")
+
     def run(self, generate_brief: bool = True, generate_recap: bool = True):
         logger.info("📊 报告生成流程启动")
 
@@ -1215,7 +1363,59 @@ class ReportOrchestrator:
 
 if __name__ == "__main__":
     import sys
-    # 支持命令行参数：--no-brief / --no-recap
-    gen_brief = "--no-brief" not in sys.argv
-    gen_recap = "--no-recap" not in sys.argv
-    ReportOrchestrator().run(generate_brief=gen_brief, generate_recap=gen_recap)
+    args = sys.argv[1:]
+
+    # === CLI 模式分发（v2.1）===
+    #  --morning      只跑 Morning Brief + 数据刷新
+    #  --evening      只跑 Evening Recap + 数据刷新
+    #  --predictions  只生成下周走势预测
+    #  --extras       只刷新 4 张新指标卡 + Vol/OI PCR
+    #  --all          全部（默认）
+    orch = ReportOrchestrator()
+
+    if "--morning" in args:
+        # 美股盘前模式：轻量级，只更新关键数据
+        logger.info("🌅 盘前模式 (Morning Brief)")
+        macro = orch.macro_collector.collect_all()
+        sox = orch.macro_collector.get_sox()
+        sentiment = SentimentEngine.calculate(macro.get("VIX", 0), None, sox.get("RSI", 50))
+        orch._fetch_extra_indicators_and_save()
+        orch._generate_morning_brief(macro, sox, sentiment)
+        orch._fetch_options_pcr_and_save()
+        logger.info("✅ 盘前模式完成")
+    elif "--evening" in args:
+        # 美股盘后模式：跑全部
+        logger.info("🌙 盘后模式 (Evening Recap)")
+        orch.run(generate_brief=False, generate_recap=True)
+        orch._fetch_extra_indicators_and_save()
+        orch._fetch_options_pcr_and_save()
+        orch._generate_predictions_and_save()
+        logger.info("✅ 盘后模式完成")
+    elif "--predictions" in args:
+        logger.info("🎯 仅生成下周走势预测")
+        orch._generate_predictions_and_save()
+    elif "--extras" in args:
+        logger.info("📊 仅刷新 4 张新指标卡 + Vol/OI PCR")
+        orch._fetch_extra_indicators_and_save()
+        orch._fetch_options_pcr_and_save()
+    elif "--news" in args:
+        # 只刷新多源新闻（最轻量）
+        logger.info("📰 仅刷新多源新闻")
+        from utils import fetch_all_news_multi_source
+        symbols = list(orch.cfg.stocks)
+        result = fetch_all_news_multi_source(
+            symbols=symbols,
+            serpapi_key=orch.cfg.serpapi_key,
+            finnhub_key=os.environ.get("FINNHUB_API", ""),
+            newsapi_key=os.environ.get("NEWSAPI_KEY", ""),
+            out_path=orch.cfg.output_dir / "news.json",
+        )
+        logger.info(f"✅ 新闻刷新完成: sources={result.get('sources_used', [])} stocks={sum(1 for v in result.get('stocks', {}).values() if v)}/{len(symbols)}")
+    else:
+        # 默认全跑
+        gen_brief = "--no-brief" not in args
+        gen_recap = "--no-recap" not in args
+        orch.run(generate_brief=gen_brief, generate_recap=gen_recap)
+        orch._fetch_extra_indicators_and_save()
+        orch._fetch_options_pcr_and_save()
+        orch._generate_predictions_and_save()

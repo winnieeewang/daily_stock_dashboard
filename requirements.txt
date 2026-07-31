@@ -9,3 +9,4 @@ streamlit>=1.30.0
 plotly>=5.18.0
 akshare>=1.13.0
 serpapi>=0.1.0
+feedparser>=6.0.10

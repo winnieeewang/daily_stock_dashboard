@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -332,6 +333,34 @@ FOMC_2026_DATES = [
 ]
 
 
+def _normalize_close_series(df: pd.DataFrame) -> Optional[pd.Series]:
+    """
+    把 yf.download 的输出压成 1D Close Series。
+    处理 MultiIndex、单行 DataFrame、squeeze 后退化等所有边界情况。
+    返回 None 表示无法提取。
+    """
+    if df is None or df.empty:
+        return None
+    if isinstance(df.columns, pd.MultiIndex):
+        df = df.copy()
+        df.columns = df.columns.get_level_values(0)
+    if "Close" not in df.columns:
+        return None
+    close = df["Close"]
+    # 如果 yfinance 返回单行单列 DataFrame，squeeze 会变成 scalar；要先取列
+    if isinstance(close, pd.DataFrame):
+        if close.shape[1] == 1:
+            close = close.iloc[:, 0]
+        else:
+            close = close.iloc[:, 0]  # 取第一列
+    if not isinstance(close, pd.Series):
+        return None
+    close = close.dropna()
+    if close.empty:
+        return None
+    return close
+
+
 def calc_fedwatch_from_futures() -> Dict[str, Any]:
     """
     用 SR3 (3 月 SOFR 期货) 反推市场隐含的下次会议利率区间概率。
@@ -342,14 +371,19 @@ def calc_fedwatch_from_futures() -> Dict[str, Any]:
       - 隐含利率 = (当前 SR3 - 目标 SR3) / 12 + 当前 FFR
     """
     try:
-        sr3 = yf.download("SR3=F", period="6mo", progress=False)
-        if sr3.empty:
-            sr3 = yf.download("ZQ=F", period="6mo", progress=False)
-        if sr3.empty:
-            return {"error": "无法获取 SOFR/FF 期货", "meetings": []}
-        close = sr3["Close"].squeeze() if isinstance(sr3["Close"], pd.DataFrame) else sr3["Close"]
-        implied_rate = 100.0 - float(close.iloc[-1])
+        sr3 = yf.download("SR3=F", period="6mo", progress=False, auto_adjust=False)
+        if sr3 is None or sr3.empty:
+            sr3 = yf.download("ZQ=F", period="6mo", progress=False, auto_adjust=False)
+        close = _normalize_close_series(sr3) if sr3 is not None else None
+        if close is None:
+            return {"error": "无法获取 SOFR/FF 期货 (SR3=F / ZQ=F 都为空)", "meetings": []}
+        # 关键修复：必须转成 float，不能让 .iloc 在 float64 上被调用
+        last_val = float(close.iloc[-1])
+        if pd.isna(last_val) or last_val <= 0 or last_val >= 100:
+            return {"error": f"SOFR 期货价格异常: {last_val}", "meetings": []}
+        implied_rate = 100.0 - last_val
     except Exception as e:  # noqa: BLE001
+        logger.warning("FedWatch 计算失败: %s", e)
         return {"error": str(e), "meetings": []}
 
     current_ffr = 5.33  # 兜底；理想情况用 FRED DFF
@@ -377,6 +411,7 @@ def calc_fedwatch_from_futures() -> Dict[str, Any]:
         "prob_hike": round(prob_hike, 1),
         "verdict": verdict,
         "source": "CME SOFR/FF 期货 (SR3=F / ZQ=F)",
+        "asof": str(close.index[-1].date()) if hasattr(close.index[-1], "date") else "",
     }
 
 
@@ -757,3 +792,710 @@ def market_status_now() -> Dict[str, str]:
 def hash_for_cache(obj: Any) -> str:
     """给 streamlit @st.cache_data 提供稳定 hash。"""
     return hashlib.md5(repr(obj).encode("utf-8")).hexdigest()
+
+
+# ===========================================================================
+# v2.1 新增模块（在末尾追加，老代码不动）
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# 10. 2-Year Real-Time Scorecard（2Y 国债实时评分卡）
+# ---------------------------------------------------------------------------
+# 2Y 国债是 Fed 利率预期最敏感的代理，与 10Y 利差 (2s10s) 是衰退先行指标。
+# 倒挂 (<0) → 衰退预警；走陡 → 复苏信号。
+
+def fetch_2y_scorecard() -> Dict[str, Any]:
+    """
+    2-Year Real-Time Scorecard:
+      - 2Y 当前收益率 (^IRX 不可用，2Y 用 ^FVX 错的；正确 ticker 是 ^FVX 5Y)
+        → 2Y 没有完美 yfinance ticker，用 DGS2 from FRED
+      - 10Y 收益率
+      - 2s10s 利差
+      - 利差走势（5 日变化）
+    """
+    out: Dict[str, Any] = {"y2": None, "y10": None, "spread_bps": None, "spread_5d_chg": None, "signal": "—", "asof": ""}
+    try:
+        # 10Y 用 ^TNX（百分比 → /100 转成收益率）
+        tnx_df = yf.download("^TNX", period="6mo", progress=False)
+        tnx_close = _normalize_close_series(tnx_df)
+        if tnx_close is not None and len(tnx_close) >= 5:
+            y10_now = float(tnx_close.iloc[-1]) / 100.0
+            y10_5d_ago = float(tnx_close.iloc[-5]) / 100.0
+            out["y10"] = round(y10_now * 100, 3)  # 显示为 %
+            out["y10_5d_chg_bps"] = round((y10_now - y10_5d_ago) * 10000, 1)
+
+        # 2Y 用 FRED DGS2 (2-Year Treasury Constant Maturity Rate)
+        try:
+            from fredapi import Fred
+            fred_key = os.environ.get("FRED_API", "")
+            if fred_key:
+                fred = Fred(api_key=fred_key)
+                dgs2 = fred.get_series("DGS2", observation_start=(datetime.now() - timedelta(days=30)))
+                if dgs2 is not None and len(dgs2) > 0:
+                    dgs2 = dgs2.dropna()
+                    out["y2"] = round(float(dgs2.iloc[-1]), 3)
+                    if out["y10"] is not None:
+                        out["spread_bps"] = round((out["y10"] - out["y2"]) * 100, 1)
+                    if len(dgs2) >= 5:
+                        out["spread_5d_chg"] = round((float(dgs2.iloc[-1]) - float(dgs2.iloc[-5])) * 100, 1)
+                    out["asof"] = str(dgs2.index[-1].date())
+        except Exception as e:  # noqa: BLE001
+            logger.debug("FRED DGS2 失败: %s", e)
+            out["y2"] = None
+
+        # 信号判断
+        if out["spread_bps"] is not None:
+            sp = out["spread_bps"]
+            if sp < 0:
+                out["signal"] = "🔴 倒挂 (衰退预警)"
+            elif sp < 25:
+                out["signal"] = "🟠 接近倒挂 (风险)"
+            elif sp < 75:
+                out["signal"] = "🟡 正常 (中性)"
+            else:
+                out["signal"] = "🟢 走陡 (复苏/降息预期)"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("2Y Scorecard 失败: %s", e)
+        out["error"] = str(e)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# 11. U.S. National Debt（联邦政府总债务）
+# ---------------------------------------------------------------------------
+# FRED: GFDEBTN (Federal Debt: Total Public Debt, 百万美元)
+# 1.6 万亿美元 → 实际值约 36 万亿 (2025-2026)
+
+def fetch_us_debt() -> Dict[str, Any]:
+    """从 FRED 拉联邦总债务 (GFDEBTN)。"""
+    out: Dict[str, Any] = {"value_trillion": None, "yoy_chg_pct": None, "asof": ""}
+    try:
+        from fredapi import Fred
+        fred_key = os.environ.get("FRED_API", "")
+        if not fred_key:
+            return {**out, "error": "未配置 FRED_API"}
+        fred = Fred(api_key=fred_key)
+        # GFDEBTN 单位是百万美元
+        s = fred.get_series("GFDEBTN", observation_start=(datetime.now() - timedelta(days=400)))
+        if s is None or len(s) < 2:
+            return {**out, "error": "FRED GFDEBTN 数据为空"}
+        s = s.dropna()
+        out["value_trillion"] = round(float(s.iloc[-1]) / 1_000_000, 3)  # 转成万亿
+        out["asof"] = str(s.index[-1].date())
+        # 同比
+        if len(s) >= 252:
+            last_year = s.iloc[-252] if len(s) >= 252 else s.iloc[0]
+            yoy = (float(s.iloc[-1]) / float(last_year) - 1.0) * 100
+            out["yoy_chg_pct"] = round(yoy, 2)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("US Debt 拉取失败: %s", e)
+        out["error"] = str(e)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# 12. FINRA Retail Margin Debt（融资余额）
+# ---------------------------------------------------------------------------
+# FRED: MDEBT (Margin Debt, All Customers, FINRA)
+# 单位百万美元
+
+def fetch_margin_debt() -> Dict[str, Any]:
+    """FINRA 融资余额 = FRED MDEBT。"""
+    out: Dict[str, Any] = {"value_billion": None, "mom_chg_pct": None, "yoy_chg_pct": None, "signal": "—", "asof": ""}
+    try:
+        from fredapi import Fred
+        fred_key = os.environ.get("FRED_API", "")
+        if not fred_key:
+            return {**out, "error": "未配置 FRED_API"}
+        fred = Fred(api_key=fred_key)
+        s = fred.get_series("MDEBT", observation_start=(datetime.now() - timedelta(days=400)))
+        if s is None or len(s) < 2:
+            return {**out, "error": "FRED MDEBT 数据为空"}
+        s = s.dropna()
+        out["value_billion"] = round(float(s.iloc[-1]) / 1000.0, 2)  # 百万 → 十亿
+        out["asof"] = str(s.index[-1].date())
+        # 环比（一般 1-2 个月频率）
+        if len(s) >= 2:
+            mom = (float(s.iloc[-1]) / float(s.iloc[-2]) - 1.0) * 100
+            out["mom_chg_pct"] = round(mom, 2)
+        # 同比
+        if len(s) >= 12:
+            yoy = (float(s.iloc[-1]) / float(s.iloc[-12]) - 1.0) * 100
+            out["yoy_chg_pct"] = round(yoy, 2)
+        # 信号：融资余额快速上升 = 散户加杠杆（牛市后期）；快速下降 = 强平/恐慌
+        if out["yoy_chg_pct"] is not None:
+            yoy = out["yoy_chg_pct"]
+            if yoy > 30:
+                out["signal"] = "🔴 融资激增 (杠杆高)"
+            elif yoy > 10:
+                out["signal"] = "🟠 融资扩张"
+            elif yoy < -15:
+                out["signal"] = "🟢 融资去杠杆"
+            else:
+                out["signal"] = "🟡 平稳"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Margin Debt 拉取失败: %s", e)
+        out["error"] = str(e)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# 13. Chicago Fed NFCI Leverage Subindex
+# ---------------------------------------------------------------------------
+# 芝加哥联储国家金融状况指数 - 杠杆子指数
+# 数据源：FRED: NFCILEVERAGE
+# < 0 = 金融状况宽松（杠杆可获得）；> 0 = 紧缩
+
+def fetch_nfci_leverage() -> Dict[str, Any]:
+    """Chicago Fed NFCI Leverage Subindex。"""
+    out: Dict[str, Any] = {"value": None, "prev": None, "chg": None, "signal": "—", "asof": ""}
+    try:
+        from fredapi import Fred
+        fred_key = os.environ.get("FRED_API", "")
+        if not fred_key:
+            return {**out, "error": "未配置 FRED_API"}
+        fred = Fred(api_key=fred_key)
+        s = fred.get_series("NFCILEVERAGE", observation_start=(datetime.now() - timedelta(days=400)))
+        if s is None or len(s) < 2:
+            return {**out, "error": "FRED NFCILEVERAGE 数据为空"}
+        s = s.dropna()
+        out["value"] = round(float(s.iloc[-1]), 3)
+        out["prev"] = round(float(s.iloc[-2]), 3)
+        out["chg"] = round(out["value"] - out["prev"], 3)
+        out["asof"] = str(s.index[-1].date())
+        v = out["value"]
+        if v > 0.5:
+            out["signal"] = "🔴 杠杆紧缩"
+        elif v > 0:
+            out["signal"] = "🟠 轻度紧缩"
+        elif v > -0.5:
+            out["signal"] = "🟡 宽松"
+        else:
+            out["signal"] = "🟢 极度宽松"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("NFCI Leverage 拉取失败: %s", e)
+        out["error"] = str(e)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# 14. Vol / OI PCR（每只个股的期权 PCR）
+# ---------------------------------------------------------------------------
+# 用 yfinance 的 option_chain() 抓最近一期到期的 calls/puts DataFrame。
+# 汇总所有 strikes 的 volume / openInterest 后计算 put/call 比。
+
+def fetch_options_pcr(symbol: str, max_exp_days: int = 60) -> Dict[str, Any]:
+    """
+    返回该 symbol 的 Vol PCR / OI PCR / 最近期权到期日 / 隐含波动率均值。
+    """
+    out: Dict[str, Any] = {
+        "symbol": symbol,
+        "expiry": None,
+        "call_volume": 0, "put_volume": 0,
+        "call_oi": 0, "put_oi": 0,
+        "vol_pcr": None, "oi_pcr": None,
+        "iv_call": None, "iv_put": None,
+        "error": None,
+    }
+    try:
+        t = yf.Ticker(symbol)
+        expirations = t.options or []
+        if not expirations:
+            out["error"] = "无可用期权到期日"
+            return out
+        # 选最近一期（且在 60 天内）
+        today = datetime.now().date()
+        chosen = None
+        for exp in expirations[:6]:
+            try:
+                exp_date = datetime.strptime(exp, "%Y-%m-%d").date()
+                if 0 < (exp_date - today).days <= max_exp_days:
+                    chosen = exp
+                    break
+            except Exception:  # noqa: BLE001
+                continue
+        if chosen is None:
+            chosen = expirations[0]
+        chain = t.option_chain(chosen)
+        calls = chain.calls
+        puts = chain.puts
+        if calls is None or puts is None or calls.empty or puts.empty:
+            out["error"] = "期权链为空"
+            return out
+        out["expiry"] = chosen
+        out["call_volume"] = int(calls["volume"].fillna(0).sum())
+        out["put_volume"] = int(puts["volume"].fillna(0).sum())
+        out["call_oi"] = int(calls["openInterest"].fillna(0).sum())
+        out["put_oi"] = int(puts["openInterest"].fillna(0).sum())
+        if out["call_volume"] > 0:
+            out["vol_pcr"] = round(out["put_volume"] / out["call_volume"], 3)
+        if out["call_oi"] > 0:
+            out["oi_pcr"] = round(out["put_oi"] / out["call_oi"], 3)
+        if "impliedVolatility" in calls.columns:
+            out["iv_call"] = round(float(calls["impliedVolatility"].mean()), 3)
+        if "impliedVolatility" in puts.columns:
+            out["iv_put"] = round(float(puts["impliedVolatility"].mean()), 3)
+    except Exception as e:  # noqa: BLE001
+        out["error"] = str(e)
+        logger.warning("%s PCR 抓取失败: %s", symbol, e)
+    return out
+
+
+def fetch_all_pcr(symbols: List[str], out_path: Optional[Path] = None) -> Dict[str, Any]:
+    """并发拉多只股票的 PCR。"""
+    import concurrent.futures
+    results: Dict[str, Any] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+        futs = {pool.submit(fetch_options_pcr, sym): sym for sym in symbols}
+        for f in concurrent.futures.as_completed(futs):
+            r = f.result()
+            results[r["symbol"]] = r
+    if out_path is not None:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+    return results
+
+
+# ---------------------------------------------------------------------------
+# 15. 多源新闻聚合（免费 + 付费 fallback）
+# ---------------------------------------------------------------------------
+# SerpApi 仍是主力，但提供 5 个免费 fallback，让用户能"零成本"启动。
+
+def _safe_get_json(url: str, params: Dict[str, Any] = None, headers: Dict[str, str] = None, timeout: int = 10) -> Optional[Dict]:
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=timeout)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:  # noqa: BLE001
+        logger.debug("HTTP %s 失败: %s", url, e)
+        return None
+
+
+def fetch_yahoo_rss(query: str = "", ticker: str = "") -> List[Dict[str, Any]]:
+    """
+    Yahoo Finance RSS（完全免费，无 key）。
+    例如：
+      - https://feeds.finance.yahoo.com/rss/2.0/headline?s=AAPL&region=US&lang=en-US
+      - https://news.yahoo.com/rss/search?p=Fed+CPI
+    """
+    out: List[Dict[str, Any]] = []
+    try:
+        if ticker:
+            url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
+        else:
+            from urllib.parse import quote_plus
+            url = f"https://news.yahoo.com/rss/search?p={quote_plus(query)}"
+        # 用 feedparser 解析（轻量，streamlit 友好）
+        try:
+            import feedparser
+            feed = feedparser.parse(url)
+            for e in feed.entries[:8]:
+                out.append({
+                    "title": e.get("title", ""),
+                    "link": e.get("link", ""),
+                    "source": "Yahoo Finance",
+                    "date": e.get("published", ""),
+                    "snippet": e.get("summary", "")[:200],
+                })
+        except ImportError:
+            # 没有 feedparser 就用 requests + xml 解析
+            r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            r.raise_for_status()
+            import xml.etree.ElementTree as ET
+            root = ET.fromstring(r.text)
+            for item in root.iter("item")[:8]:
+                out.append({
+                    "title": item.findtext("title", ""),
+                    "link": item.findtext("link", ""),
+                    "source": "Yahoo Finance",
+                    "date": item.findtext("pubDate", ""),
+                    "snippet": item.findtext("description", "")[:200],
+                })
+    except Exception as e:  # noqa: BLE001
+        logger.debug("Yahoo RSS 失败: %s", e)
+    return out
+
+
+def fetch_finnhub_news(symbol: str, api_key: str = "", days_back: int = 7) -> List[Dict[str, Any]]:
+    """
+    Finnhub 免费 API（60 calls/min，有 key 时推荐）。
+    文档: https://finnhub.io/docs/api/company-news
+    """
+    if not api_key:
+        return []
+    key = os.environ.get("FINNHUB_API", api_key)
+    try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        start = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+        url = f"https://finnhub.io/api/v1/company-news"
+        params = {"symbol": symbol, "from": start, "to": today, "token": key}
+        data = _safe_get_json(url, params=params)
+        if not data:
+            return []
+        return [
+            {
+                "title": n.get("headline", ""),
+                "link": n.get("url", ""),
+                "source": n.get("source", "Finnhub"),
+                "date": datetime.fromtimestamp(n.get("datetime", 0)).strftime("%Y-%m-%d %H:%M"),
+                "snippet": n.get("summary", "")[:200],
+            }
+            for n in data[:8]
+        ]
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Finnhub %s 失败: %s", symbol, e)
+        return []
+
+
+def fetch_newsapi(query: str, api_key: str = "", days_back: int = 3, page_size: int = 8) -> List[Dict[str, Any]]:
+    """
+    NewsAPI.org (newsapi.org) - 免费 100 次/天。
+    文档: https://newsapi.org/docs/endpoints/everything
+    """
+    if not api_key:
+        return []
+    key = os.environ.get("NEWSAPI_KEY", api_key)
+    try:
+        from_date = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+        params = {
+            "q": query,
+            "from": from_date,
+            "sortBy": "publishedAt",
+            "pageSize": page_size,
+            "language": "en",
+            "apiKey": key,
+        }
+        data = _safe_get_json("https://newsapi.org/v2/everything", params=params)
+        if not data or data.get("status") != "ok":
+            return []
+        return [
+            {
+                "title": n.get("title", ""),
+                "link": n.get("url", ""),
+                "source": n.get("source", {}).get("name", "NewsAPI"),
+                "date": n.get("publishedAt", ""),
+                "snippet": n.get("description", "")[:200],
+            }
+            for n in data.get("articles", [])
+        ]
+    except Exception as e:  # noqa: BLE001
+        logger.warning("NewsAPI '%s' 失败: %s", query, e)
+        return []
+
+
+def fetch_stocktwits(symbol: str, limit: int = 10) -> List[Dict[str, Any]]:
+    """
+    Stocktwits API（完全免费，无 key，但需要 User-Agent 头）。
+    适合抓散户情绪。
+    """
+    out: List[Dict[str, Any]] = []
+    try:
+        url = f"https://api.stocktwits.com/api/2/streams/symbol/{symbol}.json"
+        data = _safe_get_json(url, headers={"User-Agent": "Mozilla/5.0"})
+        if not data:
+            return out
+        for m in (data.get("messages") or [])[:limit]:
+            out.append({
+                "title": (m.get("body", "") or "")[:100],
+                "link": f"https://stocktwits.com/symbol/{symbol}",
+                "source": f"Stocktwits · @{m.get('user', {}).get('username', '?')}",
+                "date": m.get("created_at", ""),
+                "snippet": (m.get("body", "") or "")[:200],
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.debug("Stocktwits %s 失败: %s", symbol, e)
+    return out
+
+
+def fetch_eastmoney_stock_news(symbol: str) -> List[Dict[str, Any]]:
+    """
+    东方财富网个股新闻（完全免费，无 key）。
+    API: https://np-anotice-stock.eastmoney.com/api/security/ann?cb=&sr=-1&page_size=20&page_index=1&ann_type=A&client_source=web&stock_list=SZ000001
+    """
+    out: List[Dict[str, Any]] = []
+    if not symbol.endswith((".HK", ".SS", ".SZ")):
+        return out  # 仅 A 股 / 港股
+    try:
+        # 简化：转成东方财富内部代码
+        if symbol.endswith(".HK"):
+            # 港股东财代码不通用，跳过
+            return out
+        if symbol.endswith(".SS"):
+            secid = f"1.{symbol.replace('.SS', '')}"
+        elif symbol.endswith(".SZ"):
+            secid = f"0.{symbol.replace('.SZ', '')}"
+        else:
+            return out
+        url = "https://np-anotice-stock.eastmoney.com/api/security/ann"
+        params = {"sr": -1, "page_size": 10, "page_index": 1, "ann_type": "A", "client_source": "web", "stock_list": secid}
+        data = _safe_get_json(url, params=params)
+        if not data or "data" not in data:
+            return out
+        for item in (data.get("data") or {}).get("list", [])[:10]:
+            out.append({
+                "title": item.get("title", ""),
+                "link": item.get("art_code", ""),
+                "source": "东方财富网",
+                "date": item.get("notice_date", ""),
+                "snippet": "",
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.debug("EastMoney %s 失败: %s", symbol, e)
+    return out
+
+
+def fetch_eastmoney_global_news(top_n: int = 15) -> List[Dict[str, Any]]:
+    """
+    东方财富全球财经新闻（完全免费）。
+    https://np-listapi.eastmoney.com/comm/wap/getListInfo?cb=&client=wap&type=1&mTypeAndCode=&pageSize=20&pageIndex=1&callback=&_=
+    """
+    out: List[Dict[str, Any]] = []
+    try:
+        url = "https://np-listapi.eastmoney.com/comm/wap/getListInfo"
+        params = {"client": "wap", "type": 1, "mTypeAndCode": "", "pageSize": top_n, "pageIndex": 1}
+        data = _safe_get_json(url, params=params)
+        if not data:
+            return out
+        # 新版东财 API 结构可能变化；做最宽松的解析
+        items = []
+        if isinstance(data.get("data"), dict):
+            items = data["data"].get("list", []) or []
+        elif isinstance(data.get("data"), list):
+            items = data["data"]
+        for item in items[:top_n]:
+            out.append({
+                "title": item.get("Art_Title") or item.get("title", ""),
+                "link": item.get("Art_Url") or item.get("url", ""),
+                "source": "东方财富网 · 全球财经",
+                "date": item.get("Art_Time") or item.get("showTime", ""),
+                "snippet": item.get("Art_Abstract", "") or item.get("digest", ""),
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.debug("EastMoney global 失败: %s", e)
+    return out
+
+
+# ----- 多源聚合 -----
+def fetch_all_news_multi_source(
+    symbols: List[str],
+    serpapi_key: str = "",
+    finnhub_key: str = "",
+    newsapi_key: str = "",
+    out_path: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """
+    多源新闻聚合，按优先级：
+      1. SerpApi（如果配置）
+      2. Finnhub + NewsAPI（如果配置）
+      3. Yahoo RSS（始终可用，免费）
+      4. Stocktwits（始终可用，免费）
+      5. EastMoney（始终可用，免费）
+    每个 source 失败不影响其他。
+    """
+    payload: Dict[str, Any] = {
+        "macro": [], "policy": [], "stocks": {},
+        "sources_used": [], "errors": [],
+        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
+    has_any = False
+
+    # 1) SerpApi 宏观 + 政策
+    if serpapi_key:
+        try:
+            payload["macro"] = fetch_macro_news(serpapi_key, top_n=12)
+            payload["policy"] = fetch_policy_news(serpapi_key, top_n=8)
+            payload["sources_used"].append("SerpApi")
+            has_any = True
+        except Exception as e:  # noqa: BLE001
+            payload["errors"].append(f"SerpApi: {e}")
+
+    # 2) Finnhub / NewsAPI 宏观 (作为补充)
+    if newsapi_key:
+        try:
+            for q in ["Federal Reserve", "inflation CPI", "stock market"]:
+                items = fetch_newsapi(q, newsapi_key, days_back=2, page_size=3)
+                payload["macro"].extend(items)
+            payload["sources_used"].append("NewsAPI")
+            has_any = True
+        except Exception as e:  # noqa: BLE001
+            payload["errors"].append(f"NewsAPI: {e}")
+
+    # 3) Yahoo RSS - 始终免费 (抓 macro 兜底)
+    try:
+        for q in ["Federal Reserve", "stock market", "CPI inflation", "earnings"]:
+            items = fetch_yahoo_rss(query=q)
+            payload["macro"].extend(items)
+        payload["macro"] = _dedup_news(payload["macro"])[:15]
+        payload["sources_used"].append("Yahoo RSS")
+        has_any = True
+    except Exception as e:  # noqa: BLE001
+        payload["errors"].append(f"Yahoo RSS: {e}")
+
+    # 4) EastMoney 全球新闻（中文宏观）
+    try:
+        em_news = fetch_eastmoney_global_news(top_n=12)
+        if em_news:
+            payload["macro"].extend(em_news)
+            payload["sources_used"].append("东方财富网")
+            has_any = True
+    except Exception as e:  # noqa: BLE001
+        payload["errors"].append(f"东方财富: {e}")
+
+    # 5) 个股新闻
+    for sym in symbols:
+        is_hk = sym.endswith(".HK")
+        is_cn = sym.endswith((".SS", ".SZ"))
+        per_sym: List[Dict[str, Any]] = []
+        # SerpApi
+        if serpapi_key:
+            try:
+                per_sym.extend(fetch_stock_news(sym, serpapi_key, is_hk=is_hk, top_n=5))
+            except Exception as e:  # noqa: BLE001
+                payload["errors"].append(f"SerpApi {sym}: {e}")
+        # Finnhub
+        if finnhub_key and not is_hk and not is_cn:
+            try:
+                per_sym.extend(fetch_finnhub_news(sym, finnhub_key))
+            except Exception as e:  # noqa: BLE001
+                payload["errors"].append(f"Finnhub {sym}: {e}")
+        # Yahoo RSS
+        try:
+            per_sym.extend(fetch_yahoo_rss(ticker=sym))
+        except Exception as e:  # noqa: BLE001
+            payload["errors"].append(f"Yahoo {sym}: {e}")
+        # Stocktwits
+        if not is_hk and not is_cn:
+            try:
+                per_sym.extend(fetch_stocktwits(sym))
+            except Exception as e:  # noqa: BLE001
+                pass
+        # 东方财富 (A 股)
+        if is_cn:
+            try:
+                per_sym.extend(fetch_eastmoney_stock_news(sym))
+            except Exception as e:  # noqa: BLE001
+                pass
+        payload["stocks"][sym] = _dedup_news(per_sym)[:8]
+        if payload["stocks"][sym]:
+            has_any = True
+
+    payload["sources_used"] = list(set(payload["sources_used"]))
+    if out_path is not None:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return payload
+
+
+# ---------------------------------------------------------------------------
+# 16. 下周走势预测（综合政策/消息/基本面/技术面）
+# ---------------------------------------------------------------------------
+
+def build_prediction_prompt(
+    symbol: str,
+    technical: Dict[str, Any],
+    news: List[Dict[str, Any]],
+    policy_events: List[Dict[str, Any]],
+    fundamentals: Dict[str, Any],
+    options_data: Dict[str, Any],
+) -> str:
+    """
+    构造给 DeepSeek 的下周走势预测 prompt。
+    综合四维：政策面 + 消息面 + 基本面 + 技术面。
+    """
+    news_text = "\n".join([f"- {n.get('title','')} ({n.get('source','')})" for n in news[:6]]) or "暂无新闻"
+    policy_text = "\n".join([f"- {e.get('date','')} {e.get('event','')} ({e.get('importance','')})" for e in policy_events[:5]]) or "暂无近期重大事件"
+    fund = fundamentals or {}
+    tech = technical or {}
+    opt = options_data or {}
+    return f"""你是华尔街资深卖方分析师，专注于 1-2 周短期走势判断。
+请基于以下四维信息，给出 {symbol} 下周 (5 个交易日) 的走势预测。
+
+【一、技术面】
+- 收盘价: ${tech.get('close', 'N/A')}
+- 涨跌幅: {tech.get('change_pct', 'N/A')}%
+- RSI(14): {tech.get('rsi', 'N/A')} (>70 超买 / <30 超卖)
+- MACD: {tech.get('macd', 'N/A')} (信号线 {tech.get('macd_signal', 'N/A')})
+- MA20 / MA50: ${tech.get('ma20', 'N/A')} / ${tech.get('ma50', 'N/A')}
+- ATR (波动幅度): {tech.get('atr', 'N/A')}
+
+【二、消息面（最近新闻）】
+{news_text}
+
+【三、政策面（未来 1-2 周关键事件）】
+{policy_text}
+
+【四、基本面】
+- PE: {fund.get('pe_ratio', 'N/A')}
+- 近期财报: {fund.get('last_earnings', 'N/A')}
+- 行业: {fund.get('sector', 'N/A')}
+
+【五、期权市场】
+- Vol PCR: {opt.get('vol_pcr', 'N/A')} (>1 看空 / <1 看多)
+- OI PCR: {opt.get('oi_pcr', 'N/A')}
+- 隐含波动率 (Call/Put): {opt.get('iv_call', 'N/A')} / {opt.get('iv_put', 'N/A')}
+
+请按以下结构输出（300-500 字，专业克制）：
+
+=== 1. 综合判断 ===
+一句话定位下周走势（看多 / 中性偏多 / 中性 / 中性偏空 / 看空）
+
+=== 2. 关键驱动 ===
+3-5 个支撑你判断的核心因素，按重要性排序
+
+=== 3. 关键价位 ===
+- 上方阻力位
+- 下方支撑位
+- 预计波动区间
+
+=== 4. 风险因素 ===
+2-3 个可能颠覆判断的变量
+
+=== 5. 操作建议 ===
+不推荐具体股票点位，给出方向性建议（加仓 / 减仓 / 观望 / 对冲）
+"""
+
+
+def predict_next_week(
+    api_key: str,
+    symbol: str,
+    technical: Dict[str, Any],
+    news: List[Dict[str, Any]],
+    policy_events: List[Dict[str, Any]],
+    fundamentals: Dict[str, Any],
+    options_data: Dict[str, Any],
+) -> Optional[str]:
+    """调用 DeepSeek 生成下周走势预测。"""
+    if not api_key:
+        return None
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
+        prompt = build_prediction_prompt(symbol, technical, news, policy_events, fundamentals, options_data)
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": "你是专业卖方策略师，输出必须是简体中文，分析风格克制专业。"},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.55,
+            max_tokens=1500,
+        )
+        return resp.choices[0].message.content
+    except Exception as e:  # noqa: BLE001
+        logger.error("预测生成失败 %s: %s", symbol, e)
+        return None
+
+
+# ---------------------------------------------------------------------------
+# 17. 额外的 4 卡指标聚合（一次拉取，缓存 1 小时）
+# ---------------------------------------------------------------------------
+
+def fetch_extra_indicators() -> Dict[str, Any]:
+    """一次拉取 2Y/US Debt/Margin Debt/NFCI Leverage 四张卡。"""
+    return {
+        "2y_scorecard": fetch_2y_scorecard(),
+        "us_debt": fetch_us_debt(),
+        "margin_debt": fetch_margin_debt(),
+        "nfci_leverage": fetch_nfci_leverage(),
+        "asof": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
