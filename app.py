@@ -36,13 +36,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- 侧边栏 ----------
+# ---------- 侧边栏：控制面板 ----------
 st.sidebar.title("⚙️ 控制面板")
 if st.sidebar.button("🔄 强制刷新数据"):
     st.cache_data.clear()
     st.rerun()
+
+# 视图切换
+view = st.sidebar.radio("📌 导航", ["📊 大盘概览", "📈 个股详情", "🎯 AI决策卡片", "📝 每日报告"])
+
+# K线图周期
 period_map = {"1个月": "1mo", "3个月": "3mo", "6个月": "6mo", "1年": "1y"}
 selected_period = st.sidebar.selectbox("📅 K线图周期", list(period_map.keys()), index=1)
+
 sort_option = st.sidebar.selectbox("📊 个股排序", ["默认顺序", "涨幅高→低", "涨幅低→高", "PE高→低", "PE低→高"])
 
 # ---------- 标题 ----------
@@ -81,19 +87,8 @@ def load_cards():
             return None
     return None
 
-@st.cache_data(ttl=3600)
-def load_leverage_risk():
-    if os.path.exists("data/leverage_risk.json"):
-        try:
-            with open("data/leverage_risk.json", "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return None
-    return None
-
 macro_df, stocks_df, sox_df, report = load_data()
 cards_data = load_cards()
-leverage_data = load_leverage_risk()
 
 OP_COLOR = {"买入": "#00e676", "观望": "#ffd54f", "卖出": "#ff5252"}
 
@@ -115,269 +110,239 @@ def score_gauge(score, operation):
                        paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
     return fig
 
-# ---------- 宏观数据 ----------
-st.markdown('<div class="section-title">🌍 宏观数据</div>', unsafe_allow_html=True)
-if macro_df is not None and not macro_df.empty:
-    macro_cols = ["VIX", "美元指数", "标普500", "纳斯达克100", "黄金", "WTI原油", "10年期美债收益率",
-                  "美国国债规模", "芝加哥联储杠杆指数", "2年期实际利率（近似）", "FINRA保证金债务", "Volume PCR", "OI PCR"]
-    # 兼容旧列名
-    if "2年期实际利率" in macro_df.columns and "2年期实际利率（近似）" not in macro_df.columns:
-        macro_df.rename(columns={"2年期实际利率": "2年期实际利率（近似）"}, inplace=True)
-    available = [c for c in macro_cols if c in macro_df.columns]
-    cols_per_row = 6
-    for i in range(0, len(available), cols_per_row):
-        row_cols = st.columns(cols_per_row)
-        for j, col_name in enumerate(available[i:i+cols_per_row]):
-            val = macro_df.iloc[0][col_name]
-            if isinstance(val, (int, float)):
-                if col_name in ["VIX", "美元指数", "标普500", "纳斯达克100", "黄金", "WTI原油", "10年期美债收益率"]:
-                    display = f"{val:.2f}"
-                elif col_name == "美国国债规模":
-                    display = f"{val/1e12:.2f}T" if val > 1e12 else f"{val:,.0f}"
-                else:
-                    display = f"{val:.2f}" if abs(val) < 1000 else f"{val:,.0f}"
-            else:
-                display = str(val)
-            with row_cols[j]:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">{col_name}</div>
-                    <div class="metric-value">{display}</div>
-                </div>
-                """, unsafe_allow_html=True)
-else:
-    st.warning("⚠️ 暂无宏观数据，请检查 data/macro.csv 是否存在")
-
-# ---------- SOX ----------
-st.markdown('<div class="section-title">📉 SOX 半导体指数</div>', unsafe_allow_html=True)
-if sox_df is not None and not sox_df.empty:
-    sox_row = sox_df.iloc[0]
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">📊 最新价</div><div class="metric-value">{sox_row.get('最新价', 'N/A'):.2f}</div></div>""", unsafe_allow_html=True)
-    with col2:
-        drawdown = sox_row.get('回撤%', 0)
-        color = "#ff5252" if drawdown < -20 else "#ffd54f"
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">📉 回撤</div><div class="metric-value" style="color:{color};">{drawdown:.2f}%</div></div>""", unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">📈 RSI(14)</div><div class="metric-value">{sox_row.get('RSI', 'N/A'):.2f}</div></div>""", unsafe_allow_html=True)
-    with col4:
-        status = "🐻 熊市" if sox_row.get('技术性熊市') else "🐂 非熊市"
-        color = "#ff5252" if sox_row.get('技术性熊市') else "#00e676"
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">📌 状态</div><div class="metric-value" style="font-size:18px;color:{color};">{status}</div></div>""", unsafe_allow_html=True)
-    with col5:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">📌 MA20</div><div class="metric-value" style="font-size:18px;">{sox_row.get('MA20', 'N/A'):.2f}</div></div>""", unsafe_allow_html=True)
-    if '信号列表' in sox_row and sox_row['信号列表']:
-        signals = sox_row['信号列表']
-        if isinstance(signals, str):
-            signals = signals.split('；')
-        elif not isinstance(signals, list):
-            signals = [str(signals)]
-        signal_html = "；".join(signals)
-        st.markdown(f"""<div class="sox-signal">⚡ 关键信号：{signal_html}</div>""", unsafe_allow_html=True)
-else:
-    st.warning("⚠️ 暂无 SOX 数据")
-# 在 app.py 的某处
-if 'news_results' in locals():
-    st.markdown('<div class="section-title">📰 热点新闻</div>', unsafe_allow_html=True)
-    for item in news_results[:10]:
-        title = item.get('title', '')
-        link = item.get('link', '#')
-        st.markdown(f'<div style="padding:4px 0;"><a href="{link}" target="_blank" style="color:rgba(255,255,255,0.7);text-decoration:none;">{title}</a></div>', unsafe_allow_html=True)
-# ---------- AI 决策卡片 ----------
-st.markdown('<div class="section-title">🎯 AI 决策卡片</div>', unsafe_allow_html=True)
-if cards_data and cards_data.get("stocks"):
-    st.caption(f"生成时间：{cards_data.get('generated_at', 'N/A')}")
-    for card in cards_data["stocks"]:
-        sym = card.get("symbol", "N/A")
-        op = card.get("operation", "观望")
-        op_color = OP_COLOR.get(op, "#00d4ff")
-        col_left, col_right = st.columns([3, 1])
-        with col_left:
-            st.markdown(f"""
-            <div class="stock-card">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-                    <span style="font-weight:700;font-size:20px;color:#fff;">{sym}</span>
-                    <span class="card-tag" style="background:{op_color}22;color:{op_color};">{op}</span>
-                    <span style="color:rgba(255,255,255,0.4);font-size:13px;">{card.get('trend','')}</span>
-                </div>
-                <div style="color:rgba(255,255,255,0.75);font-size:14px;">{card.get('core_view','')}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # 狙击点位
-            sniper = card.get("sniper", {}) or {}
-            s1, s2, s3, s4 = st.columns(4)
-            sniper_labels = [
-                ("🎯 理想买入", sniper.get("ideal_buy", "-"), "#00d4ff"),
-                ("📈 二次买入", sniper.get("second_buy", "-"), "#00e676"),
-                ("🛑 止损位", sniper.get("stop_loss", "-"), "#ff5252"),
-                ("🏁 止盈目标", sniper.get("target", "-"), "#ffd54f"),
-            ]
-            for c, (label, val, color) in zip([s1, s2, s3, s4], sniper_labels):
-                with c:
-                    st.markdown(f"""<div class="metric-card" style="border-left:2px solid {color};">
-                        <div class="metric-label">{label}</div>
-                        <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-top:4px;">{val}</div>
-                    </div>""", unsafe_allow_html=True)
-            
-            # 杠杆强平价格（从 leverage_risk.json 读取）
-            if leverage_data and leverage_data.get("stocks", {}).get(sym):
-                lev_items = leverage_data["stocks"][sym]
-                st.markdown('<div style="font-size:13px;color:rgba(255,255,255,0.4);margin:8px 0 4px 0;">📊 各杠杆强平价格（斩杀线）</div>', unsafe_allow_html=True)
-                lev_cols = st.columns(len(lev_items))
-                for col_idx, (lev_key, lev_info) in enumerate(lev_items.items()):
-                    if isinstance(lev_info, dict):
-                        price = lev_info.get("强平价", "N/A")
-                        atr_mult = lev_info.get("距强平ATR倍数", "N/A")
+# ---------- 视图切换 ----------
+if view == "📊 大盘概览":
+    # 宏观数据
+    st.markdown('<div class="section-title">🌍 宏观数据</div>', unsafe_allow_html=True)
+    if macro_df is not None and not macro_df.empty:
+        macro_cols = ["VIX", "美元指数", "标普500", "纳斯达克100", "黄金", "WTI原油", "10年期美债收益率",
+                      "美国国债规模", "芝加哥联储杠杆指数", "2年期实际利率（近似）", "FINRA保证金债务", "Volume PCR", "OI PCR"]
+        available = [c for c in macro_cols if c in macro_df.columns]
+        cols_per_row = 6
+        for i in range(0, len(available), cols_per_row):
+            row_cols = st.columns(cols_per_row)
+            for j, col_name in enumerate(available[i:i+cols_per_row]):
+                val = macro_df.iloc[0][col_name]
+                if isinstance(val, (int, float)):
+                    if col_name in ["VIX", "美元指数", "标普500", "纳斯达克100", "黄金", "WTI原油", "10年期美债收益率"]:
+                        display = f"{val:.2f}"
+                    elif col_name == "美国国债规模":
+                        display = f"{val/1e12:.2f}T" if val > 1e12 else f"{val:,.0f}"
                     else:
-                        price = lev_info
-                        atr_mult = "N/A"
-                    danger = isinstance(atr_mult, (int, float)) and atr_mult < 3
-                    color = "#ff5252" if danger else "#ffd54f" if isinstance(atr_mult, (int, float)) and atr_mult < 6 else "rgba(255,255,255,0.5)"
-                    with lev_cols[col_idx]:
-                        st.markdown(f"""<div class="metric-card" style="border-left:2px solid {color};padding:8px 12px;">
-                            <div class="metric-label" style="font-size:10px;">{lev_key}</div>
-                            <div style="font-size:14px;color:{color};">${price}</div>
-                            <div style="font-size:10px;color:rgba(255,255,255,0.3);">{atr_mult}倍ATR</div>
-                        </div>""", unsafe_allow_html=True)
-            
-            # 催化 & 风险
-            cc1, cc2 = st.columns(2)
-            with cc1:
-                catalysts = card.get("catalysts", [])
-                if catalysts:
-                    st.markdown(f'<div class="sox-signal" style="border-left-color:#00e676;">✨ ' + '；'.join(catalysts) + '</div>', unsafe_allow_html=True)
+                        display = f"{val:.2f}" if abs(val) < 1000 else f"{val:,.0f}"
                 else:
-                    st.markdown('<div class="sox-signal" style="border-left-color:#00e676;">✨ 暂无</div>', unsafe_allow_html=True)
-            with cc2:
-                risks = card.get("risks", [])
-                if risks:
-                    st.markdown(f'<div class="sox-signal" style="border-left-color:#ff5252;">🚨 ' + '；'.join(risks) + '</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="sox-signal" style="border-left-color:#ff5252;">🚨 暂无</div>', unsafe_allow_html=True)
-            
-            # 板块标签
-            sectors = card.get("sectors", [])
-            if sectors:
-                tags = "".join([f'<span class="sector-tag">{s}</span>' for s in sectors])
-                st.markdown(f'<div style="margin:8px 0 20px 0;">{tags}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div style="margin-bottom:20px;"></div>', unsafe_allow_html=True)
-        
-        with col_right:
-            st.plotly_chart(score_gauge(card.get("score", 50), op), use_container_width=True, config={'displayModeBar': False})
-else:
-    st.info("📌 决策卡片尚未生成，请等待每日数据更新（需配置 DEEPSEEK_API_KEY）")
-
-# ---------- 个股数据 ----------
-st.markdown('<div class="section-title">📊 个股数据</div>', unsafe_allow_html=True)
-if stocks_df is not None and not stocks_df.empty:
-    if sort_option == "涨幅高→低":
-        stocks_df = stocks_df.sort_values("涨跌幅%", ascending=False)
-    elif sort_option == "涨幅低→高":
-        stocks_df = stocks_df.sort_values("涨跌幅%", ascending=True)
-    elif sort_option == "PE高→低":
-        stocks_df = stocks_df.sort_values("PE Ratio", ascending=False, na_position='last')
-    elif sort_option == "PE低→高":
-        stocks_df = stocks_df.sort_values("PE Ratio", ascending=True, na_position='last')
+                    display = str(val)
+                with row_cols[j]:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">{col_name}</div>
+                        <div class="metric-value">{display}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
     else:
-        stock_order = ["MU","AAOI","GOOGL","MSFT","AMZN","MRVL","LITE","SNDK","NVDA","ORCL","SPCX","SKHY","TSLA","0700.HK","0883.HK","3750.HK"]
-        stocks_df['order'] = stocks_df['symbol'].map({s:i for i,s in enumerate(stock_order)})
-        stocks_df = stocks_df.sort_values('order')
-    for _, row in stocks_df.iterrows():
-        sym = row['symbol']
-        if row.get('error'):
-            st.warning(f"无法获取 {sym} 数据")
-            continue
-        close = row.get('收盘价', 0)
-        change = row.get('涨跌幅%', 0)
-        vol_status = row.get('量比状态', 'N/A')
-        pe = row.get('PE Ratio', 'N/A')
-        rsi = row.get('RSI(14)', 50)
-        ma20 = row.get('MA20', 0)
-        change_color = "#00e676" if change > 0 else "#ff5252" if change < 0 else "#ffd54f"
-        change_symbol = "▲" if change > 0 else "▼" if change < 0 else "●"
-        display_name = sym.replace(".HK", "")
-        st.markdown(f"""
-        <div class="stock-card">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-                <div>
-                    <span style="font-weight:600;font-size:18px;color:#ffffff;">{display_name}</span>
-                    <span style="margin-left:12px;font-size:14px;color:{change_color};">{change_symbol} {change:.2f}%</span>
-                    <span style="margin-left:12px;font-size:14px;color:rgba(255,255,255,0.6);">💰 {close:.2f}</span>
-                </div>
-                <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:rgba(255,255,255,0.5);">
-                    <span>📈 PE: {pe if pe != 'N/A' else 'N/A'}</span>
-                    <span>📊 量比: {vol_status}</span>
-                    <span>📉 RSI: {rsi:.1f}</span>
-                    <span>📌 MA20: {ma20:.2f}</span>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        # K线图
+        st.warning("⚠️ 暂无宏观数据")
+
+    # SOX
+    st.markdown('<div class="section-title">📉 SOX 半导体指数</div>', unsafe_allow_html=True)
+    if sox_df is not None and not sox_df.empty:
+        sox_row = sox_df.iloc[0]
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            st.markdown(f"""<div class="metric-card"><div class="metric-label">📊 最新价</div><div class="metric-value">{sox_row.get('最新价', 'N/A'):.2f}</div></div>""", unsafe_allow_html=True)
+        with col2:
+            drawdown = sox_row.get('回撤%', 0)
+            color = "#ff5252" if drawdown < -20 else "#ffd54f"
+            st.markdown(f"""<div class="metric-card"><div class="metric-label">📉 回撤</div><div class="metric-value" style="color:{color};">{drawdown:.2f}%</div></div>""", unsafe_allow_html=True)
+        with col3:
+            st.markdown(f"""<div class="metric-card"><div class="metric-label">📈 RSI(14)</div><div class="metric-value">{sox_row.get('RSI', 'N/A'):.2f}</div></div>""", unsafe_allow_html=True)
+        with col4:
+            status = "🐻 熊市" if sox_row.get('技术性熊市') else "🐂 非熊市"
+            color = "#ff5252" if sox_row.get('技术性熊市') else "#00e676"
+            st.markdown(f"""<div class="metric-card"><div class="metric-label">📌 状态</div><div class="metric-value" style="font-size:18px;color:{color};">{status}</div></div>""", unsafe_allow_html=True)
+        with col5:
+            st.markdown(f"""<div class="metric-card"><div class="metric-label">📌 MA20</div><div class="metric-value" style="font-size:18px;">{sox_row.get('MA20', 'N/A'):.2f}</div></div>""", unsafe_allow_html=True)
+        if '信号列表' in sox_row and sox_row['信号列表']:
+            signals = sox_row['信号列表']
+            if isinstance(signals, str):
+                signals = signals.split('；')
+            elif not isinstance(signals, list):
+                signals = [str(signals)]
+            signal_html = "；".join(signals)
+            st.markdown(f"""<div class="sox-signal">⚡ 关键信号：{signal_html}</div>""", unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ 暂无 SOX 数据")
+
+    # 宏观历史趋势
+    st.markdown('<div class="section-title">📈 宏观历史趋势（近30天）</div>', unsafe_allow_html=True)
+    macro_hist_symbols = {"VIX": "^VIX", "10年期美债收益率": "^TNX", "标普500": "^GSPC"}
+    for name, sym in macro_hist_symbols.items():
         try:
-            period = period_map[selected_period]
-            hist = yf.download(sym, period=period, progress=False)
-            if not hist.empty and len(hist) > 5:
-                fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.06,
-                                    row_heights=[0.7, 0.3])
-                fig.add_trace(go.Candlestick(x=hist.index, open=hist['Open'], high=hist['High'],
-                                             low=hist['Low'], close=hist['Close'], name=sym,
-                                             increasing_line_color='#00e676', decreasing_line_color='#ff5252'), row=1, col=1)
-                ma20_hist = hist['Close'].rolling(20).mean()
-                ma50_hist = hist['Close'].rolling(50).mean()
-                fig.add_trace(go.Scatter(x=hist.index, y=ma20_hist, line=dict(color='#ffd54f', width=1.5), name="MA20"), row=1, col=1)
-                fig.add_trace(go.Scatter(x=hist.index, y=ma50_hist, line=dict(color='#00d4ff', width=1.5), name="MA50"), row=1, col=1)
-                fig.add_trace(go.Bar(x=hist.index, y=hist['Volume'], name="成交量", marker_color='rgba(0,212,255,0.2)'), row=2, col=1)
-                fig.update_layout(height=350, margin=dict(l=10, r=10, t=10, b=10),
-                                  paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                  xaxis_rangeslider_visible=False, showlegend=False,
-                                  font=dict(color='rgba(255,255,255,0.3)'))
+            hist = yf.download(sym, period="1mo", progress=False)
+            if not hist.empty:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], mode='lines', name=name, line=dict(color='#00d4ff')))
+                fig.update_layout(height=150, margin=dict(l=10, r=10, t=20, b=10),
+                                  paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False)
                 fig.update_xaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.2)')
                 fig.update_yaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.2)')
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                st.plotly_chart(fig, use_container_width=True)
             else:
-                st.caption(f"📉 {sym} 数据不足（{len(hist) if not hist.empty else 0}条记录）")
-                with st.expander(f"🔍 {sym} 调试信息"):
-                    st.write(hist.head() if not hist.empty else "无数据")
+                st.caption(f"⚠️ {name} 数据加载失败")
         except Exception as e:
-            st.caption(f"⚠️ {sym} K线图加载失败: {str(e)[:80]}")
-            with st.expander(f"❌ {sym} 错误详情"):
-                st.code(str(e))
-else:
-    st.warning("⚠️ 暂无个股数据")
+            st.caption(f"⚠️ {name} 错误: {str(e)[:50]}")
 
-# ---------- 宏观历史趋势 ----------
-st.markdown('<div class="section-title">📈 宏观历史趋势（近30天）</div>', unsafe_allow_html=True)
-macro_hist_symbols = {"VIX": "^VIX", "10年期美债收益率": "^TNX", "标普500": "^GSPC"}
-for name, sym in macro_hist_symbols.items():
-    try:
-        hist = yf.download(sym, period="1mo", progress=False)
-        if not hist.empty:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], mode='lines', name=name, line=dict(color='#00d4ff')))
-            fig.update_layout(height=150, margin=dict(l=10, r=10, t=20, b=10),
-                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False)
-            fig.update_xaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.2)')
-            fig.update_yaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.2)')
-            st.plotly_chart(fig, use_container_width=True)
+elif view == "📈 个股详情":
+    st.markdown('<div class="section-title">📊 个股数据</div>', unsafe_allow_html=True)
+    if stocks_df is not None and not stocks_df.empty:
+        if sort_option == "涨幅高→低":
+            stocks_df = stocks_df.sort_values("涨跌幅%", ascending=False)
+        elif sort_option == "涨幅低→高":
+            stocks_df = stocks_df.sort_values("涨跌幅%", ascending=True)
+        elif sort_option == "PE高→低":
+            stocks_df = stocks_df.sort_values("PE Ratio", ascending=False, na_position='last')
+        elif sort_option == "PE低→高":
+            stocks_df = stocks_df.sort_values("PE Ratio", ascending=True, na_position='last')
         else:
-            st.caption(f"⚠️ {name} 数据加载失败")
-    except Exception as e:
-        st.caption(f"⚠️ {name} 错误: {str(e)[:50]}")
-
-# ---------- AI 报告（大盘总览） ----------
-st.markdown("---")
-st.markdown('<div class="section-title">📝 每日大盘总览</div>', unsafe_allow_html=True)
-if report:
-    st.markdown(f'<div class="report-box">{report}</div>', unsafe_allow_html=True)
-else:
-    if os.path.exists("data/report.md"):
-        st.error("❌ 报告文件存在但内容为空，请检查 AI 生成逻辑")
+            stock_order = ["MU","AAOI","GOOGL","MSFT","AMZN","MRVL","LITE","SNDK","NVDA","ORCL","SPCX","SKHY","TSLA","0700.HK","0883.HK","3750.HK"]
+            stocks_df['order'] = stocks_df['symbol'].map({s:i for i,s in enumerate(stock_order)})
+            stocks_df = stocks_df.sort_values('order')
+        for _, row in stocks_df.iterrows():
+            sym = row['symbol']
+            if row.get('error'):
+                st.warning(f"无法获取 {sym} 数据")
+                continue
+            close = row.get('收盘价', 0)
+            change = row.get('涨跌幅%', 0)
+            vol_status = row.get('量比状态', 'N/A')
+            pe = row.get('PE Ratio', 'N/A')
+            rsi = row.get('RSI(14)', 50)
+            ma20 = row.get('MA20', 0)
+            change_color = "#00e676" if change > 0 else "#ff5252" if change < 0 else "#ffd54f"
+            change_symbol = "▲" if change > 0 else "▼" if change < 0 else "●"
+            display_name = sym.replace(".HK", "")
+            st.markdown(f"""
+            <div class="stock-card">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+                    <div>
+                        <span style="font-weight:600;font-size:18px;color:#ffffff;">{display_name}</span>
+                        <span style="margin-left:12px;font-size:14px;color:{change_color};">{change_symbol} {change:.2f}%</span>
+                        <span style="margin-left:12px;font-size:14px;color:rgba(255,255,255,0.6);">💰 {close:.2f}</span>
+                    </div>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:rgba(255,255,255,0.5);">
+                        <span>📈 PE: {pe if pe != 'N/A' else 'N/A'}</span>
+                        <span>📊 量比: {vol_status}</span>
+                        <span>📉 RSI: {rsi:.1f}</span>
+                        <span>📌 MA20: {ma20:.2f}</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            # K线图（增强错误处理）
+            try:
+                period = period_map[selected_period]
+                # 打印调试信息（可查看 Streamlit 日志）
+                st.caption(f"⏳ 正在加载 {sym} 数据...")
+                hist = yf.download(sym, period=period, progress=False)
+                if hist is None or hist.empty:
+                    st.error(f"❌ {sym} 无数据（可能网络问题或代码无效）")
+                else:
+                    st.caption(f"✅ {sym} 数据条数: {len(hist)}")
+                    if len(hist) > 5:
+                        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.06,
+                                            row_heights=[0.7, 0.3])
+                        fig.add_trace(go.Candlestick(x=hist.index, open=hist['Open'], high=hist['High'],
+                                                     low=hist['Low'], close=hist['Close'], name=sym,
+                                                     increasing_line_color='#00e676', decreasing_line_color='#ff5252'), row=1, col=1)
+                        ma20_hist = hist['Close'].rolling(20).mean()
+                        ma50_hist = hist['Close'].rolling(50).mean()
+                        fig.add_trace(go.Scatter(x=hist.index, y=ma20_hist, line=dict(color='#ffd54f', width=1.5), name="MA20"), row=1, col=1)
+                        fig.add_trace(go.Scatter(x=hist.index, y=ma50_hist, line=dict(color='#00d4ff', width=1.5), name="MA50"), row=1, col=1)
+                        fig.add_trace(go.Bar(x=hist.index, y=hist['Volume'], name="成交量", marker_color='rgba(0,212,255,0.2)'), row=2, col=1)
+                        fig.update_layout(height=350, margin=dict(l=10, r=10, t=10, b=10),
+                                          paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                                          xaxis_rangeslider_visible=False, showlegend=False,
+                                          font=dict(color='rgba(255,255,255,0.3)'))
+                        fig.update_xaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.2)')
+                        fig.update_yaxes(gridcolor='rgba(255,255,255,0.04)', color='rgba(255,255,255,0.2)')
+                        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                    else:
+                        st.warning(f"📉 {sym} 数据不足（{len(hist)}条记录），尝试更换周期")
+            except Exception as e:
+                st.error(f"⚠️ {sym} K线图加载失败: {str(e)}")
     else:
-        st.info("📌 今日报告尚未生成，请等待 GitHub Actions 完成数据采集并生成 report.md")
+        st.warning("⚠️ 暂无个股数据")
+
+elif view == "🎯 AI决策卡片":
+    st.markdown('<div class="section-title">🎯 AI 决策卡片</div>', unsafe_allow_html=True)
+    if cards_data and cards_data.get("stocks"):
+        st.caption(f"生成时间：{cards_data.get('generated_at', 'N/A')}")
+        for card in cards_data["stocks"]:
+            sym = card.get("symbol", "N/A")
+            op = card.get("operation", "观望")
+            op_color = OP_COLOR.get(op, "#00d4ff")
+            col_left, col_right = st.columns([3, 1])
+            with col_left:
+                st.markdown(f"""
+                <div class="stock-card">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                        <span style="font-weight:700;font-size:20px;color:#fff;">{sym}</span>
+                        <span class="card-tag" style="background:{op_color}22;color:{op_color};">{op}</span>
+                        <span style="color:rgba(255,255,255,0.4);font-size:13px;">{card.get('trend','')}</span>
+                    </div>
+                    <div style="color:rgba(255,255,255,0.75);font-size:14px;">{card.get('core_view','')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                # 狙击点位
+                sniper = card.get("sniper", {}) or {}
+                s1, s2, s3, s4 = st.columns(4)
+                sniper_labels = [
+                    ("🎯 理想买入", sniper.get("ideal_buy", "-"), "#00d4ff"),
+                    ("📈 二次买入", sniper.get("second_buy", "-"), "#00e676"),
+                    ("🛑 止损位", sniper.get("stop_loss", "-"), "#ff5252"),
+                    ("🏁 止盈目标", sniper.get("target", "-"), "#ffd54f"),
+                ]
+                for c, (label, val, color) in zip([s1, s2, s3, s4], sniper_labels):
+                    with c:
+                        st.markdown(f"""<div class="metric-card" style="border-left:2px solid {color};">
+                            <div class="metric-label">{label}</div>
+                            <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-top:4px;">{val}</div>
+                        </div>""", unsafe_allow_html=True)
+                # 催化 & 风险
+                cc1, cc2 = st.columns(2)
+                with cc1:
+                    catalysts = card.get("catalysts", [])
+                    if catalysts:
+                        st.markdown(f'<div class="sox-signal" style="border-left-color:#00e676;">✨ ' + '；'.join(catalysts) + '</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div class="sox-signal" style="border-left-color:#00e676;">✨ 暂无</div>', unsafe_allow_html=True)
+                with cc2:
+                    risks = card.get("risks", [])
+                    if risks:
+                        st.markdown(f'<div class="sox-signal" style="border-left-color:#ff5252;">🚨 ' + '；'.join(risks) + '</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div class="sox-signal" style="border-left-color:#ff5252;">🚨 暂无</div>', unsafe_allow_html=True)
+                # 板块标签
+                sectors = card.get("sectors", [])
+                if sectors:
+                    tags = "".join([f'<span class="sector-tag">{s}</span>' for s in sectors])
+                    st.markdown(f'<div style="margin:8px 0 20px 0;">{tags}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div style="margin-bottom:20px;"></div>', unsafe_allow_html=True)
+            with col_right:
+                st.plotly_chart(score_gauge(card.get("score", 50), op), use_container_width=True, config={'displayModeBar': False})
+    else:
+        st.info("📌 决策卡片尚未生成，请等待每日数据更新（需配置 DEEPSEEK_API_KEY）")
+
+elif view == "📝 每日报告":
+    st.markdown("---")
+    st.markdown('<div class="section-title">📝 每日大盘总览</div>', unsafe_allow_html=True)
+    if report:
+        st.markdown(f'<div class="report-box">{report}</div>', unsafe_allow_html=True)
+    else:
+        if os.path.exists("data/report.md"):
+            st.error("❌ 报告文件存在但内容为空，请检查 AI 生成逻辑")
+        else:
+            st.info("📌 今日报告尚未生成，请等待 GitHub Actions 完成数据采集并生成 report.md")
 
 # ---------- 底部 ----------
 st.markdown(f"""
