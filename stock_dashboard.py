@@ -36,7 +36,7 @@ class Config:
     telegram_bot_token: str = field(default_factory=lambda: os.environ.get("TELEGRAM_BOT_TOKEN", ""))
     telegram_chat_id: str = field(default_factory=lambda: os.environ.get("TELEGRAM_CHAT_ID", ""))
     deepseek_api_key: str = field(default_factory=lambda: os.environ.get("DEEPSEEK_API_KEY", ""))
-    serpapi_key: str = field(default_factory=lambda: os.environ.get("SERPAPI_KEY", ""))
+    serpapi_key: str = field(default_factory=lambda: os.environ.get("SERPAPI", ""))
 
     leverage_levels: Tuple[float, ...] = (1.5, 2.0, 3.0)
     maintenance_margin: float = 0.25  # 美股/港股监管最低标准，富途实际比例可能更高
