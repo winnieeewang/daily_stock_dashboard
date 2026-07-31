@@ -1,0 +1,32 @@
+{
+  "2y_scorecard": {
+    "y2": 4.22,
+    "y10": 4.663,
+    "spread_bps": 44.3,
+    "spread_5d_chg": -15.0,
+    "signal": "🟡 正常 (中性)",
+    "asof": "2026-07-29",
+    "y10_5d_chg_bps": -1.6
+  },
+  "us_debt": {
+    "value_trillion": 39.065,
+    "yoy_chg_pct": null,
+    "asof": "2026-01-01"
+  },
+  "margin_debt": {
+    "value_billion": null,
+    "mom_chg_pct": null,
+    "yoy_chg_pct": null,
+    "signal": "—",
+    "asof": "",
+    "error": "Bad Request.  The series does not exist."
+  },
+  "nfci_leverage": {
+    "value": 0.119,
+    "prev": 0.161,
+    "chg": -0.042,
+    "signal": "🟠 轻度紧缩",
+    "asof": "2026-07-24"
+  },
+  "asof": "2026-07-31 10:36"
+}
