@@ -18,6 +18,11 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
+# 常用杠杆倍数（用于强平计算）
+LEVERAGE_LEVELS = (1.5, 2)
+# 维持保证金比例（美股/港股常见 30%，可针对个股调整）
+DEFAULT_MAINTENANCE_MARGIN = 0.30
+
 STOCKS = [
     "MU", "AAOI", "GOOGL", "MSFT", "AMZN", "MRVL", "LITE",
     "SNDK", "NVDA", "ORCL", "SPCX", "SKHY", "TSLA",
@@ -79,18 +84,32 @@ def get_fred_data(series_id):
         print(f"❌ FRED {series_id} 失败: {e}")
         return None
 
-def get_finra_margin_debt():
+def get_real_yield_2y():
+    """
+    计算 2 年期实际利率（近似值）：
+    2年期实际利率 ≈ 2年期名义收益率 (DGS2) - 5年期通胀预期 (T5YIE)
+    若任一数据缺失则返回 None
+    """
+    if not FRED_API_KEY:
+        return None
     try:
-        if not FRED_API_KEY:
-            return None
         fred = Fred(api_key=FRED_API_KEY)
-        nfci = fred.get_series("NFCI")
-        if not nfci.empty:
-            val = float(nfci.iloc[-1])
-            print(f"✅ FINRA 近似 (NFCI): {val}")
+        dgs2 = fred.get_series("DGS2")
+        t5yie = fred.get_series("T5YIE")
+        if not dgs2.empty and not t5yie.empty:
+            val = float(dgs2.iloc[-1] - t5yie.iloc[-1])
+            print(f"✅ 2年期实际利率（近似）: {val:.2f}%")
             return val
-    except:
-        pass
+        else:
+            print("⚠️ 无法获取 DGS2 或 T5YIE，2年期实际利率计算失败")
+            return None
+    except Exception as e:
+        print(f"❌ 2年期实际利率计算失败: {e}")
+        return None
+
+def get_finra_margin_debt():
+    # FINRA 保证金债务无 FRED 系列，此函数暂返回 None，用户可后续接入其他数据源
+    print("ℹ️ FINRA 保证金债务未接入数据源，返回空值")
     return None
 
 # ---------- Put-Call Ratio ----------
@@ -117,7 +136,6 @@ def get_hk_data(symbol):
         code = symbol.replace('.HK', '').zfill(5)
         df = ak.stock_hk_daily(symbol=code, adjust="qfq")
         if not df.empty:
-            # 列名映射（同之前）
             rename_map = {'日期':'Date','开盘':'Open','收盘':'Close','最高':'High','最低':'Low','成交量':'Volume'}
             df.rename(columns=rename_map, inplace=True)
             if 'Date' in df.columns:
@@ -162,7 +180,6 @@ def get_stock_technical(symbol):
     except:
         return None
     change = (latest_close - prev_close) / prev_close * 100 if prev_close != 0 else 0
-    # 成交量状态
     vol_ma5 = volume.rolling(5).mean()
     try:
         ma5_vol = float(vol_ma5.iloc[-1])
@@ -177,7 +194,6 @@ def get_stock_technical(symbol):
             vol_status = "持平"
     else:
         vol_status = "持平"
-    # 技术指标
     try:
         rsi = float(ta.momentum.RSIIndicator(close, window=14).rsi().iloc[-1])
     except:
@@ -207,7 +223,6 @@ def get_stock_technical(symbol):
         atr = float(ta.volatility.AverageTrueRange(high, low, close, window=14).average_true_range().iloc[-1])
     except:
         atr = 0.0
-    # PE
     pe = None
     try:
         ticker_obj = yf.Ticker(symbol)
@@ -237,29 +252,136 @@ def get_stock_technical(symbol):
         "ATR": atr,
         "PE Ratio": pe,
     }
+
+# ---------- 强平价格计算 ----------
+def calculate_margin_call_price(entry_price, leverage, maintenance_margin=0.30):
+    """
+    计算保证金追缴价格（强平价格/斩杀线）
+    
+    参数：
+        entry_price: 买入价格
+        leverage: 杠杆倍数（如 2 表示 2倍杠杆）
+        maintenance_margin: 维持保证金比例（默认 0.30，即 30%）
+    
+    公式：强平价 = 买入价 × (L - 1) / (L × (1 - m))
+    
+    返回：
+        float: 强平价格，保留两位小数；若参数无效返回 None
+    """
+    if entry_price <= 0 or leverage <= 1 or maintenance_margin <= 0:
+        return None
+    margin_call_price = entry_price * (leverage - 1) / (leverage * (1 - maintenance_margin))
+    return round(margin_call_price, 2)
+
+def get_margin_call_for_stock(data, leverage_levels=LEVERAGE_LEVELS, maintenance_margin=DEFAULT_MAINTENANCE_MARGIN):
+    """
+    为单只股票计算不同杠杆下的强平价格
+    参数：
+        data: 个股技术指标字典
+        leverage_levels: 要计算的杠杆倍数列表
+        maintenance_margin: 维持保证金比例
+    返回：
+        dict: {杠杆倍数: 强平价格}
+    """
+    entry_price = data.get('收盘价', 0)  # 默认以当日收盘价作为买入价
+    if entry_price <= 0:
+        return {}
+    result = {}
+    for lev in leverage_levels:
+        price = calculate_margin_call_price(entry_price, lev, maintenance_margin)
+        if price is not None:
+            result[f"{lev}x"] = price
+    return result
+
+# ---------- 杠杆风险评估 ----------
+def stock_leverage_warning(data, leverage_levels=LEVERAGE_LEVELS, maintenance_margin=DEFAULT_MAINTENANCE_MARGIN):
+    """
+    评估个股当前价格下的杠杆风险（含强平价格）
+    """
+    current_price = data.get('收盘价', 0)
+    bb_low = data.get('布林下轨', 0)
+    atr = data.get('ATR', 0)
+    rsi = data.get('RSI(14)', 50)
+
+    # 计算各杠杆下的强平价格
+    margin_calls = get_margin_call_for_stock(data, leverage_levels, maintenance_margin)
+
+    if bb_low > 0:
+        distance_pct = (current_price - bb_low) / bb_low * 100
+    else:
+        distance_pct = 0
+
+    if current_price > 0 and atr > 0:
+        volatility_ratio = atr / current_price
+        if volatility_ratio > 0.05:
+            vol_effect = "高"
+        elif volatility_ratio > 0.025:
+            vol_effect = "中"
+        else:
+            vol_effect = "低"
+    else:
+        vol_effect = "未知"
+
+    risk_score = 0
+    if distance_pct < 2:
+        risk_score += 40
+    elif distance_pct < 5:
+        risk_score += 20
+    else:
+        risk_score += 5
+
+    if vol_effect == "高":
+        risk_score += 30
+    elif vol_effect == "中":
+        risk_score += 15
+
+    if rsi < 30 and distance_pct < 0:
+        risk_score += 20
+
+    if risk_score >= 60:
+        risk_level = "高"
+    elif risk_score >= 35:
+        risk_level = "中"
+    else:
+        risk_level = "低"
+
+    desc = f"当前价格距布林下轨 {distance_pct:.1f}%，波动率{vol_effect}，综合杠杆风险{risk_level}"
+    return {
+        "风险等级": risk_level,
+        "距布林下轨%": round(distance_pct, 2),
+        "波动率影响": vol_effect,
+        "强平价格": margin_calls,
+        "描述": desc
+    }
+
+# ---------- 新增分析函数 ----------
 def bottom_fishing_score(data, poc_price, current_price):
-    """综合评分：越高越接近抄底区间，返回 0-100"""
     score = 0
     reasons = []
     if data["RSI(14)"] < 30:
-        score += 30; reasons.append("RSI超卖")
+        score += 30
+        reasons.append("RSI超卖")
     elif data["RSI(14)"] < 40:
-        score += 15; reasons.append("RSI偏低")
+        score += 15
+        reasons.append("RSI偏低")
     if data["收盘价"] <= data["布林下轨"] * 1.02:
-        score += 25; reasons.append("触及/逼近布林下轨")
+        score += 25
+        reasons.append("触及/逼近布林下轨")
     if data["量比状态"] == "缩量":
-        score += 15; reasons.append("恐慌盘衰竭（缩量企稳）")
-    dist_to_poc = abs(current_price - poc_price) / poc_price * 100
-    if dist_to_poc < 3:
-        score += 30; reasons.append(f"接近资金集中区（{poc_price}，主力成本支撑）")
-    return {"抄底评分": score, "依据": reasons}
+        score += 15
+        reasons.append("恐慌盘衰竭（缩量企稳）")
+    if poc_price and current_price:
+        dist_to_poc = abs(current_price - poc_price) / poc_price * 100
+        if dist_to_poc < 3:
+            score += 30
+            reasons.append(f"接近资金集中区（{poc_price}，主力成本支撑）")
+    return {"抄底评分": min(score, 100), "依据": reasons}
+
 def rebound_or_reversal(data):
-    """判断价格上涨是短线反弹还是趋势反转"""
-    bullish_alignment = data["MA5"] > data["MA20"] > data["MA50"]  # 多头排列
+    bullish_alignment = data["MA5"] > data["MA20"] > data["MA50"]
     above_ma50 = data["收盘价"] > data["MA50"]
     volume_confirm = data["量比状态"] == "放量"
     macd_golden = data["MACD"] > data["MACD信号"]
-
     signals_met = sum([bullish_alignment, above_ma50, volume_confirm, macd_golden])
     if signals_met >= 3:
         return "反转（趋势性）：均线多头排列+放量+MACD金叉，非单纯超跌反弹"
@@ -267,15 +389,17 @@ def rebound_or_reversal(data):
         return "反弹（阶段性）：仅超跌修复，尚未突破关键均线结构，警惕冲高回落"
     else:
         return "震荡：暂无明确方向信号"
+
 def market_sentiment_index(vix, vol_pcr, sox_rsi):
-    """0-100，越高越贪婪，越低越恐惧（仿 Fear & Greed 简化版）"""
-    vix_score = max(0, min(100, 100 - (vix - 12) * 4))       # VIX 12→满分，VIX 37→0分
-    pcr_score = max(0, min(100, (vol_pcr - 0.5) * 100)) if vol_pcr else 50  # PCR越高越恐慌，需反向：这里简化，PCR>1时偏恐慌
-    pcr_score = max(0, min(100, 100 - (vol_pcr - 0.5) * 80)) if vol_pcr else 50
+    vix_score = max(0, min(100, 100 - (vix - 12) * 4))
+    pcr_score = 50
+    if vol_pcr:
+        pcr_score = max(0, min(100, 100 - (vol_pcr - 0.5) * 80))
     rsi_score = sox_rsi if sox_rsi else 50
     composite = round(vix_score * 0.4 + pcr_score * 0.3 + rsi_score * 0.3, 1)
     label = "极度贪婪" if composite > 75 else "贪婪" if composite > 55 else "中性" if composite > 45 else "恐惧" if composite > 25 else "极度恐惧"
     return {"情绪指数": composite, "标签": label}
+
 # ---------- SOX ----------
 def get_sox_signals():
     sox = safe_fetch("^SOX", period="3mo")
@@ -368,16 +492,14 @@ def check_alerts(macro, stock_dict, sox):
         send_alert(msg)
     return alerts
 
-# ---------- 决策卡片 JSON 生成（仿 daily_stock_analysis 决策仪表盘风格） ----------
+# ---------- 决策卡片 JSON ----------
 def parse_json_response(raw: str):
-    """兜底解析 LLM 返回的 JSON，去掉可能的 markdown 围栏和多余文字"""
     raw = raw.strip()
     if raw.startswith("```"):
         raw = raw.strip("`")
         if raw.startswith("json"):
             raw = raw[4:]
     raw = raw.strip()
-    # 尝试直接解析；失败则截取第一个 [ 到最后一个 ] 之间的内容再试一次
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
@@ -386,27 +508,18 @@ def parse_json_response(raw: str):
         if start != -1 and end != -1 and end > start:
             return json.loads(raw[start:end + 1])
         raise
-LEVERAGE_LEVELS = (1.5, 2)  # 可按你实际常用杠杆调整
 
-def generate_leverage_risk(stock_dict):
-    risk_data = {}
-    for sym, data in stock_dict.items():
-        if "error" not in data:
-            risk_data[sym] = stock_leverage_warning(data, leverage_levels=LEVERAGE_LEVELS)
-    with open("data/leverage_risk.json", "w", encoding="utf-8") as f:
-        json.dump({"generated_at": datetime.now().strftime('%Y-%m-%d %H:%M'), "stocks": risk_data},
-                  f, ensure_ascii=False, indent=2)
-    print("✅ 个股杠杆强平线已计算")
 def generate_decision_cards(client, stock_dict, macro, sox):
-    """针对每只（港股/美股）股票生成结构化决策卡片，保存到 data/cards.json"""
     valid_stocks = {s: d for s, d in stock_dict.items() if "error" not in d}
     if not valid_stocks:
         print("⚠️ 无有效个股数据，跳过决策卡片生成")
         return
-
     stock_facts = []
     for sym, data in valid_stocks.items():
         market = "港股" if sym.endswith(".HK") else "美股"
+        # 计算强平价格
+        margin_calls = get_margin_call_for_stock(data)
+        margin_call_str = "；".join([f"{k}强平${v:.2f}" for k, v in margin_calls.items()])
         stock_facts.append(f"""
 {sym}（{market}）
 收盘 {data.get('收盘价', 0):.2f}，涨跌幅 {data.get('涨跌幅%', 0):.2f}%，量比{data.get('量比状态', 'N/A')}
@@ -414,8 +527,8 @@ RSI {data.get('RSI(14)', 0):.2f}，MACD {data.get('MACD', 0):.3f}，PE {data.get
 MA5 {data.get('MA5', 0):.2f} / MA20 {data.get('MA20', 0):.2f} / MA50 {data.get('MA50', 0):.2f}
 布林带：上轨{data.get('布林上轨', 0):.2f} 中轨{data.get('布林中轨', 0):.2f} 下轨{data.get('布林下轨', 0):.2f}
 ATR {data.get('ATR', 0):.2f}
+斩杀线：{margin_call_str if margin_call_str else 'N/A'}
 """)
-
     prompt = f"""你是一位专业的美股/港股分析师。请针对以下每只股票，生成结构化决策卡片。
 市场背景：VIX={macro.get('VIX', 'N/A')}，标普500={macro.get('标普500', 'N/A')}，SOX回撤={sox.get('回撤%', 'N/A')}%
 
@@ -471,15 +584,19 @@ def generate_report():
     for name, sym in MACRO_INDICES.items():
         val = get_macro_value(sym)
         macro[name] = val if val is not None else "无数据"
-    # FRED
+    # FRED（修正）
     if FRED_API_KEY:
         macro["美国国债规模"] = get_fred_data("GFDEBTN") or "无数据"
-        macro["芝加哥联储杠杆指数"] = get_fred_data("NFCI") or "无数据"
-        macro["2年期实际利率"] = get_fred_data("TIPS2Y") or "无数据"
+        # 1) 芝加哥联储杠杆指数 → 使用精确的 NFCILEVERAGE
+        macro["芝加哥联储杠杆指数"] = get_fred_data("NFCILEVERAGE") or "无数据"
+        # 2) 2年期实际利率 → 近似计算
+        real_yield = get_real_yield_2y()
+        macro["2年期实际利率（近似）"] = f"{real_yield:.2f}%" if real_yield is not None else "无数据"
     else:
         macro["美国国债规模"] = "未配置FRED Key"
         macro["芝加哥联储杠杆指数"] = "未配置FRED Key"
-        macro["2年期实际利率"] = "未配置FRED Key"
+        macro["2年期实际利率（近似）"] = "未配置FRED Key"
+    # FINRA 保证金债务（暂无数据源）
     margin_debt = get_finra_margin_debt()
     macro["FINRA保证金债务"] = margin_debt if margin_debt else "无数据"
     vol_pcr, oi_pcr = get_put_call_ratio()
@@ -500,6 +617,8 @@ def generate_report():
         sox = {"最新价":"N/A","回撤%":"N/A","技术性熊市":False,"RSI":"N/A","MA20":"N/A","MA50":"N/A","MA200":"N/A","信号列表":["无法获取"]}
     adv_dec = get_advance_decline()
     adv_dec = float(adv_dec) if adv_dec is not None else "无数据"
+    sentiment = market_sentiment_index(macro.get('VIX', 0), macro.get('Volume PCR', 0), sox.get('RSI', 50))
+    print(f"📊 市场情绪指数: {sentiment['情绪指数']} ({sentiment['标签']})")
     # 保存 CSV
     os.makedirs("data", exist_ok=True)
     macro_df = pd.DataFrame([macro])
@@ -510,6 +629,12 @@ def generate_report():
         if "error" not in data:
             row = {"symbol": sym}
             row.update(data)
+            # 增加杠杆风险（含强平价格）
+            leverage_risk = stock_leverage_warning(data)
+            row["杠杆风险"] = leverage_risk["风险等级"]
+            row["强平价格_2x"] = leverage_risk["强平价格"].get("2x", "N/A")
+            row["强平价格_3x"] = leverage_risk["强平价格"].get("3x", "N/A")
+            row["强平价格_5x"] = leverage_risk["强平价格"].get("5x", "N/A")
             stock_records.append(row)
     if stock_records:
         pd.DataFrame(stock_records).to_csv("data/stocks.csv", index=False)
@@ -518,17 +643,13 @@ def generate_report():
     sox_row["信号列表"] = "；".join(sox.get("信号列表", []))
     pd.DataFrame([sox_row]).to_csv("data/sox.csv", index=False)
     print("✅ SOX 数据已保存")
-    # 预警
     alerts = check_alerts(macro, stock_dict, sox)
     if alerts:
         print("📢 触发预警:", alerts)
 
-    # AI 分析：整体大盘总览（保留原有 Markdown 报告） + 个股结构化决策卡片
     if DEEPSEEK_API_KEY:
         from openai import OpenAI
         client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com/v1")
-
-        # 1) 整体大盘总览 Markdown（原有逻辑，作为顶部综述文字保留）
         print("🧠 正在生成大盘总览报告...")
         prompt = f"""你是一位专业股票分析师，请根据以下数据生成一份简洁的大盘总览。
 报告日期：{datetime.now().strftime('%Y-%m-%d %H:%M')}
@@ -547,7 +668,7 @@ def generate_report():
 ---
 ### 任务要求
 生成包含：1.宏观判断 2.SOX解读 3.情绪与资金 4.今日整体操作建议 5.风险提示
-总字数控制在500字以内，专业、简洁，使用emoji。个股层面的具体买卖点位不需要在这里展开（会在下方决策卡片中单独呈现）。
+总字数控制在500字以内，专业、简洁，使用emoji。个股层面的具体买卖点位不需要在这里展开。
 """
         try:
             response = client.chat.completions.create(
@@ -563,7 +684,6 @@ def generate_report():
         except Exception as e:
             print(f"❌ 大盘总览报告生成失败: {e}")
 
-        # 2) 个股结构化决策卡片（仿 daily_stock_analysis 决策仪表盘风格）
         print("🧠 正在生成个股决策卡片...")
         generate_decision_cards(client, stock_dict, macro, sox)
     else:
