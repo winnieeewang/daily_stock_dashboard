@@ -17,7 +17,9 @@ ALPHA_VANTAGE_KEY = os.environ.get("ALPHA_VANTAGE_KEY", "")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-
+SERPAPI_API_KEY = os.environ.get("SERPAPI_API_KEY", "")  # 从环境变量读取
+# 定义需要搜索新闻的股票代码（港股保留原始格式，搜索时可能需要调整）
+NEWS_STOCKS = ["MU", "AAOI", "GOOGL", "MSFT", "ORCL", "TSLA", "AMZN", "SPCX", "SKHY", "MRVL", "LITE", "SNDK", "NVDA", "0700.HK", "0883.HK", "3750.HK"]  # 示例，您可以按需修改
 # 常用杠杆倍数（用于强平计算）
 LEVERAGE_LEVELS = (1.5, 2)
 # 维持保证金比例（美股/港股常见 30%，可针对个股调整）
@@ -159,7 +161,31 @@ def get_hk_data(symbol):
     except:
         pass
     return safe_fetch(symbol, period=f"{LOOKBACK_DAYS}d")
+# ---------- 新闻获取 (SerpApi Baidu News) ----------
+from serpapi import BaiduSearch
 
+def get_baidu_news(query, api_key):
+    """使用 SerpApi 的 Baidu News 引擎搜索新闻"""
+    if not api_key:
+        print("⚠️ SerpApi API Key 未配置，跳过新闻获取")
+        return []
+
+    params = {
+        "engine": "baidu_news",  # 指定使用百度新闻引擎[reference:5]
+        "q": query,              # 搜索关键词
+        "api_key": api_key,
+        "num": 5                 # 获取前5条新闻
+    }
+
+    try:
+        search = BaiduSearch(params)
+        results = search.get_dict()
+        news_results = results.get("news_results", [])
+        print(f"✅ 成功获取 {len(news_results)} 条关于 '{query}' 的百度新闻")
+        return news_results
+    except Exception as e:
+        print(f"❌ 获取百度新闻失败 (query: {query}): {e}")
+        return []
 # ---------- 个股技术 ----------
 def get_stock_technical(symbol):
     is_hk = symbol.endswith(".HK")
@@ -675,6 +701,23 @@ def generate_report():
 ### 宏观概览
 {json.dumps(macro, indent=2, ensure_ascii=False)}
 涨跌家数比（SPY涨跌幅近似）：{adv_dec}%
+# ---- 获取股票新闻 (新增) ----
+stock_news = {}
+for sym in STOCKS:
+    # 对于港股，搜索时可能需要使用公司名称，而非代码，您可以根据需要调整
+    query = sym.replace(".HK", "")  # 简单示例，去掉 .HK 后缀
+    news = get_baidu_news(query, SERPAPI_API_KEY)
+    stock_news[sym] = news
+
+# ---- 构建 Prompt (修改) ----
+# 在原有的 prompt 构建代码中，增加一个新闻部分
+prompt = f"""
+...
+### 四、个股新闻摘要 (来自百度新闻)
+{json.dumps(stock_news, indent=2, ensure_ascii=False)}
+...
+"""
+# 然后将此 prompt 发送给 DeepSeek
 ---
 ### SOX 指数信号
 - 最新价：{sox.get('最新价','N/A')}
