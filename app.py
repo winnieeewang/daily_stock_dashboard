@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime
 import os
+import json
 import yfinance as yf
 
 st.set_page_config(layout="wide", page_title="每日股票看板", initial_sidebar_state="expanded")
@@ -30,6 +31,8 @@ st.markdown("""
     .footer { text-align: center; color: rgba(255,255,255,0.15); font-size: 11px; padding: 30px 0 10px 0; border-top: 1px solid rgba(255,255,255,0.04); margin-top: 30px; }
     .report-box { background: rgba(255,255,255,0.03); border-radius: 16px; padding: 20px 24px; border: 1px solid rgba(255,255,255,0.06); margin-top: 10px; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6; }
     .sox-signal { background: rgba(255,255,255,0.03); border-radius: 12px; padding: 10px 16px; margin-top: 8px; border-left: 2px solid rgba(0,212,255,0.3); color: rgba(255,255,255,0.6); font-size: 13px; }
+    .card-tag { padding: 2px 10px; border-radius: 12px; font-size: 13px; }
+    .sector-tag { background: rgba(0,212,255,0.1); color: #00d4ff; padding: 2px 10px; border-radius: 10px; font-size: 12px; margin-right: 6px; display:inline-block; margin-bottom:4px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -68,7 +71,38 @@ def load_data():
             report = f.read()
     return macro_df, stocks_df, sox_df, report
 
+@st.cache_data(ttl=3600)
+def load_cards():
+    if os.path.exists("data/cards.json"):
+        try:
+            with open("data/cards.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
+
 macro_df, stocks_df, sox_df, report = load_data()
+cards_data = load_cards()
+
+OP_COLOR = {"买入": "#00e676", "观望": "#ffd54f", "卖出": "#ff5252"}
+
+def score_gauge(score, operation):
+    color = OP_COLOR.get(operation, "#00d4ff")
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=score,
+        number={'font': {'color': '#ffffff', 'size': 32}},
+        gauge={
+            'axis': {'range': [0, 100], 'tickcolor': 'rgba(255,255,255,0.2)', 'tickfont': {'color': 'rgba(255,255,255,0.3)'}},
+            'bar': {'color': color},
+            'bgcolor': 'rgba(255,255,255,0.03)',
+            'borderwidth': 0,
+        },
+        domain={'x': [0, 1], 'y': [0, 1]}
+    ))
+    fig.update_layout(height=160, margin=dict(l=10, r=10, t=10, b=10),
+                       paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
+    return fig
 
 # ---------- 宏观数据 ----------
 st.markdown('<div class="section-title">🌍 宏观数据</div>', unsafe_allow_html=True)
@@ -129,6 +163,80 @@ if sox_df is not None and not sox_df.empty:
         st.markdown(f"""<div class="sox-signal">⚡ 关键信号：{signal_html}</div>""", unsafe_allow_html=True)
 else:
     st.warning("⚠️ 暂无 SOX 数据")
+
+# ---------- AI 决策卡片（仿 daily_stock_analysis 决策仪表盘风格） ----------
+st.markdown('<div class="section-title">🎯 AI 决策卡片</div>', unsafe_allow_html=True)
+if cards_data and cards_data.get("stocks"):
+    st.caption(f"生成时间：{cards_data.get('generated_at', 'N/A')}")
+    for card in cards_data["stocks"]:
+        sym = card.get("symbol", "N/A")
+        op = card.get("operation", "观望")
+        op_color = OP_COLOR.get(op, "#00d4ff")
+        col_left, col_right = st.columns([3, 1])
+        with col_left:
+            st.markdown(f"""
+            <div class="stock-card">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                    <span style="font-weight:700;font-size:20px;color:#fff;">{sym}</span>
+                    <span class="card-tag" style="background:{op_color}22;color:{op_color};">{op}</span>
+                    <span style="color:rgba(255,255,255,0.4);font-size:13px;">{card.get('trend','')}</span>
+                </div>
+                <div style="color:rgba(255,255,255,0.75);font-size:14px;">{card.get('core_view','')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # 狙击点位 四列
+            leverage_data = load_leverage_risk()  # 类似 load_cards()，读 data/leverage_risk.json
+
+# 在每张卡片渲染的地方（col_left 内，狙击点位下方）
+if leverage_data and sym in leverage_data.get("stocks", {}):
+    lev_rows = leverage_data["stocks"][sym]
+    lev_cols = st.columns(len(lev_rows))
+    for c, row in zip(lev_cols, lev_rows):
+        atr_mult = row["距强平ATR倍数"]
+        danger = isinstance(atr_mult, (int, float)) and atr_mult < 3
+        color = "#ff5252" if danger else "#ffd54f" if isinstance(atr_mult, (int, float)) and atr_mult < 6 else "rgba(255,255,255,0.5)"
+        with c:
+            st.markdown(f"""<div class="metric-card" style="border-left:2px solid {color};">
+                <div class="metric-label">{row['杠杆倍数']} 强平价</div>
+                <div style="font-size:14px;color:{color};margin-top:4px;">${row['强平价']} （{row['距强平ATR倍数']}倍ATR）</div>
+            </div>""", unsafe_allow_html=True)
+            sniper = card.get("sniper", {}) or {}
+            s1, s2, s3, s4 = st.columns(4)
+            labels = [
+                ("理想买入", sniper.get("ideal_buy", "-"), "#00d4ff"),
+                ("二次买入", sniper.get("second_buy", "-"), "#00e676"),
+                ("止损位", sniper.get("stop_loss", "-"), "#ff5252"),
+                ("止盈目标", sniper.get("target", "-"), "#ffd54f"),
+            ]
+            for c, (label, val, color) in zip([s1, s2, s3, s4], labels):
+                with c:
+                    st.markdown(f"""<div class="metric-card" style="border-left:2px solid {color};">
+                        <div class="metric-label">{label}</div>
+                        <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-top:4px;">{val}</div>
+                    </div>""", unsafe_allow_html=True)
+
+            # 催化 & 风险
+            cc1, cc2 = st.columns(2)
+            with cc1:
+                catalysts = "".join([f"<div>✨ {c}</div>" for c in card.get("catalysts", [])])
+                st.markdown(f'<div class="sox-signal">{catalysts or "暂无"}</div>', unsafe_allow_html=True)
+            with cc2:
+                risks = "".join([f"<div>🚨 {r}</div>" for r in card.get("risks", [])])
+                st.markdown(f'<div class="sox-signal" style="border-left-color:rgba(255,82,82,0.4);">{risks or "暂无"}</div>', unsafe_allow_html=True)
+
+            # 板块标签
+            sectors = card.get("sectors", [])
+            if sectors:
+                tags = "".join([f'<span class="sector-tag">{s}</span>' for s in sectors])
+                st.markdown(f'<div style="margin:8px 0 20px 0;">{tags}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="margin-bottom:20px;"></div>', unsafe_allow_html=True)
+
+        with col_right:
+            st.plotly_chart(score_gauge(card.get("score", 50), op), use_container_width=True, config={'displayModeBar': False})
+else:
+    st.info("📌 决策卡片尚未生成，请等待每日数据更新（需配置 DEEPSEEK_API_KEY）")
 
 # ---------- 个股数据 ----------
 st.markdown('<div class="section-title">📊 个股数据</div>', unsafe_allow_html=True)
@@ -228,9 +336,9 @@ for name, sym in macro_hist_symbols.items():
     except Exception as e:
         st.caption(f"⚠️ {name} 错误: {str(e)[:50]}")
 
-# ---------- AI 报告 ----------
+# ---------- AI 报告（大盘总览） ----------
 st.markdown("---")
-st.markdown('<div class="section-title">📝 每日分析报告（含操作建议）</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">📝 每日大盘总览</div>', unsafe_allow_html=True)
 if report:
     st.markdown(f'<div class="report-box">{report}</div>', unsafe_allow_html=True)
 else:
