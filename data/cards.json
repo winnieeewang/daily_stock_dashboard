@@ -1,100 +1,75 @@
 {
-  "generated_at": "2026-07-31 02:32",
+  "generated_at": "2026-07-31 03:40",
   "stocks": [
     {
-      "symbol": "MU",
-      "score": 72,
-      "operation": "买入",
-      "trend": "看多",
-      "core_view": "存储芯片需求强劲，股价大涨18.36%突破短期均线，PE合理，技术面转强，但需注意SOX回撤风险。",
-      "catalysts": [
-        "AI驱动存储需求增长",
-        "财报超预期"
-      ],
-      "risks": [
-        "半导体板块波动",
-        "高库存风险"
-      ],
-      "sniper": {
-        "ideal_buy": "回调至MA5附近851美元",
-        "second_buy": "若回踩MA20 919美元企稳",
-        "stop_loss": "跌破850美元止损",
-        "target": "目标1000美元"
-      },
-      "sectors": [
-        "半导体",
-        "存储芯片"
-      ]
-    },
-    {
       "symbol": "AAOI",
-      "score": 65,
-      "operation": "买入",
-      "trend": "看多",
-      "core_view": "光模块需求旺盛，股价大涨17.76%，但均线空头排列，反弹需确认，PE合理，短线可参与。",
+      "score": 45,
+      "operation": "观望",
+      "trend": "看空",
+      "core_view": "股价反弹但均线空头排列，MACD深负，趋势偏弱，需等待企稳信号。",
       "catalysts": [
-        "AI数据中心建设",
-        "光通信需求增长"
+        "超跌反弹动能",
+        "AI光模块需求长期向好"
       ],
       "risks": [
-        "竞争加剧",
-        "客户集中度高"
+        "均线压制明显",
+        "MACD负值扩大，下行风险未消"
       ],
       "sniper": {
-        "ideal_buy": "回踩90美元整数关口",
-        "second_buy": "若站稳MA5 90.55美元",
-        "stop_loss": "跌破85美元止损",
-        "target": "目标110美元"
+        "ideal_buy": "82.46附近（布林下轨）",
+        "second_buy": "90.55（MA5）站稳后",
+        "stop_loss": "78.00下方",
+        "target": "108.10（MA20）"
       },
       "sectors": [
         "光通信",
-        "数据中心"
+        "AI硬件"
       ]
     },
     {
       "symbol": "GOOGL",
-      "score": 55,
+      "score": 50,
       "operation": "观望",
       "trend": "震荡",
-      "core_view": "股价微跌，均线空头排列，PE较低，但缺乏明确催化，短期震荡整理，等待方向选择。",
+      "core_view": "股价处于均线下方，RSI中性，MACD负值，短期震荡筑底，等待方向选择。",
       "catalysts": [
-        "AI产品商业化",
-        "云业务增长"
+        "AI业务持续增长",
+        "云业务盈利改善"
       ],
       "risks": [
-        "反垄断监管",
-        "广告需求疲软"
+        "宏观不确定性",
+        "搜索业务监管压力"
       ],
       "sniper": {
-        "ideal_buy": "回调至320美元附近",
-        "second_buy": "若突破MA20 348美元",
-        "stop_loss": "跌破310美元止损",
-        "target": "目标360美元"
+        "ideal_buy": "317.49（布林下轨）",
+        "second_buy": "330.08（MA5）附近",
+        "stop_loss": "310.00下方",
+        "target": "348.24（MA20）"
       },
       "sectors": [
         "互联网",
-        "云计算"
+        "人工智能"
       ]
     },
     {
       "symbol": "MSFT",
-      "score": 78,
+      "score": 75,
       "operation": "买入",
       "trend": "看多",
-      "core_view": "股价大涨15.51%且放量，突破所有均线，PE合理，AI云业务驱动，技术面强势，建议积极关注。",
+      "core_view": "股价强势突破布林上轨，RSI超买但趋势强劲，MACD金叉，量能配合，有望继续上行。",
       "catalysts": [
-        "Azure增长强劲",
-        "AI Copilot推广"
+        "云业务强劲",
+        "AI商业化加速"
       ],
       "risks": [
-        "估值偏高",
-        "宏观经济放缓"
+        "短期超买回调",
+        "估值偏高"
       ],
       "sniper": {
-        "ideal_buy": "回调至MA5 401美元附近",
-        "second_buy": "若回踩MA20 393美元",
-        "stop_loss": "跌破390美元止损",
-        "target": "目标500美元"
+        "ideal_buy": "422.16（布林上轨）回踩",
+        "second_buy": "401.16（MA5）附近",
+        "stop_loss": "393.15（MA20）下方",
+        "target": "480.00"
       },
       "sectors": [
         "软件",
@@ -102,24 +77,49 @@
       ]
     },
     {
-      "symbol": "AMZN",
-      "score": 62,
-      "operation": "买入",
-      "trend": "看多",
-      "core_view": "股价上涨3.9%且放量，站上MA5，但受制于MA20，PE略高，电商和云业务稳健，可逢低布局。",
+      "symbol": "MU",
+      "score": 42,
+      "operation": "观望",
+      "trend": "看空",
+      "core_view": "股价反弹但均线空头，MACD深负，反弹力度存疑，趋势仍偏弱。",
       "catalysts": [
-        "电商旺季",
+        "存储涨价周期",
+        "AI需求拉动"
+      ],
+      "risks": [
+        "高波动性",
+        "行业周期性下行"
+      ],
+      "sniper": {
+        "ideal_buy": "786.45（布林下轨）",
+        "second_buy": "851.07（MA5）站稳后",
+        "stop_loss": "750.00下方",
+        "target": "919.31（MA20）"
+      },
+      "sectors": [
+        "半导体",
+        "存储"
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "score": 55,
+      "operation": "观望",
+      "trend": "震荡",
+      "core_view": "股价在布林中轨附近震荡，RSI中性，MACD负值但收窄，等待方向突破。",
+      "catalysts": [
+        "电商业务稳定",
         "AWS增长"
       ],
       "risks": [
-        "竞争压力",
-        "利润率下滑"
+        "消费疲软",
+        "竞争加剧"
       ],
       "sniper": {
-        "ideal_buy": "回调至230美元附近",
-        "second_buy": "若突破MA20 242美元",
-        "stop_loss": "跌破225美元止损",
-        "target": "目标260美元"
+        "ideal_buy": "227.20（布林下轨）",
+        "second_buy": "231.30（MA5）附近",
+        "stop_loss": "222.00下方",
+        "target": "242.41（MA20）"
       },
       "sectors": [
         "电商",
@@ -128,123 +128,147 @@
     },
     {
       "symbol": "MRVL",
-      "score": 58,
+      "score": 40,
       "operation": "观望",
-      "trend": "震荡",
-      "core_view": "股价大涨12.18%，但均线空头排列，PE高达63倍，估值偏贵，反弹持续性待观察，谨慎追高。",
+      "trend": "看空",
+      "core_view": "股价反弹但均线空头排列，MACD深负，趋势未反转，需谨慎。",
       "catalysts": [
-        "数据中心芯片需求",
-        "AI网络芯片"
+        "数据中心需求",
+        "定制芯片业务"
       ],
       "risks": [
-        "估值过高",
-        "业绩波动"
+        "半导体周期下行",
+        "高波动性"
       ],
       "sniper": {
-        "ideal_buy": "回调至170美元附近",
-        "second_buy": "若站稳MA5 180美元",
-        "stop_loss": "跌破165美元止损",
-        "target": "目标210美元"
+        "ideal_buy": "161.07（布林下轨）",
+        "second_buy": "180.91（MA5）站稳后",
+        "stop_loss": "155.00下方",
+        "target": "209.34（MA20）"
       },
       "sectors": [
         "半导体",
-        "数据中心"
-      ]
-    },
-    {
-      "symbol": "LITE",
-      "score": 60,
-      "operation": "观望",
-      "trend": "震荡",
-      "core_view": "股价大涨15.09%，但均线空头排列，PE高达106倍，估值极高，反弹需量能配合，建议观望。",
-      "catalysts": [
-        "光模块需求",
-        "AI网络升级"
-      ],
-      "risks": [
-        "估值泡沫",
-        "行业竞争"
-      ],
-      "sniper": {
-        "ideal_buy": "回调至650美元附近",
-        "second_buy": "若突破MA20 745美元",
-        "stop_loss": "跌破620美元止损",
-        "target": "目标800美元"
-      },
-      "sectors": [
-        "光通信",
         "数据中心"
       ]
     },
     {
       "symbol": "SNDK",
-      "score": 70,
-      "operation": "买入",
-      "trend": "看多",
-      "core_view": "股价大涨25.99%，突破MA5，存储行业景气，PE合理，但均线空头排列，短线强势可参与。",
+      "score": 38,
+      "operation": "观望",
+      "trend": "看空",
+      "core_view": "股价反弹但均线空头，MACD深负，趋势极弱，反弹可能短暂。",
       "catalysts": [
-        "存储涨价",
-        "AI需求驱动"
+        "存储涨价预期",
+        "AI存储需求"
       ],
       "risks": [
-        "板块回调",
-        "供应过剩"
+        "高波动性",
+        "行业竞争激烈"
       ],
       "sniper": {
-        "ideal_buy": "回调至1200美元附近",
-        "second_buy": "若站稳MA5 1221美元",
-        "stop_loss": "跌破1150美元止损",
-        "target": "目标1500美元"
+        "ideal_buy": "1058.23（布林下轨）",
+        "second_buy": "1221.35（MA5）站稳后",
+        "stop_loss": "1000.00下方",
+        "target": "1535.89（MA20）"
       },
       "sectors": [
-        "存储芯片",
+        "存储",
         "半导体"
       ]
     },
     {
-      "symbol": "NVDA",
-      "score": 68,
-      "operation": "买入",
-      "trend": "看多",
-      "core_view": "股价上涨2.65%，均线多头排列，AI芯片龙头，PE合理，技术面稳健，回调即是布局机会。",
+      "symbol": "LITE",
+      "score": 45,
+      "operation": "观望",
+      "trend": "看空",
+      "core_view": "股价反弹但均线空头，MACD深负，趋势偏弱，等待企稳信号。",
       "catalysts": [
-        "AI算力需求",
-        "新产品发布"
+        "光模块需求",
+        "AI数据中心建设"
       ],
       "risks": [
-        "估值压力",
-        "地缘政治"
+        "行业竞争",
+        "高波动性"
       ],
       "sniper": {
-        "ideal_buy": "回调至MA5 197美元附近",
-        "second_buy": "若回踩MA20 203美元",
-        "stop_loss": "跌破190美元止损",
-        "target": "目标230美元"
+        "ideal_buy": "624.85（布林下轨）",
+        "second_buy": "684.49（MA5）站稳后",
+        "stop_loss": "600.00下方",
+        "target": "745.81（MA20）"
+      },
+      "sectors": [
+        "光通信",
+        "AI硬件"
+      ]
+    },
+    {
+      "symbol": "SPCX",
+      "score": 30,
+      "operation": "卖出",
+      "trend": "看空",
+      "core_view": "RSI超卖，MACD深负，均线空头，趋势极弱，反弹乏力，建议规避。",
+      "catalysts": [
+        "超跌反弹可能"
+      ],
+      "risks": [
+        "基本面不明",
+        "高波动性"
+      ],
+      "sniper": {
+        "ideal_buy": "98.84（布林下轨）",
+        "second_buy": "113.95（MA5）站稳后",
+        "stop_loss": "95.00下方",
+        "target": "131.49（MA20）"
+      },
+      "sectors": [
+        "航空航天",
+        "军工"
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "score": 52,
+      "operation": "观望",
+      "trend": "震荡",
+      "core_view": "股价处于均线下方，RSI中性，MACD负值收窄，短期震荡，等待突破。",
+      "catalysts": [
+        "AI芯片需求旺盛",
+        "新产品周期"
+      ],
+      "risks": [
+        "高估值",
+        "出口管制"
+      ],
+      "sniper": {
+        "ideal_buy": "189.81（布林下轨）",
+        "second_buy": "197.08（MA5）附近",
+        "stop_loss": "185.00下方",
+        "target": "203.00（MA20）"
       },
       "sectors": [
         "半导体",
-        "AI芯片"
+        "人工智能"
       ]
     },
     {
       "symbol": "ORCL",
-      "score": 52,
+      "score": 45,
       "operation": "观望",
-      "trend": "震荡",
-      "core_view": "股价上涨8.34%，但均线空头排列，PE合理，云业务增长，但需突破MA20确认趋势，暂观望。",
+      "trend": "看空",
+      "core_view": "股价反弹但均线空头，MACD深负，趋势偏弱，需等待企稳。",
       "catalysts": [
         "云业务增长",
         "AI数据库需求"
       ],
       "risks": [
-        "竞争激烈",
-        "增长放缓"
+        "竞争加剧",
+        "宏观经济影响"
       ],
       "sniper": {
-        "ideal_buy": "回调至120美元附近",
-        "second_buy": "若突破MA20 129美元",
-        "stop_loss": "跌破115美元止损",
-        "target": "目标140美元"
+        "ideal_buy": "111.23（布林下轨）",
+        "second_buy": "120.03（MA5）站稳后",
+        "stop_loss": "108.00下方",
+        "target": "129.28（MA20）"
       },
       "sectors": [
         "软件",
@@ -252,52 +276,103 @@
       ]
     },
     {
-      "symbol": "SPCX",
-      "score": 40,
+      "symbol": "TSLA",
+      "score": 35,
       "operation": "卖出",
       "trend": "看空",
-      "core_view": "股价微跌，均线空头排列，PE高达124倍，估值严重偏高，基本面支撑不足，建议规避。",
+      "core_view": "RSI超卖，MACD深负，均线空头，趋势极弱，反弹乏力，建议规避。",
       "catalysts": [
-        "太空业务拓展"
+        "超跌反弹可能",
+        "新车型发布"
       ],
       "risks": [
-        "估值过高",
-        "盈利困难"
+        "需求疲软",
+        "竞争加剧"
       ],
       "sniper": {
-        "ideal_buy": "观望，等待估值回归",
-        "second_buy": "若跌至90美元以下",
-        "stop_loss": "跌破100美元止损",
-        "target": "目标80美元"
-      },
-      "sectors": [
-        "航天",
-        "科技"
-      ]
-    },
-    {
-      "symbol": "TSLA",
-      "score": 45,
-      "operation": "观望",
-      "trend": "看空",
-      "core_view": "股价上涨3.53%，但均线空头排列，PE高达278倍，估值极高，基本面承压，建议观望或减仓。",
-      "catalysts": [
-        "新车型发布",
-        "自动驾驶进展"
-      ],
-      "risks": [
-        "估值泡沫",
-        "需求下滑"
-      ],
-      "sniper": {
-        "ideal_buy": "回调至280美元附近",
-        "second_buy": "若站稳MA5 307美元",
-        "stop_loss": "跌破290美元止损",
-        "target": "目标350美元"
+        "ideal_buy": "287.81（布林下轨）",
+        "second_buy": "307.37（MA5）站稳后",
+        "stop_loss": "280.00下方",
+        "target": "368.04（MA20）"
       },
       "sectors": [
         "新能源汽车",
         "自动驾驶"
+      ]
+    },
+    {
+      "symbol": "0700.HK",
+      "score": 68,
+      "operation": "买入",
+      "trend": "看多",
+      "core_view": "股价站上均线，RSI偏强，MACD金叉，量能配合，有望继续上行。",
+      "catalysts": [
+        "游戏业务复苏",
+        "广告业务增长"
+      ],
+      "risks": [
+        "监管风险",
+        "宏观经济不确定性"
+      ],
+      "sniper": {
+        "ideal_buy": "452.60（MA5）附近",
+        "second_buy": "459.35（MA20）回踩",
+        "stop_loss": "429.31（布林下轨）下方",
+        "target": "489.39（布林上轨）"
+      },
+      "sectors": [
+        "互联网",
+        "游戏"
+      ]
+    },
+    {
+      "symbol": "0883.HK",
+      "score": 65,
+      "operation": "买入",
+      "trend": "看多",
+      "core_view": "股价突破布林中轨，RSI偏强，MACD金叉，量能配合，趋势向好。",
+      "catalysts": [
+        "油价上涨",
+        "需求回暖"
+      ],
+      "risks": [
+        "油价波动",
+        "地缘政治风险"
+      ],
+      "sniper": {
+        "ideal_buy": "23.48（MA5）附近",
+        "second_buy": "22.77（MA20）回踩",
+        "stop_loss": "20.75（布林下轨）下方",
+        "target": "24.79（布林上轨）"
+      },
+      "sectors": [
+        "能源",
+        "石油"
+      ]
+    },
+    {
+      "symbol": "3750.HK",
+      "score": 48,
+      "operation": "观望",
+      "trend": "震荡",
+      "core_view": "股价在布林中轨附近震荡，RSI中性，MACD负值，等待方向选择。",
+      "catalysts": [
+        "新能源政策",
+        "行业需求增长"
+      ],
+      "risks": [
+        "行业竞争",
+        "政策变化"
+      ],
+      "sniper": {
+        "ideal_buy": "582.27（布林下轨）",
+        "second_buy": "620.20（MA5）附近",
+        "stop_loss": "570.00下方",
+        "target": "624.38（MA20）"
+      },
+      "sectors": [
+        "新能源汽车",
+        "电池"
       ]
     }
   ]
