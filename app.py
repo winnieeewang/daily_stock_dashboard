@@ -1,522 +1,278 @@
-import streamlit as st
-import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from datetime import datetime
-import os
 import json
-import yfinance as yf
+import os
+from datetime import datetime
+from pathlib import Path
 
-st.set_page_config(layout="wide", page_title="每日股票看板", initial_sidebar_state="collapsed")
+import pandas as pd
+import streamlit as st
 
-# ---------- 自定义 CSS（浅色专业风格） ----------
-st.markdown("""
-<style>
-    /* 全局背景 - 浅色 */
-    .stApp {
-        background: #f5f7fa;
-    }
-    
-    /* 顶部导航栏 */
-    .top-nav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 24px;
-        background: #ffffff;
-        border-bottom: 1px solid #e8ecf1;
-        margin-bottom: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    }
-    .top-nav .logo {
-        font-size: 20px;
-        font-weight: 700;
-        color: #1a2335;
-        letter-spacing: 1px;
-    }
-    .top-nav .logo span { color: #0066cc; }
-    .top-nav .search-area {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .top-nav .search-box {
-        background: #f0f2f6;
-        border: 1px solid #dce0e6;
-        border-radius: 8px;
-        padding: 6px 16px;
-        color: #1a2335;
-        font-size: 13px;
-        width: 280px;
-    }
-    .top-nav .push-btn {
-        background: rgba(0,102,204,0.08);
-        color: #0066cc;
-        border: 1px solid rgba(0,102,204,0.15);
-        border-radius: 8px;
-        padding: 6px 16px;
-        font-size: 13px;
-        cursor: pointer;
-    }
-    
-    /* 左侧导航 */
-    .side-nav {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding: 8px 0;
-    }
-    .side-nav .nav-item {
-        padding: 10px 16px;
-        border-radius: 8px;
-        color: #5a6a7a;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    .side-nav .nav-item:hover {
-        background: #f0f4f9;
-        color: #1a2335;
-    }
-    .side-nav .nav-item.active {
-        background: rgba(0,102,204,0.08);
-        color: #0066cc;
-        border-left: 3px solid #0066cc;
-    }
-    .side-nav .nav-divider {
-        border-top: 1px solid #e8ecf1;
-        margin: 8px 0;
-    }
-    
-    /* 主内容卡片 */
-    .main-card {
-        background: #ffffff;
-        border-radius: 16px;
-        padding: 20px 24px;
-        border: 1px solid #e8ecf1;
-        margin-bottom: 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-    .main-card .card-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 12px;
-    }
-    .main-card .card-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #1a2335;
-    }
-    .main-card .card-time {
-        font-size: 12px;
-        color: #8a9aa8;
-    }
-    
-    /* 持仓卡片 */
-    .position-card {
-        background: #fafbfc;
-        border-radius: 16px;
-        padding: 20px 24px;
-        border: 1px solid #e8ecf1;
-        margin-bottom: 12px;
-        transition: all 0.3s ease;
-    }
-    .position-card:hover {
-        border-color: #c0d0e0;
-        background: #f5f8fc;
-    }
-    .pos-symbol {
-        font-size: 22px;
-        font-weight: 700;
-        color: #1a2335;
-    }
-    .pos-name {
-        font-size: 14px;
-        color: #8a9aa8;
-        margin-left: 8px;
-    }
-    .pos-price {
-        font-size: 20px;
-        font-weight: 600;
-        color: #1a2335;
-    }
-    .pos-change {
-        font-size: 16px;
-        font-weight: 500;
-        margin-left: 10px;
-    }
-    .pos-change.up { color: #00a854; }
-    .pos-change.down { color: #e53e3e; }
-    .pos-tag {
-        padding: 2px 14px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 500;
-    }
-    .pos-tag.buy { background: rgba(0,168,84,0.12); color: #007a3d; }
-    .pos-tag.hold { background: rgba(237,162,0,0.12); color: #b37400; }
-    .pos-tag.sell { background: rgba(229,62,62,0.12); color: #b22222; }
-    
-    /* 狙击点位卡片 */
-    .sniper-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin: 12px 0;
-    }
-    .sniper-item {
-        background: #fafbfc;
-        border-radius: 12px;
-        padding: 12px 16px;
-        border: 1px solid #e8ecf1;
-        text-align: center;
-    }
-    .sniper-item .label {
-        font-size: 10px;
-        color: #8a9aa8;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .sniper-item .value {
-        font-size: 15px;
-        font-weight: 600;
-        color: #1a2335;
-        margin-top: 2px;
-    }
-    .sniper-item .value.buy1 { color: #0066cc; }
-    .sniper-item .value.buy2 { color: #00a854; }
-    .sniper-item .value.stop { color: #e53e3e; }
-    .sniper-item .value.target { color: #d4a017; }
-    
-    /* 板块标签 */
-    .sector-tag {
-        display: inline-block;
-        background: rgba(0,102,204,0.06);
-        color: #0066cc;
-        padding: 2px 14px;
-        border-radius: 20px;
-        font-size: 12px;
-        margin-right: 6px;
-        margin-bottom: 4px;
-    }
-    
-    /* 情绪标签 */
-    .sentiment-badge {
-        padding: 4px 16px;
-        border-radius: 20px;
-        font-size: 14px;
-        font-weight: 500;
-    }
-    .sentiment-badge.bull { background: rgba(0,168,84,0.1); color: #007a3d; }
-    .sentiment-badge.bear { background: rgba(229,62,62,0.1); color: #b22222; }
-    .sentiment-badge.neutral { background: rgba(237,162,0,0.1); color: #b37400; }
-    
-    /* 评分圆环容器 */
-    .score-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    /* 底部 */
-    .footer {
-        text-align: center;
-        color: #b0c0d0;
-        font-size: 11px;
-        padding: 20px 0 10px 0;
-        border-top: 1px solid #e8ecf1;
-        margin-top: 30px;
-    }
-    
-    /* 报告框 */
-    .report-box {
-        background: #fafbfc;
-        border-radius: 12px;
-        padding: 16px 20px;
-        border: 1px solid #e8ecf1;
-        color: #1a2335;
-        font-size: 14px;
-        line-height: 1.6;
-    }
-    
-    /* SOX 信号文本 */
-    .sox-signal {
-        background: #f0f4f9;
-        border-radius: 8px;
-        padding: 8px 16px;
-        margin-top: 8px;
-        border-left: 3px solid #0066cc;
-        color: #2a3a4a;
-        font-size: 13px;
-    }
-    
-    /* 微指标卡片 */
-    .metric-card {
-        background: #fafbfc;
-        border-radius: 12px;
-        padding: 12px 16px;
-        border: 1px solid #e8ecf1;
-        text-align: center;
-    }
-    .metric-card .label {
-        font-size: 11px;
-        color: #8a9aa8;
-        text-transform: uppercase;
-    }
-    .metric-card .value {
-        font-size: 20px;
-        font-weight: 600;
-        color: #1a2335;
-    }
-    
-    /* 侧边栏背景 */
-    .css-1d391kg { background: #ffffff; }
-    .css-1d391kg .stRadio label { color: #1a2335; }
-    
-    /* 调整输入框等 */
-    .stSelectbox label, .stRadio label, .stButton button {
-        color: #1a2335 !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="Quant Dashboard", page_icon="📊", layout="wide")
 
-# ---------- 顶部导航栏 ----------
-st.markdown("""
-<div class="top-nav">
-    <div class="logo">📈 DSA<span>.</span></div>
-    <div class="search-area">
-        <input class="search-box" placeholder="输入股票代码或名称，如600519、贵州茅台、AAPL" disabled>
-        <span class="push-btn">🔔 推送通知</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+DATA_DIR = Path("data")
 
-# ---------- 侧边栏（左侧导航） ----------
-with st.sidebar:
-    st.markdown("""
-    <div class="side-nav">
-        <div class="nav-item active">🏠 首页</div>
-        <div class="nav-item">📊 历史分析</div>
-        <div class="nav-item">🔄 重新分析</div>
-        <div class="nav-item">💬 追问AI</div>
-        <div class="nav-item">📄 完整分析报告</div>
-        <div class="nav-item">❓ 问股</div>
-        <div class="nav-divider"></div>
-        <div class="nav-item" style="font-size:12px;color:#8a9aa8;">⚙️ 设置</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.sidebar.markdown("---")
-    view = st.sidebar.radio("📌 视图切换", ["📊 大盘概览", "📈 个股详情", "🎯 AI决策卡片", "📝 每日报告"], label_visibility="collapsed")
 
-# ---------- 加载数据 ----------
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300)
 def load_data():
-    macro_df = pd.read_csv("data/macro.csv") if os.path.exists("data/macro.csv") else None
-    stocks_df = pd.read_csv("data/stocks.csv") if os.path.exists("data/stocks.csv") else None
-    sox_df = pd.read_csv("data/sox.csv") if os.path.exists("data/sox.csv") else None
+    stocks = pd.read_csv(DATA_DIR / "stocks.csv") if (DATA_DIR / "stocks.csv").exists() else pd.DataFrame()
+    macro = pd.read_csv(DATA_DIR / "macro.csv") if (DATA_DIR / "macro.csv").exists() else pd.DataFrame()
+    sox = pd.read_csv(DATA_DIR / "sox.csv") if (DATA_DIR / "sox.csv").exists() else pd.DataFrame()
+
+    cards = {}
+    if (DATA_DIR / "cards.json").exists():
+        with open(DATA_DIR / "cards.json", encoding="utf-8") as f:
+            cards = json.load(f)
+
+    leverage = {}
+    if (DATA_DIR / "leverage_risk.json").exists():
+        with open(DATA_DIR / "leverage_risk.json", encoding="utf-8") as f:
+            leverage = json.load(f)
+
     report = ""
-    if os.path.exists("data/report.md"):
-        with open("data/report.md", "r", encoding="utf-8") as f:
-            report = f.read()
-    return macro_df, stocks_df, sox_df, report
+    if (DATA_DIR / "report.md").exists():
+        report = (DATA_DIR / "report.md").read_text(encoding="utf-8")
 
-@st.cache_data(ttl=3600)
-def load_cards():
-    if os.path.exists("data/cards.json"):
-        try:
-            with open("data/cards.json", "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return None
-    return None
+    return stocks, macro, sox, cards, leverage, report
 
-macro_df, stocks_df, sox_df, report = load_data()
-cards_data = load_cards()
 
-def score_gauge(score, operation):
-    color = "#00a854" if operation == "买入" else "#d4a017" if operation == "观望" else "#e53e3e"
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=score,
-        number={'font': {'color': '#1a2335', 'size': 28}, 'suffix': {'text': '%'}},
-        gauge={
-            'axis': {'range': [0, 100], 'tickcolor': '#dce0e6', 'tickfont': {'color': '#5a6a7a'}},
-            'bar': {'color': color},
-            'bgcolor': 'rgba(255,255,255,0.8)',
-            'borderwidth': 0,
-            'steps': [
-                {'range': [0, 30], 'color': 'rgba(229,62,62,0.1)'},
-                {'range': [30, 60], 'color': 'rgba(237,162,0,0.1)'},
-                {'range': [60, 100], 'color': 'rgba(0,168,84,0.1)'}
-            ],
-        },
-        domain={'x': [0, 1], 'y': [0, 1]}
-    ))
-    fig.update_layout(height=140, margin=dict(l=10, r=10, t=10, b=10),
-                       paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#1a2335'))
-    return fig
+def sentiment_badge(label: str):
+    color = {
+        "极度贪婪": "#ff4d4f",
+        "贪婪": "#ff7875",
+        "中性": "#faad14",
+        "恐惧": "#52c41a",
+        "极度恐惧": "#237804",
+    }.get(label, "#999")
+    return f'<span style="background:{color};color:white;padding:4px 12px;border-radius:12px;font-weight:bold;">{label}</span>'
 
-# ---------- 主内容 ----------
-if view == "📊 大盘概览":
-    st.markdown('<div class="main-card"><div class="card-header"><span class="card-title">🌍 宏观数据</span><span class="card-time">实时</span></div>', unsafe_allow_html=True)
-    if macro_df is not None and not macro_df.empty:
-        macro_cols = ["VIX", "美元指数", "标普500", "纳斯达克100", "黄金", "WTI原油", "10年期美债收益率"]
-        available = [c for c in macro_cols if c in macro_df.columns]
-        cols = st.columns(len(available))
-        for i, col_name in enumerate(available):
-            val = macro_df.iloc[0][col_name]
-            display = f"{val:.2f}" if isinstance(val, (int, float)) else str(val)
-            with cols[i]:
-                st.metric(label=col_name, value=display)
+
+def reversal_badge(signal: str, conf: str):
+    if signal == "反转":
+        bg, emoji = "#722ed1", "🚀"
+    elif signal == "反弹":
+        bg, emoji = "#1890ff", "📈"
     else:
-        st.warning("暂无宏观数据")
-    st.markdown('</div>', unsafe_allow_html=True)
+        bg, emoji = "#8c8c8c", "➖"
+    return f'<span style="background:{bg};color:white;padding:3px 10px;border-radius:10px;font-size:12px;">{emoji} {signal}（{conf}）</span>'
 
-    # SOX
-    st.markdown('<div class="main-card"><div class="card-header"><span class="card-title">📉 SOX 半导体指数</span></div>', unsafe_allow_html=True)
-    if sox_df is not None and not sox_df.empty:
-        sox_row = sox_df.iloc[0]
-        cols = st.columns(5)
-        with cols[0]: st.metric("📊 最新价", f"{sox_row.get('最新价', 'N/A'):.2f}")
-        with cols[1]: st.metric("📉 回撤", f"{sox_row.get('回撤%', 0):.2f}%")
-        with cols[2]: st.metric("📈 RSI(14)", f"{sox_row.get('RSI', 'N/A'):.2f}")
-        with cols[3]: st.metric("📌 状态", "熊市" if sox_row.get('技术性熊市') else "非熊市")
-        with cols[4]: st.metric("📌 MA20", f"{sox_row.get('MA20', 'N/A'):.2f}")
-        if '信号列表' in sox_row and sox_row['信号列表']:
-            signals = sox_row['信号列表']
-            if isinstance(signals, str):
-                signals = signals.split('；')
-            st.markdown(f"<div class='sox-signal'>⚡ 关键信号：{'；'.join(signals)}</div>", unsafe_allow_html=True)
+
+def bottom_fishing_badge(score: int):
+    if score >= 70:
+        bg, text = "#cf1322", f"🔥 强抄底信号 {score}分"
+    elif score >= 50:
+        bg, text = "#fa541c", f"⚡ 抄底机会 {score}分"
+    elif score >= 30:
+        bg, text = "#fa8c16", f"👀 观察区 {score}分"
     else:
-        st.warning("暂无 SOX 数据")
-    st.markdown('</div>', unsafe_allow_html=True)
+        bg, text = "#bfbfbf", f"— {score}分"
+    return f'<span style="background:{bg};color:white;padding:3px 10px;border-radius:10px;font-size:12px;">{text}</span>'
 
-elif view == "📈 个股详情":
-    st.markdown('<div class="main-card"><div class="card-header"><span class="card-title">📊 持仓个股</span><span class="card-time">技术面分析</span></div>', unsafe_allow_html=True)
-    if stocks_df is not None and not stocks_df.empty:
-        for _, row in stocks_df.iterrows():
-            sym = row['symbol']
-            if row.get('error'):
-                continue
-            close = row.get('收盘价', 0)
-            change = row.get('涨跌幅%', 0)
-            pe = row.get('PE Ratio', 'N/A')
-            rsi = row.get('RSI(14)', 50)
-            change_color = "up" if change > 0 else "down" if change < 0 else ""
-            change_symbol = "▲" if change > 0 else "▼" if change < 0 else "●"
-            display_name = sym.replace(".HK", "")
-            
+
+# ==================== 页面渲染 ====================
+st.title("📊 每日量化看盘 Dashboard")
+st.caption(f"数据更新于：{datetime.now().strftime('%Y-%m-%d %H:%M')}")
+
+stocks_df, macro_df, sox_df, cards_data, leverage_data, report_md = load_data()
+
+# ---------- 顶部：宏观概览 ----------
+top_cols = st.columns([2, 1, 1])
+
+with top_cols[0]:
+    st.subheader("🧠 AI 大盘总览")
+    if report_md:
+        st.markdown(report_md)
+    else:
+        st.info("暂无 AI 报告，请先运行 stock_dashboard.py")
+
+with top_cols[1]:
+    st.subheader("📈 宏观指标")
+    if not macro_df.empty:
+        m = macro_df.iloc[0].to_dict()
+        for k, v in list(m.items())[:10]:
+            st.metric(label=k, value=f"{v:.2f}" if isinstance(v, (int, float)) else str(v))
+
+with top_cols[2]:
+    st.subheader("🎚️ 市场情绪")
+    if not macro_df.empty:
+        vix = macro_df.iloc[0].get("VIX", "N/A")
+        pcr = macro_df.iloc[0].get("Volume PCR", "N/A")
+        st.metric("VIX", vix)
+        st.metric("Put/Call Ratio", pcr)
+        # 情绪标签
+        if not stocks_df.empty and "抄底评分" in stocks_df.columns:
+            avg_score = stocks_df["抄底评分"].mean()
+            st.metric("平均抄底评分", f"{avg_score:.0f}")
+
+# ---------- SOX 区域 ----------
+if not sox_df.empty:
+    st.divider()
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("SOX 最新价", f"{sox_df.iloc[0].get('最新价', 'N/A')}")
+    c2.metric("回撤", f"{sox_df.iloc[0].get('回撤', 'N/A')}%")
+    c3.metric("RSI", f"{sox_df.iloc[0].get('RSI', 'N/A')}")
+    c4.metric("MA20", f"{sox_df.iloc[0].get('MA20', 'N/A')}")
+    c5.metric("MA50", f"{sox_df.iloc[0].get('MA50', 'N/A')}")
+    signals = str(sox_df.iloc[0].get("信号列表", "")).split("；")
+    st.caption(" | ".join([f"`{s}`" for s in signals if s]))
+
+# ---------- 个股卡片 ----------
+st.divider()
+st.subheader("📋 个股决策卡片")
+
+if stocks_df.empty:
+    st.warning("暂无个股数据，请先运行 stock_dashboard.py")
+    st.stop()
+
+# 筛选器
+col_filter1, col_filter2, col_filter3 = st.columns(3)
+with col_filter1:
+    market_filter = st.selectbox("市场", ["全部", "美股", "港股"])
+with col_filter2:
+    op_filter = st.selectbox("操作", ["全部", "买入", "观望", "卖出"])
+with col_filter3:
+    rev_filter = st.selectbox("反弹/反转", ["全部", "反转", "反弹", "无"])
+
+cards_list = cards_data.get("stocks", []) if isinstance(cards_data, dict) else []
+cards_map = {c["symbol"]: c for c in cards_list} if isinstance(cards_list, list) else {}
+
+display_df = stocks_df.copy()
+
+# 合并 AI 卡片数据
+if "操作" not in display_df.columns and cards_map:
+    display_df["操作"] = display_df["symbol"].map(lambda x: cards_map.get(x, {}).get("operation", "—"))
+    display_df["趋势"] = display_df["symbol"].map(lambda x: cards_map.get(x, {}).get("trend", "—"))
+    display_df["核心观点"] = display_df["symbol"].map(lambda x: cards_map.get(x, {}).get("core_view", "—"))
+
+# 过滤
+if market_filter == "美股":
+    display_df = display_df[~display_df["symbol"].str.endswith(".HK")]
+elif market_filter == "港股":
+    display_df = display_df[display_df["symbol"].str.endswith(".HK")]
+
+if op_filter != "全部" and "操作" in display_df.columns:
+    display_df = display_df[display_df["操作"] == op_filter]
+
+if rev_filter != "全部":
+    display_df = display_df[display_df["反弹反转信号"] == rev_filter]
+
+# 排序：抄底评分高的在前
+if "抄底评分" in display_df.columns:
+    display_df = display_df.sort_values("抄底评分", ascending=False)
+
+st.write(f"显示 {len(display_df)} / {len(stocks_df)} 只股票")
+
+# 网格布局：每行 3 张卡片
+for i in range(0, len(display_df), 3):
+    row = st.columns(3)
+    for j in range(3):
+        if i + j >= len(display_df):
+            break
+        r = display_df.iloc[i + j]
+        sym = r["symbol"]
+        card = cards_map.get(sym, {})
+
+        with row[j]:
+            trend_color = {
+                "看多": "border-left: 4px solid #52c41a;",
+                "看空": "border-left: 4px solid #ff4d4f;",
+                "震荡": "border-left: 4px solid #faad14;",
+            }.get(r.get("趋势", "—"), "border-left: 4px solid #d9d9d9;")
+
             st.markdown(f"""
-            <div class="position-card">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <span class="pos-symbol">{display_name}</span>
-                        <span class="pos-price">${close:.2f}</span>
-                        <span class="pos-change {change_color}">{change_symbol} {change:.2f}%</span>
-                        <span style="font-size:12px;color:#8a9aa8;">PE: {pe if pe != 'N/A' else 'N/A'} | RSI: {rsi:.1f}</span>
-                    </div>
+            <div style="{trend_color} background:#fafafa; padding:16px; border-radius:8px; margin-bottom:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0;">{sym}</h3>
+                    <span style="font-size:12px; color:#666;">{r.get('趋势','—')}</span>
+                </div>
+                <div style="font-size:24px; font-weight:bold; margin:8px 0;">
+                    {r.get('收盘价',0):.2f} 
+                    <span style="font-size:14px; color:{'#52c41a' if r.get('涨跌幅',0)>=0 else '#ff4d4f'};">
+                        {'+' if r.get('涨跌幅',0)>=0 else ''}{r.get('涨跌幅',0):.2f}%
+                    </span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
-    else:
-        st.warning("暂无个股数据")
-    st.markdown('</div>', unsafe_allow_html=True)
 
-elif view == "🎯 AI决策卡片":
-    st.markdown('<div class="main-card"><div class="card-header"><span class="card-title">🎯 AI 决策卡片</span><span class="card-time">DeepSeek 分析</span></div>', unsafe_allow_html=True)
-    if cards_data and cards_data.get("stocks"):
-        st.caption(f"生成时间：{cards_data.get('generated_at', 'N/A')}")
-        for card in cards_data["stocks"]:
-            sym = card.get("symbol", "N/A")
-            op = card.get("operation", "观望")
-            trend = card.get("trend", "")
-            core_view = card.get("core_view", "")
-            op_color = {"买入": "#00a854", "观望": "#d4a017", "卖出": "#e53e3e"}.get(op, "#0066cc")
-            
-            col_left, col_right = st.columns([3, 1])
-            with col_left:
-                st.markdown(f"""
-                <div class="position-card">
-                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-                        <span class="pos-symbol" style="font-size:20px;">{sym}</span>
-                        <span class="pos-tag" style="background:{op_color}22;color:{op_color};">{op}</span>
-                        <span style="color:#8a9aa8;font-size:13px;">{trend}</span>
-                    </div>
-                    <div style="color:#2a3a4a;font-size:14px;line-height:1.6;">{core_view}</div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # 板块联动
+            m1, m2, m3 = st.columns(3)
+            m1.metric("RSI", f"{r.get('RSI_14',0):.1f}")
+            m2.metric("MACD", f"{r.get('MACD',0):.3f}")
+            m3.metric("PE", r.get("PE_Ratio", "N/A"))
+
+            # 新功能标签：抄底 + 反弹/反转
+            st.markdown(
+                f"<div style='margin:6px 0;'>{bottom_fishing_badge(r.get('抄底评分', 0))}  {reversal_badge(r.get('反弹反转信号','无'), r.get('反弹反转置信度','低'))}</div>",
+                unsafe_allow_html=True,
+            )
+
+            # 抄底依据
+            reasons = r.get("抄底依据", [])
+            if reasons and isinstance(reasons, list):
+                st.caption("🎯 " + " / ".join(reasons))
+
+            # 反弹反转描述
+            desc = r.get("反弹反转描述", "")
+            if desc and desc != "暂无明确信号":
+                st.caption(f"📐 {desc}")
+
+            # POC
+            poc = r.get("资金集中价位")
+            if poc and not pd.isna(poc):
+                st.caption(f"💰 POC 资金集中区: **{poc:.2f}** (占比 {r.get('集中度',0):.1f}%)")
+
+            # 杠杆预警
+            lev = leverage_data.get("stocks", {}).get(sym, {})
+            if lev and "details" in lev:
+                st.write("**⚠️ 杠杆预警**")
+                lev_cols = st.columns(len(lev["details"]))
+                for idx, (lev_key, lev_info) in enumerate(lev["details"].items()):
+                    atr_mult = lev_info.get("距强平ATR倍数", 999)
+                    if isinstance(atr_mult, (int, float)):
+                        if atr_mult < 3:
+                            color = "#ff5252"
+                        elif atr_mult < 6:
+                            color = "#ffd54f"
+                        else:
+                            color = "#52c41a"
+                    else:
+                        color = "#bfbfbf"
+                    with lev_cols[idx]:
+                        st.markdown(
+                            f"<div style='border-left:3px solid {color}; padding-left:8px; font-size:12px;'>"
+                            f"<b>{lev_key}</b><br>强平 ${lev_info.get('强平价','N/A')}<br>"
+                            f"<span style='color:{color};'>{atr_mult}倍ATR</span></div>",
+                            unsafe_allow_html=True,
+                        )
+
+            # 核心观点（AI）
+            core = r.get("核心观点") or card.get("core_view", "")
+            if core:
+                st.info(core)
+
+            # 展开详情
+            with st.expander("🔍 详情"):
+                st.write(f"**操作建议**: {r.get('操作', card.get('operation', '—'))}")
+                st.write(f"**MA5/20/50**: {r.get('MA5',0):.2f} / {r.get('MA20',0):.2f} / {r.get('MA50',0):.2f}")
+                st.write(f"**布林**: {r.get('布林上轨',0):.2f} / {r.get('布林中轨',0):.2f} / {r.get('布林下轨',0):.2f}")
+                st.write(f"**ATR**: {r.get('ATR',0):.2f}")
+                st.write(f"**杠杆风险**: {r.get('杠杆风险等级', 'N/A')}")
+
+                sniper = card.get("sniper", {})
+                if sniper:
+                    st.write("---")
+                    st.write(f"🎯 **理想买入**: {sniper.get('ideal_buy', '—')}")
+                    st.write(f"🎯 **二次加仓**: {sniper.get('second_buy', '—')}")
+                    st.write(f"🛑 **止损**: {sniper.get('stop_loss', '—')}")
+                    st.write(f"🏁 **目标**: {sniper.get('target', '—')}")
+
                 sectors = card.get("sectors", [])
                 if sectors:
-                    tags = "".join([f'<span class="sector-tag">{s}</span>' for s in sectors])
-                    st.markdown(f'<div style="margin:8px 0 12px 0;"><span style="color:#8a9aa8;font-size:12px;">板块联动：</span>{tags}</div>', unsafe_allow_html=True)
-                
-                # 狙击点位
-                sniper = card.get("sniper", {}) or {}
-                st.markdown("""
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0;">
-                """, unsafe_allow_html=True)
-                sniper_data = [
-                    ("🎯 理想买入", sniper.get("ideal_buy", "-"), "buy1"),
-                    ("📈 二次买入", sniper.get("second_buy", "-"), "buy2"),
-                    ("🛑 止损位", sniper.get("stop_loss", "-"), "stop"),
-                    ("🏁 止盈目标", sniper.get("target", "-"), "target"),
-                ]
-                for label, val, cls in sniper_data:
-                    st.markdown(f"""
-                    <div class="sniper-item">
-                        <div class="label">{label}</div>
-                        <div class="value {cls}">{val}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-                
-                # 催化 & 风险
-                cc1, cc2 = st.columns(2)
-                with cc1:
-                    catalysts = card.get("catalysts", [])
-                    if catalysts:
-                        st.markdown(f'<div style="font-size:13px;color:#00a854;">✨ {"; ".join(catalysts)}</div>', unsafe_allow_html=True)
-                with cc2:
-                    risks = card.get("risks", [])
-                    if risks:
-                        st.markdown(f'<div style="font-size:13px;color:#e53e3e;">🚨 {"; ".join(risks)}</div>', unsafe_allow_html=True)
-                
-                # 查看分析依据
-                with st.expander("📊 查看分析依据（原始技术指标）"):
-                    stock_row = stocks_df[stocks_df['symbol'] == sym]
-                    if not stock_row.empty:
-                        row = stock_row.iloc[0]
-                        fields = ['收盘价', '涨跌幅%', '成交量', '量比状态', 'RSI(14)', 'MACD', 'MACD信号', 
-                                  'MA5', 'MA20', 'MA50', 'MA200', '布林上轨', '布林中轨', '布林下轨', 'ATR', 'PE Ratio']
-                        cols = st.columns(4)
-                        for idx, field in enumerate(fields):
-                            val = row.get(field, 'N/A')
-                            if isinstance(val, float):
-                                val = f"{val:.2f}"
-                            with cols[idx % 4]:
-                                st.metric(field, val)
-            with col_right:
-                st.plotly_chart(score_gauge(card.get("score", 50), op), use_container_width=True, config={'displayModeBar': False})
-    else:
-        st.info("📌 决策卡片尚未生成，请等待每日数据更新")
-    st.markdown('</div>', unsafe_allow_html=True)
+                    st.caption("🏷 " + " · ".join(sectors))
 
-elif view == "📝 每日报告":
-    st.markdown('<div class="main-card"><div class="card-header"><span class="card-title">📝 每日大盘总览</span><span class="card-time">AI 生成</span></div>', unsafe_allow_html=True)
-    if report:
-        st.markdown(f'<div class="report-box">{report}</div>', unsafe_allow_html=True)
-    else:
-        st.info("📌 今日报告尚未生成")
-    st.markdown('</div>', unsafe_allow_html=True)
+                catas = card.get("catalysts", [])
+                risks = card.get("risks", [])
+                if catas:
+                    st.success("**利好**: " + " / ".join(catas))
+                if risks:
+                    st.error("**风险**: " + " / ".join(risks))
 
-# ---------- 底部 ----------
-st.markdown("""
-<div class="footer">
-    ⚡ 数据每日自动更新 · 系统运行正常
-</div>
-""", unsafe_allow_html=True)
+st.divider()
+st.caption("数据仅供研究参考，不构成投资建议。")
