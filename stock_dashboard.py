@@ -8,7 +8,7 @@ import warnings
 import os
 import requests
 from fredapi import Fred
-from serpapi import BaiduSearch
+from serpapi import GoogleSearch
 
 warnings.filterwarnings('ignore')
 
@@ -404,7 +404,7 @@ def get_baidu_news(query, api_key):
         "num": 3
     }
     try:
-        search = BaiduSearch(params)
+        search = GoogleSearch(params)
         results = search.get_dict()
         news_results = results.get("news_results", [])
         print(f"✅ 获取到 {len(news_results)} 条 '{query}' 的百度新闻")
