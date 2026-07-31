@@ -1,8 +1,8 @@
-name: 每日股票看板
+name: 每日量化看盘
 
 on:
   schedule:
-    - cron: '30 13 * * *'
+    - cron: '30 13 * * *'   # UTC 13:30 = 北京时间 21:30 = 美东盘前
   workflow_dispatch:
 
 jobs:
