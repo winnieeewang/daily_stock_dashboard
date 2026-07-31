@@ -177,7 +177,13 @@ if sox_df is not None and not sox_df.empty:
         st.markdown(f"""<div class="sox-signal">⚡ 关键信号：{signal_html}</div>""", unsafe_allow_html=True)
 else:
     st.warning("⚠️ 暂无 SOX 数据")
-
+# 在 app.py 的某处
+if 'news_results' in locals():
+    st.markdown('<div class="section-title">📰 热点新闻</div>', unsafe_allow_html=True)
+    for item in news_results[:10]:
+        title = item.get('title', '')
+        link = item.get('link', '#')
+        st.markdown(f'<div style="padding:4px 0;"><a href="{link}" target="_blank" style="color:rgba(255,255,255,0.7);text-decoration:none;">{title}</a></div>', unsafe_allow_html=True)
 # ---------- AI 决策卡片 ----------
 st.markdown('<div class="section-title">🎯 AI 决策卡片</div>', unsafe_allow_html=True)
 if cards_data and cards_data.get("stocks"):
