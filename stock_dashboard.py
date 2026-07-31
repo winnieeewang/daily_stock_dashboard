@@ -161,16 +161,51 @@ class DataFetcher:
             if df.empty:
                 raise ValueError("AKShare 返回空数据")
 
+            # === 关键修复：兼容不同版本 akshare 的列名 ===
+            # 有些版本返回中文列名，有些返回英文，做双重映射
             rename_map = {
-                "日期": "Date", "开盘": "Open", "收盘": "Close",
-                "最高": "High", "最低": "Low", "成交量": "Volume",
+                "日期": "Date",
+                "date": "Date",
+                "开盘": "Open",
+                "open": "Open",
+                "收盘": "Close",
+                "close": "Close",
+                "最高": "High",
+                "high": "High",
+                "最低": "Low",
+                "low": "Low",
+                "成交量": "Volume",
+                "volume": "Volume",
             }
-            df = df.rename(columns=rename_map)
-            df["Date"] = pd.to_datetime(df["Date"])
-            df = df.set_index("Date").sort_index()
+            # 只重命名实际存在的列
+            existing_renames = {k: v for k, v in rename_map.items() if k in df.columns}
+            df = df.rename(columns=existing_renames)
+
+            # 如果已经有 Date 列，转为 datetime 并设为索引
+            if "Date" in df.columns:
+                df["Date"] = pd.to_datetime(df["Date"])
+                df = df.set_index("Date")
+            elif not isinstance(df.index, pd.DatetimeIndex):
+                # 尝试把第一列当日期
+                df.index = pd.to_datetime(df.index)
+            
+            df = df.sort_index()
 
             required = ["Open", "High", "Low", "Close", "Volume"]
-            df = df[required].apply(pd.to_numeric, errors="coerce").dropna()
+            # 如果还有缺失，尝试大小写不敏感匹配
+            for req in required:
+                if req not in df.columns:
+                    # 尝试小写
+                    if req.lower() in df.columns:
+                        df[req] = df[req.lower()]
+            
+            # 只保留需要的列，并强制数值化
+            df = df[[c for c in required if c in df.columns]]
+            if len(df.columns) < len(required):
+                missing = set(required) - set(df.columns)
+                raise ValueError(f"AKShare 返回数据缺少列: {missing}")
+
+            df = df.apply(pd.to_numeric, errors="coerce").dropna()
             return df
         except Exception as e:
             logger.warning(f"AKShare 获取 {symbol} 失败({e})，回退 Yahoo Finance")
@@ -547,7 +582,7 @@ class AlertService:
         except Exception as e:
             logger.warning(f"Telegram 发送失败: {e}")
 
-    def check_and_send(self, macro: Dict, stock_dict: Dict[str, StockTechData], sox: SOXSignals) -> List[str]:
+    def check_and_send(self, macro: Dict, stock_dict: Dict[str, Any], sox: SOXSignals) -> List[str]:
         alerts: List[str] = []
         if sox.get("技术性熊市"):
             alerts.append(f"🐻 SOX 技术性熊市（回撤 {sox.get('回撤', 0):.1f}%）")
@@ -555,6 +590,11 @@ class AlertService:
             alerts.append(f"⚠️ SOX 跌破 {self.cfg.sox_support_level:.0f}")
 
         for sym, data in stock_dict.items():
+            # === 关键修复：跳过 None / 失败数据 ===
+            if not data:
+                logger.debug(f"{sym} 无数据，跳过预警检查")
+                continue
+
             rsi = data.get("RSI_14", 50)
             if rsi > self.cfg.rsi_overbought:
                 alerts.append(f"🔴 {sym} RSI={rsi:.1f} 超买")
@@ -588,13 +628,13 @@ class NewsFetcher:
             "num": 3,
         }
         try:
-            from serpapi import GoogleSearch
+            # 新版 serpapi 的正确导入路径
+            from serpapi.google_search import GoogleSearch
             results = GoogleSearch(params).get_dict()
             return results.get("news_results", [])
         except Exception as e:
             logger.warning(f"百度新闻获取失败 ({query}): {e}")
             return []
-
 
 # ==================== 10. AI 报告层 ====================
 class AIReportGenerator:
