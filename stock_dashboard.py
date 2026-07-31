@@ -662,7 +662,67 @@ class MacroCollector:
             "技术性熊市": drawdown < -20,
             "信号列表": signals,
         }
-
+def get_sp500_signals():
+    sp500 = safe_fetch("^GSPC", period="3mo")
+    if sp500.empty:
+        return {"error": "无法获取 标普500 数据"}
+    close = sp500['Close'].astype(float)
+    latest_close = float(close.iloc[-1])
+    peak = float(close.max())
+    drawdown = (latest_close - peak) / peak * 100
+    ma20 = float(close.rolling(20).mean().iloc[-1])
+    ma50 = float(close.rolling(50).mean().iloc[-1])
+    ma200 = float(close.rolling(200).mean().iloc[-1])
+    delta = close.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    try:
+        rs_last = float((gain / loss).iloc[-1])
+    except:
+        rs_last = 1.0
+    rsi_val = float(100 - (100 / (1 + rs_last))) if rs_last != 0 else 50.0
+    exp12 = close.ewm(span=12, adjust=False).mean()
+    exp26 = close.ewm(span=26, adjust=False).mean()
+    macd_line = exp12 - exp26
+    macd_signal = macd_line.ewm(span=9, adjust=False).mean()
+    macd_val = float(macd_line.iloc[-1])
+    macd_sig_val = float(macd_signal.iloc[-1])
+    # 关键位：4800 心理关口 + 200日均线
+    support_4800 = latest_close > 4800
+    above_ma200 = latest_close > ma200
+    bear_market = drawdown < -20
+    signals = []
+    if not support_4800:
+        signals.append("⚠️ 标普500 跌破4800关键心理位")
+    else:
+        signals.append("✅ 标普500 站上4800")
+    if not above_ma200:
+        signals.append("🔻 价格跌破200日均线（长期趋势转弱）")
+    if ma20 < ma50:
+        signals.append("🔻 20/50日均线死叉")
+    if rsi_val < 30:
+        signals.append("🟢 RSI超卖（<30），可能反弹")
+    elif rsi_val > 70:
+        signals.append("🔴 RSI超买（>70），警惕回调")
+    if bear_market:
+        signals.append(f"🐻 技术性熊市（回撤{drawdown:.1f}%）")
+    if macd_val < macd_sig_val:
+        signals.append("🔻 MACD卖出信号")
+    return {
+        "最新价": latest_close,
+        "52周高点": peak,
+        "回撤%": drawdown,
+        "MA20": ma20,
+        "MA50": ma50,
+        "MA200": ma200,
+        "RSI": rsi_val,
+        "MACD": macd_val,
+        "MACD信号": macd_sig_val,
+        "支撑4800": support_4800,
+        "站上MA200": above_ma200,
+        "技术性熊市": bear_market,
+        "信号列表": signals,
+    }
 
 def safe_float(series: pd.Series, default: float = 0.0) -> float:
     try:
@@ -978,7 +1038,7 @@ class ReportOrchestrator:
         sox_row = {k: v for k, v in sox.items() if k != "信号列表"}
         sox_row["信号列表"] = "；".join(sox.get("信号列表", []))
         pd.DataFrame([sox_row]).to_csv(out / "sox.csv", index=False)
-
+      
         if leverage_dict:
             payload = {
                 "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -995,7 +1055,7 @@ class ReportOrchestrator:
                 "stocks": cards,
             }
             (out / "cards.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-
+    
     def run(self):
         logger.info("📊 报告生成流程启动")
 
@@ -1008,6 +1068,17 @@ class ReportOrchestrator:
 
         sox = self.macro_collector.get_sox()
         logger.info("SOX 完成")
+        sp500 = get_sp500_signals()
+        if "error" in sp500:
+            sp500 = {
+                "最新价": "N/A", "回撤%": "N/A", "技术性熊市": False,
+                "RSI": "N/A", "MA20": "N/A", "MA50": "N/A", "MA200": "N/A",
+                "信号列表": ["无法获取"]
+            }
+        sp500_row = {k: v for k, v in sp500.items() if k != "信号列表"}
+        sp500_row["信号列表"] = "；".join(sp500.get("信号列表", []))
+        pd.DataFrame([sp500_row]).to_csv(self.cfg.output_dir / "sp500.csv", index=False)
+        logger.info("✅ 标普500 数据已保存")
 
         try:
             spy = self.fetcher.fetch_yf("SPY", period="2d")
