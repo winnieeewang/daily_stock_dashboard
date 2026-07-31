@@ -168,7 +168,48 @@ if view == "📊 大盘概览":
             st.markdown(f"""<div class="sox-signal">⚡ 关键信号：{signal_html}</div>""", unsafe_allow_html=True)
     else:
         st.warning("⚠️ 暂无 SOX 数据")
-
+    # ---------- 标普500 分析 ----------
+    st.markdown('<div class="section-title">📈 标普500 分析</div>', unsafe_allow_html=True)
+    try:
+        sp500 = yf.download("^GSPC", period="1y", progress=False)
+        if not sp500.empty:
+            latest = sp500['Close'].iloc[-1]
+            prev = sp500['Close'].iloc[-2] if len(sp500) > 1 else latest
+            daily_change = (latest - prev) / prev * 100
+            ma20 = sp500['Close'].rolling(20).mean().iloc[-1]
+            ma50 = sp500['Close'].rolling(50).mean().iloc[-1]
+            ma200 = sp500['Close'].rolling(200).mean().iloc[-1]
+            
+            # 计算RSI (14天)
+            delta = sp500['Close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs.iloc[-1])) if rs.iloc[-1] != 0 else 50
+            
+            # 均线排列判断
+            if ma20 > ma50 > ma200:
+                trend = "📈 多头排列 (MA20>MA50>MA200)"
+            elif ma20 < ma50 < ma200:
+                trend = "📉 空头排列 (MA20<MA50<MA200)"
+            else:
+                trend = "⚡ 均线交叉/震荡"
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("最新价", f"{latest:.2f}", f"{daily_change:.2f}%", delta_color="normal")
+            with col2:
+                st.metric("MA20", f"{ma20:.2f}")
+            with col3:
+                st.metric("MA50", f"{ma50:.2f}")
+            with col4:
+                st.metric("RSI(14)", f"{rsi:.2f}")
+            
+            st.info(f"趋势判断：{trend}")
+        else:
+            st.warning("无法获取标普500数据")
+    except Exception as e:
+        st.error(f"标普500分析失败: {e}")
     # 宏观历史趋势
     st.markdown('<div class="section-title">📈 宏观历史趋势（近30天）</div>', unsafe_allow_html=True)
     macro_hist_symbols = {"VIX": "^VIX", "10年期美债收益率": "^TNX", "标普500": "^GSPC"}
