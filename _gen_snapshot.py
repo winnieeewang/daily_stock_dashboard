@@ -47,11 +47,33 @@ def gtimg_hk(symbol):
         for line in txt.split(";"):
             if "hk"+code in line and "~" in line:
                 parts=line.split("~")
-                price=float(parts[3]); chgPct=max(-30.0,min(30.0,float(parts[32])))
+                price=float(parts[3]); raw=float(parts[32])
+                # 不加硬封顶：2倍杠杆ETF单日真实波动可达 ±60%~；仅剔除明显解析错误的极端值
+                chgPct=raw if abs(raw)<=200.0 else 0.0
                 return {"last":price,"prevClose":price/(1+chgPct/100) if chgPct else price,"chgPct":round(chgPct,2)}
     except Exception:
         pass
     return None
+
+def em_hk(symbol):
+    """东方财富实时报价（港股覆盖最全，含杠杆ETF）。symbol 形如 7709.HK。价格×1000、涨跌幅×100。"""
+    code = symbol.replace(".HK", "").zfill(5)
+    try:
+        url = f"https://push2.eastmoney.com/api/qt/stock/get?secid=116.{code}&fields=f43,f60,f170,f57,f58"
+        d = _get(url)
+        dd = (d or {}).get("data") or {}
+        if not dd:
+            return None
+        last = dd.get("f43")
+        if last is None:
+            return None
+        last = last / 1000.0
+        prev = dd.get("f60")
+        prev = prev / 1000.0 if prev else last
+        pct = (dd.get("f170") or 0) / 100.0
+        return {"last": round(last, 3), "prevClose": round(prev, 3), "chgPct": round(pct, 2)}
+    except Exception:
+        return None
 
 def history(symbol, range_="3mo", interval="1d"):
     """返回 (closes, volumes)，同一时间序列，保证时间维度一致"""
@@ -207,9 +229,11 @@ print("== sentiment ==", snap["sentiment"])
 print("== watchlist (",len(WATCHLIST),") ==")
 for disp, yf, nm in WATCHLIST:
     e={"symbol":disp,"yf":yf,"name":nm,"market":market_of(disp)}
-    q=quote(yf)
-    if not (q and q.get("last") is not None) and disp.endswith(".HK"):
-        q=gtimg_hk(disp)
+    # 港股优先用东方财富实时报价（覆盖最全、含杠杆ETF），其次腾讯，最后 Yahoo
+    if disp.endswith(".HK"):
+        q = em_hk(disp) or gtimg_hk(disp) or quote(yf)
+    else:
+        q = quote(yf)
     if q and q.get("last") is not None:
         e.update({"last":q["last"],"chgPct":q.get("chgPct") or 0.0})
     else:

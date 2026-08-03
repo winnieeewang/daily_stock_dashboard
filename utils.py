@@ -1618,6 +1618,160 @@ def interpret_news(
     return result
 
 
+# ---------------------------------------------------------------------------
+# 实时报价（HK / A股）：东方财富 → 腾讯 gtimg → 新浪 多源冗余
+# 用途：覆盖「收盘价 / 涨跌幅」等头条数字，避免依赖可能失真/过期的日线历史
+# （akshare qfq 对港股杠杆ETF 等会产生错乱，已实测 7709.HK / 00981.HK 严重偏差）。
+# 技术指标（RSI/MA/ATR）仍用日线历史计算。
+# ---------------------------------------------------------------------------
+def fetch_realtime_quote(symbol: str) -> Dict[str, Any]:
+    """返回 {ok, symbol, name, last, prev_close, pct, source}。
+
+    仅处理港股(.HK)与A股(.SS/.SZ)；美股沿用 Yahoo（CI 上可靠），返回 ok=False。
+    任一源失败自动降级；最终 ok=False 表示无法取得可信实时价。
+    """
+    out: Dict[str, Any] = {"ok": False, "symbol": symbol}
+    is_hk = symbol.endswith(".HK")
+    is_cn = symbol.endswith((".SS", ".SZ"))
+    if not (is_hk or is_cn):
+        return out
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Referer": "https://finance.sina.com.cn",
+    }
+
+    def _pct(last: float, prev: float) -> Optional[float]:
+        try:
+            if last is None or prev is None or last <= 0 or prev <= 0:
+                return None
+            p = (last - prev) / prev * 100.0
+            if abs(p) > 300:  # 过滤明显错乱
+                return None
+            return p
+        except Exception:  # noqa: BLE001
+            return None
+
+    if is_hk:
+        code = symbol.replace(".HK", "").zfill(5)
+        em_secid = f"116.{code}"
+        gt = f"hk{code}"
+        div = 1000.0
+    else:
+        code = symbol.replace(".SS", "").replace(".SZ", "")
+        mkt = "1" if symbol.endswith(".SS") else "0"
+        em_secid = f"{mkt}.{code}"
+        gt = ("sh" if symbol.endswith(".SS") else "sz") + code
+        div = 100.0
+
+    # 1) 东方财富 push2（实测 HK 实时准确）
+    try:
+        url = (
+            f"https://push2.eastmoney.com/api/qt/stock/get?secid={em_secid}"
+            f"&fields=f43,f44,f45,f46,f47,f57,f58,f60,f169,f170"
+        )
+        d = requests.get(url, headers=headers, timeout=6).json().get("data") or {}
+        f43, f60 = d.get("f43"), d.get("f60")
+        if f43 and f60:
+            p = _pct(float(f43), float(f60))
+            if p is not None:
+                out.update(
+                    ok=True, name=d.get("f58", ""), last=round(float(f43) / div, 4),
+                    prev_close=round(float(f60) / div, 4), pct=round(p, 2), source="东方财富",
+                )
+                return out
+    except Exception:  # noqa: BLE001
+        pass
+
+    # 2) 腾讯 gtimg（HK 与 A股：idx3=最新 idx4=昨收）
+    try:
+        r = requests.get(f"https://qt.gtimg.cn/q={gt}", headers=headers, timeout=6)
+        r.encoding = "gbk"
+        payload = r.text.split('="', 1)[1].rstrip('";\n ')
+        parts = payload.split("~")
+        last, prev = float(parts[3]), float(parts[4])
+        p = _pct(last, prev)
+        if p is not None:
+            out.update(ok=True, name=parts[1] if len(parts) > 1 else "", last=last,
+                       prev_close=prev, pct=round(p, 2), source="腾讯")
+            return out
+    except Exception:  # noqa: BLE001
+        pass
+
+    # 3) 新浪
+    try:
+        r = requests.get(f"https://hq.sinajs.cn/list={gt}", headers=headers, timeout=6)
+        r.encoding = "gbk"
+        payload = r.text.split('="', 1)[1].rstrip('";\n ')
+        parts = payload.split(",")
+        if is_hk:
+            prev, last = float(parts[3]), float(parts[6])
+        else:
+            prev, last = float(parts[2]), float(parts[3])
+        p = _pct(last, prev)
+        if p is not None:
+            out.update(ok=True, name=parts[1] if len(parts) > 1 else "", last=last,
+                       prev_close=prev, pct=round(p, 2), source="新浪")
+            return out
+    except Exception:  # noqa: BLE001
+        pass
+
+    return out
+
+
+# ---------------------------------------------------------------------------
+# 新闻相关性过滤：只保留会影响股价的 宏观 / 政策 / 市场 类新闻
+# ---------------------------------------------------------------------------
+_FINANCE_KW_EN = [
+    "stock", "market", "stocks", "equity", "equities", "fed", "federal reserve",
+    "rate", "rates", "interest", "inflation", "cpi", "ppi", "gdp", "earnings",
+    "revenue", "profit", "guidance", "dividend", "buyback", "ipo", "merger",
+    "acquisition", "economy", "economic", "recession", "yield", "treasury",
+    "bond", "bonds", "dollar", "fx", "forex", "crypto", "bitcoin", "oil",
+    "crude", "gold", "commodity", "tariff", "trade", "sec", "fomc", "powell",
+    "ecb", "jobs", "payroll", "unemployment", "nasdaq", "s&p", "dow",
+    "hang seng", "nikkei", "policy", "stimulus", "central bank", "chip",
+    "semiconductor", "ai", "tech", "bank", "banking", "credit", "default",
+    "debt", "leverage", "volatility", "vix", "china", "earnings",
+]
+_FINANCE_KW_ZH = [
+    "股", "市", "涨", "跌", "央", "美联储", "利率", "通胀", "经济", "衰退", "财报",
+    "盈利", "营收", "分红", "回购", "上市", "并购", "关税", "贸易", "政策", "刺激",
+    "货币", "债券", "收益率", "美元", "人民币", "黄金", "原油", "商品", "半导体",
+    "芯片", "人工智能", "科技", "银行", "信贷", "违约", "债务", "杠杆", "波动",
+    "就业", "非农", "港股", "A股", "美股", "大盘", "指数", "创业板", "北向", "资金",
+    "主力", "国务院", "央行", "证监会", "期货", "外汇",
+]
+_OFFTOPIC_KW = [
+    "murder", "killed", "shooting", "celebrity", "actor", "actress", "singer",
+    "movie", "film", "album", "sport", "football", "soccer", "nba", "nfl",
+    "olympic", "world cup", "weather", "storm", "hurricane", "earthquake",
+    "tornado", "festival", "wedding", "royal", "prince", "princess", "scandal",
+    "arrested", "kidnap", "terror", "tsunami", "wildfire", "recipe", "travel",
+]
+
+
+# 英文关键词用「词边界」正则，避免 nfl 命中 signals、ai 命中 said 等子串碰撞
+_FIN_RE_EN = [re.compile(r"\b" + re.escape(k) + r"\b", re.I) for k in _FINANCE_KW_EN]
+_OFF_RE_EN = [re.compile(r"\b" + re.escape(k) + r"\b", re.I) for k in _OFFTOPIC_KW]
+
+
+def _is_finance_relevant(item: Dict[str, Any]) -> bool:
+    """判断一条新闻是否与股价/宏观/政策相关。强噪声（犯罪/娱乐/体育/天气）直接剔除。"""
+    text = " ".join(
+        str(item.get(k, "")) for k in ("title", "snippet", "summary", "description")
+    ).lower()
+    if not text.strip():
+        return False
+    # 强噪声：整词匹配才剔除（避免 signals→nfl 这类子串误杀）
+    if any(p.search(text) for p in _OFF_RE_EN):
+        return False
+    # 含金融关键词（英文整词 / 中文子串）则保留
+    if any(p.search(text) for p in _FIN_RE_EN) or any(k in text for k in _FINANCE_KW_ZH):
+        return True
+    # 无金融词也无噪声词：来自金融 RSS 源，模糊保留（避免过度过滤）
+    return True
+
+
 # 美股 / 港股 无 API 的 RSS 源（推荐，完全免费）
 US_HK_RSS_SOURCES: List[Tuple[str, str]] = [
     ("CNBC", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"),
@@ -1773,6 +1927,9 @@ def fetch_all_news_multi_source(
         if payload["stocks"][sym]:
             has_any = True
 
+    # 过滤与「股价 / 宏观 / 政策」无关的噪声（犯罪/娱乐/体育/天气等），保证新闻中心相关性
+    payload["macro"] = [n for n in payload["macro"] if _is_finance_relevant(n)]
+    payload["policy"] = [n for n in payload.get("policy", []) if _is_finance_relevant(n)]
     payload["macro"] = _dedup_news(payload["macro"])[:30]
     payload["sources_used"] = list(set(payload["sources_used"]))
     if out_path is not None:

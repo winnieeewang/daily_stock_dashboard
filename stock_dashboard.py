@@ -211,7 +211,8 @@ class DataFetcher:
         try:
             import akshare as ak
             code = symbol.replace(".HK", "").zfill(5)
-            df = ak.stock_hk_daily(symbol=code, adjust="qfq")
+            # 用未复权实际成交价（qfq 对港股杠杆ETF 等会产生错乱）
+            df = ak.stock_hk_daily(symbol=code, adjust="")
             if df.empty:
                 raise ValueError("AKShare 返回空数据")
             rename_map = {
@@ -247,7 +248,8 @@ class DataFetcher:
         try:
             import akshare as ak
             code = symbol.replace(".SS", "").replace(".SZ", "")
-            df = ak.stock_zh_a_hist(symbol=code, period="daily", adjust="qfq")
+            # 用未复权实际成交价，避免复权算法在个别标的上的偏差
+            df = ak.stock_zh_a_hist(symbol=code, period="daily", adjust="")
             if df is None or df.empty:
                 raise ValueError("AKShare A股 返回空")
             rename_map = {
@@ -962,6 +964,14 @@ class ReportOrchestrator:
                 if not data:
                     return sym, None, None
                 data["symbol"] = sym
+
+                # 实时报价覆盖：HK / A股 用 东方财富→腾讯→新浪 的实时价与涨跌幅，
+                # 避免 akshare 日线（尤其 qfq / 杠杆ETF）失真导致头条价与涨跌幅错误。
+                if sym.endswith((".HK", ".SS", ".SZ")):
+                    q = U.fetch_realtime_quote(sym)
+                    if q.get("ok"):
+                        data["收盘价"] = q["last"]
+                        data["涨跌幅"] = q["pct"]
 
                 futu_pe = self.futu_data.get(sym, {}).get("pe_ratio")
                 if data.get("PE_Ratio") is None and futu_pe is not None:

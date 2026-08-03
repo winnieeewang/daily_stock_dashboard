@@ -300,13 +300,14 @@ def safe_float(v: Any, default: float = 0.0) -> float:
 # 侧边栏：导航 + 控制
 # ---------------------------------------------------------------------------
 with st.sidebar:
-    st.markdown("### 🎛️ Winnie's Daily Stock Dashboard")
-    st.caption("Investment Copilot · by Winnie")
+    st.markdown("### 🤖 Investment Copilot")
+    st.caption("by Winnie")
     st.divider()
     page = st.radio(
         "导航",
-        ["🏠 Dashboard", "🔍 个股深度分析", "📊 跨资产对比", "📰 新闻中心", "⚙️ 数据诊断"],
+        ["🏠 Dashboard", "🔍 个股深度分析", "📊 跨资产对比", "📰 新闻中心"],
         label_visibility="collapsed",
+        key="nav_radio",
     )
     st.divider()
     if st.button("🔄 强制刷新数据", use_container_width=True):
@@ -318,6 +319,15 @@ with st.sidebar:
     selected_period = st.selectbox("📅 K线周期", list(period_map.keys()), index=2)
     st.divider()
     st.caption("💡 分析师看盘顺序：\n情绪 → 宏观 → 消息 → 个股结构 → 短中期策略")
+    st.divider()
+    if st.button("⚙️ 数据诊断", use_container_width=True):
+        st.session_state["page_override"] = "⚙️ 数据诊断"
+        st.rerun()
+
+# 诊断模块从侧边栏底部按钮进入（不占用主导航）
+if st.session_state.get("page_override"):
+    page = st.session_state["page_override"]
+    st.session_state["page_override"] = None
 
 
 # ---------------------------------------------------------------------------
@@ -328,7 +338,7 @@ st.markdown(
     f"""
 <div class="top-bar">
     <div>
-        <div class="title">📈 Winnie's Daily Stock Dashboard</div>
+        <div class="title">📈 Investment Copilot</div>
         <div class="sub">专业投资分析工作台 · {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
@@ -622,18 +632,11 @@ def page_dashboard():
                 unsafe_allow_html=True,
             )
         else:
-            y2_err = y2c.get("error", "FRED 拉取失败")
-            y2_tip = (
-                f'<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">'
-                f'检查 GitHub Secrets 是否含 <code>FRED_API</code> · 错误: {y2_err}'
-                f'</div>'
-            )
             st.markdown(
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>📊 2-Year Scorecard</h4>'
-                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 数据缺失</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">📡 数据待接入</div>'
                 f'<div style="font-size:10px;color:var(--text-dim);">DGS2 / ^TNX</div>'
-                f'{y2_tip}'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -649,13 +652,11 @@ def page_dashboard():
                 unsafe_allow_html=True,
             )
         else:
-            debt_err = debt.get("error", "FRED 拉取失败")
             st.markdown(
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>🇺🇸 U.S. National Debt</h4>'
-                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 数据缺失</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">📡 数据待接入</div>'
                 f'<div style="font-size:10px;color:var(--text-dim);">GFDEBTN</div>'
-                f'<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">{debt_err}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -672,13 +673,11 @@ def page_dashboard():
                 unsafe_allow_html=True,
             )
         else:
-            mb_err = margin.get("error", "FRED 拉取失败")
             st.markdown(
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>💳 FINRA Margin Debt</h4>'
-                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 数据缺失</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">📡 数据待接入</div>'
                 f'<div style="font-size:10px;color:var(--text-dim);">MDEBT</div>'
-                f'<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">{mb_err}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -697,13 +696,11 @@ def page_dashboard():
                 unsafe_allow_html=True,
             )
         else:
-            nfci_err = nfci.get("error", "FRED 拉取失败")
             st.markdown(
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>🏦 NFCI Leverage</h4>'
-                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">⚠️ 数据缺失</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);margin:20px 0;">📡 数据待接入</div>'
                 f'<div style="font-size:10px;color:var(--text-dim);">NFCILEVERAGE</div>'
-                f'<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">{nfci_err}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -1141,7 +1138,7 @@ def page_dashboard():
             st.progress(int(fw["prob_cut"]), text=f"降息 {fw['prob_cut']:.0f}%")
             st.progress(int(fw["prob_hold"]), text=f"维持 {fw['prob_hold']:.0f}%")
             st.progress(int(fw["prob_hike"]), text=f"加息 {fw['prob_hike']:.0f}%")
-            st.caption(f"数据源: {fw['source']}")
+            # 公开站点不展示数据源标注
         st.markdown("</div>", unsafe_allow_html=True)
 
     # ===== 第五行：Morning Brief / Evening Recap =====
@@ -1830,14 +1827,7 @@ def page_news_center():
     sources_status.append(("Stocktwits API", "✅", "始终免费（散户情绪）"))
     sources_status.append(("东方财富网", "✅", "始终免费（中文宏观）"))
 
-    with st.expander("🔌 数据源状态", expanded=False):
-        cols = st.columns(2)
-        for i, (name, status, desc) in enumerate(sources_status):
-            with cols[i % 2]:
-                st.markdown(f"- {status} **{name}** — {desc}")
-
-    if not any([SERPAPI_KEY, FINNHUB_KEY, NEWSAPI_KEY]):
-        st.warning("⚠️ 未配置任何付费 API。但 Yahoo RSS / Stocktwits / 东方财富 仍可获取新闻，点击下方按钮试试。")
+    # 新闻按「影响股价」相关性过滤后，再归类为 宏观 / 政策 / 自选股（过滤逻辑见 utils.fetch_all_news_multi_source）
 
     if st.button("🔄 立即抓取一次新闻（多源）", use_container_width=True):
         with st.spinner("多源抓取中…"):
