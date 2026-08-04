@@ -402,15 +402,16 @@ def calculate_fear_greed() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 # 已知 2026 年 FOMC 会议日期（静态兜底，滚动更新可由 macro 抓取覆盖）
+# 依据：美联储官网 fomccalendars.htm（2026-08-04 核验）
 FOMC_2026_DATES = [
-    "2026-01-28", "2026-01-29",
+    "2026-01-27", "2026-01-28",
     "2026-03-17", "2026-03-18",
     "2026-04-28", "2026-04-29",
     "2026-06-16", "2026-06-17",
     "2026-07-28", "2026-07-29",
     "2026-09-15", "2026-09-16",
     "2026-10-27", "2026-10-28",
-    "2026-12-15", "2026-12-16",
+    "2026-12-08", "2026-12-09",
 ]
 
 
@@ -467,7 +468,7 @@ def calc_fedwatch_from_futures() -> Dict[str, Any]:
         logger.warning("FedWatch 计算失败: %s", e)
         return {"error": str(e), "meetings": []}
 
-    current_ffr = 5.33  # 兜底；理想情况用 FRED DFF
+    current_ffr = 3.625  # 兜底；2026-08 联邦基金目标区间 3.50%-3.75% 中点（理想情况用 FRED DFF）
     next_meeting = FOMC_2026_DATES[0] if FOMC_2026_DATES else "TBD"
     cut_bps = round((implied_rate - current_ffr) * 100)
     if cut_bps <= 0:
@@ -501,14 +502,15 @@ def calc_fedwatch_from_futures() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 # 静态兜底：未来 30 天已知的重磅事件
+# 日期核验：AM Best/UniCredit 2026-08 经济日历、美联储官网（2026-08-04）
 STATIC_CALENDAR = [
-    {"date": "2026-08-01", "time": "20:30", "event": "美国 7 月非农就业 (NFP)", "importance": "🔴 高", "type": "宏观"},
+    {"date": "2026-08-07", "time": "20:30", "event": "美国 7 月非农就业 (NFP)", "importance": "🔴 高", "type": "宏观"},
     {"date": "2026-08-05", "time": "未定", "event": "苹果 (AAPL) 财报", "importance": "🟠 中", "type": "财报"},
     {"date": "2026-08-12", "time": "20:30", "event": "美国 7 月 CPI 同比", "importance": "🔴 高", "type": "宏观"},
-    {"date": "2026-08-14", "time": "20:30", "event": "美国 7 月 PPI 同比", "importance": "🟡 中", "type": "宏观"},
-    {"date": "2026-08-15", "time": "02:00", "event": "FOMC 会议纪要公布", "importance": "🟠 中", "type": "宏观"},
-    {"date": "2026-08-20", "time": "20:30", "event": "美联储主席 Powell 讲话 (Jackson Hole)", "importance": "🔴 高", "type": "宏观"},
-    {"date": "2026-08-26", "time": "20:30", "event": "美国 7 月 PCE 物价指数", "importance": "🔴 高", "type": "宏观"},
+    {"date": "2026-08-13", "time": "20:30", "event": "美国 7 月 PPI 同比", "importance": "🟡 中", "type": "宏观"},
+    {"date": "2026-08-19", "time": "02:00", "event": "FOMC 会议纪要公布 (7/28-29 会议)", "importance": "🟠 中", "type": "宏观"},
+    {"date": "2026-08-28", "time": "20:30", "event": "美联储主席 Warsh 讲话 (Jackson Hole 8/27-29)", "importance": "🔴 高", "type": "宏观"},
+    {"date": "2026-08-28", "time": "20:30", "event": "美国 7 月 PCE 物价指数", "importance": "🔴 高", "type": "宏观"},
     {"date": "2026-08-28", "time": "未定", "event": "英伟达 (NVDA) 财报", "importance": "🔴 高", "type": "财报"},
     {"date": "2026-08-29", "time": "未定", "event": "中芯国际 / 港股科技股 财报", "importance": "🟠 中", "type": "财报"},
 ]
@@ -2815,7 +2817,7 @@ STOCK_NAMES = {
     "07709.HK": "南方两倍做多海力士", "00981.HK": "中芯国际",
     "688809.SS": "豪威股份", "300408.SZ": "三环集团", "300679.SZ": "电连技术",
     "000426.SZ": "兴业银锡", "002624.SZ": "完美世界", "601872.SS": "招商轮船",
-    "601975.SS": "招商轮船", "002258.SZ": "利尔化学", "001331.SZ": "胜通能源",
+    "601975.SS": "招商南油", "002258.SZ": "利尔化学", "001331.SZ": "胜通能源",
     "600150.SS": "中国船舶",
     "00293.HK": "国泰航空", "03690.HK": "美团-W", "01138.HK": "中远海能", "03968.HK": "招商银行",
     "EUV": "Corgi Lithography", "RKLB": "Rocket Lab", "GEV": "GE Vernova", "FUTU": "富途",
