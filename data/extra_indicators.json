@@ -1,18 +1,17 @@
 {
   "2y_scorecard": {
-    "y2": null,
-    "y10": 4.745,
-    "spread_bps": null,
-    "spread_5d_chg": null,
-    "signal": "—",
-    "asof": "",
-    "y10_5d_chg_bps": 10.4
+    "y2": 4.28,
+    "y10": 4.661,
+    "spread_bps": 38.1,
+    "spread_5d_chg": -3.0,
+    "signal": "🟡 正常 (中性)",
+    "asof": "2026-07-31",
+    "y10_5d_chg_bps": 3.9
   },
   "us_debt": {
-    "value_trillion": null,
+    "value_trillion": 39.065,
     "yoy_chg_pct": null,
-    "asof": "",
-    "error": "未配置 FRED_API"
+    "asof": "2026-01-01"
   },
   "margin_debt": {
     "value_billion": null,
@@ -20,15 +19,14 @@
     "yoy_chg_pct": null,
     "signal": "—",
     "asof": "",
-    "error": "未配置 FRED_API"
+    "error": "Bad Request.  The series does not exist."
   },
   "nfci_leverage": {
-    "value": null,
-    "prev": null,
-    "chg": null,
-    "signal": "—",
-    "asof": "",
-    "error": "未配置 FRED_API"
+    "value": 0.119,
+    "prev": 0.161,
+    "chg": -0.042,
+    "signal": "🟠 轻度紧缩",
+    "asof": "2026-07-24"
   },
-  "asof": "2026-08-03 11:40"
+  "asof": "2026-08-04 12:58"
 }
