@@ -1806,7 +1806,38 @@ def page_cross_asset():
             st.caption("⚠️ 未配置 FRED_API，跳过美债/杠杆联动图。可在 Streamlit Cloud Secrets 填 `FRED_API` 后启用。")
         else:
             st.caption("✅ 已配置 FRED_API，可叠加：U.S. National Debt (GFDEBTN)、FINRA Margin Debt (MDEBT)、NFCI Leverage。")
-            st.info("提示：如需副图叠加，可调用 `U.fetch_us_debt()` / `U.fetch_margin_debt()` / `U.fetch_nfci_leverage()` 后将 series 画在第三轴 yaxis3。暂未自动渲染以免图例过乱。")
+            try:
+                linkage = U.fetch_fred_linkage_series(days=400)
+                if linkage.get("ok") and len(linkage.get("dates", [])) >= 2:
+                    fig3 = make_subplots(specs=[[{"secondary_y": True}]])
+                    fig3.add_trace(
+                        go.Scatter(x=linkage["dates"], y=linkage["debt_pct"],
+                                   name="美债规模 GFDEBTN 变化%", line=dict(color="#1e3a8a", width=2)),
+                        secondary_y=False,
+                    )
+                    fig3.add_trace(
+                        go.Scatter(x=linkage["dates"], y=linkage["margin_pct"],
+                                   name="融资余额 MDEBT 变化%", line=dict(color="#ea580c", width=2)),
+                        secondary_y=False,
+                    )
+                    fig3.add_trace(
+                        go.Scatter(x=linkage["dates"], y=linkage["nfci"],
+                                   name="NFCI 杠杆指数 (右轴)", line=dict(color="#7c3aed", width=2, dash="dot")),
+                        secondary_y=True,
+                    )
+                    fig3.update_layout(
+                        title="美债规模 vs 杠杆 联动（近 400 交易日，债务/融资=相对起点变化%，NFCI=原值）",
+                        height=380, margin=dict(l=10, r=10, t=46, b=10),
+                        legend=dict(orientation="h", y=1.08),
+                        hovermode="x unified",
+                    )
+                    fig3.update_yaxes(title_text="变化 %（起点=0）", secondary_y=False)
+                    fig3.update_yaxes(title_text="NFCI 杠杆指数", secondary_y=True)
+                    st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
+                else:
+                    st.caption(f"⚠️ 联动图拉取失败：{linkage.get('error', '未知错误')}")
+            except Exception as e:  # noqa: BLE001
+                st.caption(f"⚠️ 联动图渲染失败：{e}")
 
 
 # ---------------------------------------------------------------------------

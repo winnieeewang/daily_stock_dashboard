@@ -188,6 +188,53 @@ def fetch_policy_news(api_key: str, top_n: int = 8) -> List[Dict[str, Any]]:
     return _dedup_news(pool)[:top_n]
 
 
+def fetch_google_news_rss(
+    query: str, hl: str = "zh-CN", gl: str = "CN", num: int = 6
+) -> List[Dict[str, Any]]:
+    """Google News RSS 搜索（完全免费、无 key）。按关键词抓最新财经/政策新闻。"""
+    from urllib.parse import quote_plus
+
+    ceid = {"zh-CN": "CN:zh-Hans", "en-US": "US:en"}.get(hl, "CN:zh-Hans")
+    url = (
+        "https://news.google.com/rss/search?q="
+        + quote_plus(query)
+        + f"&hl={hl}&gl={gl}&ceid={ceid}"
+    )
+    return fetch_rss_feed(url, source_name=f"GoogleNews[{hl}]", top_n=num)
+
+
+# 政策板块免费源关键词（中英两组，覆盖 中国/美国 政策面）
+POLICY_QUERIES_ZH = [
+    "中国 央行 货币政策",
+    "中国 证监会 监管",
+    "国务院 经济政策",
+    "财政部 财政政策",
+    "降准 降息",
+    "关税 反制",
+]
+POLICY_QUERIES_EN = [
+    "China PBOC monetary policy",
+    "China CSRC regulation",
+    "US Treasury tariff trade policy",
+    "Federal Reserve policy rate",
+    "SEC regulation financial markets",
+    "trade policy tariff China US",
+]
+
+
+def fetch_policy_news_free(top_n: int = 8) -> List[Dict[str, Any]]:
+    """政策新闻免费源：Google News RSS 按中英政策关键词搜索（无需任何 API key）。"""
+    pool: List[Dict[str, Any]] = []
+    for q in POLICY_QUERIES_ZH:
+        pool.extend(fetch_google_news_rss(q, hl="zh-CN", gl="CN", num=3))
+        time.sleep(0.1)
+    for q in POLICY_QUERIES_EN:
+        pool.extend(fetch_google_news_rss(q, hl="en-US", gl="US", num=3))
+        time.sleep(0.1)
+    pool = _dedup_news(pool)
+    return pool[:top_n]
+
+
 def fetch_stock_news(
     symbol: str,
     api_key: str,
@@ -1069,6 +1116,42 @@ def fetch_nfci_leverage() -> Dict[str, Any]:
     return out
 
 
+def fetch_fred_linkage_series(days: int = 400) -> Dict[str, Any]:
+    """
+    FRED 三条序列联动（美债规模 GFDEBTN / 融资余额 MDEBT / NFCI 杠杆子指数）。
+    返回按公共日期对齐的归一化对比：debt_pct / margin_pct（相对各自起点变化 %），nfci（原值）。
+    """
+    out: Dict[str, Any] = {"ok": False, "dates": [], "debt_pct": [], "margin_pct": [], "nfci": [], "error": ""}
+    try:
+        from fredapi import Fred
+        fred_key = _get_secret("FRED_API")
+        if not fred_key:
+            out["error"] = "未配置 FRED_API"
+            return out
+        fred = Fred(api_key=fred_key)
+        start = datetime.now() - timedelta(days=days)
+        s_debt = fred.get_series("GFDEBTN", observation_start=start).dropna()
+        s_margin = fred.get_series("MDEBT", observation_start=start).dropna()
+        s_nfci = fred.get_series("NFCILEVERAGE", observation_start=start).dropna()
+        idx = s_debt.index.intersection(s_margin.index).intersection(s_nfci.index)
+        if len(idx) < 2:
+            out["error"] = "FRED 公共日期不足（三序列对齐后 < 2 个点）"
+            return out
+        debt = s_debt[idx]
+        margin = s_margin[idx]
+        nfci = s_nfci[idx]
+        debt0, margin0 = float(debt.iloc[0]), float(margin.iloc[0])
+        out["dates"] = [d.strftime("%Y-%m-%d") for d in idx]
+        out["debt_pct"] = [(float(x) / debt0 - 1.0) * 100 for x in debt] if debt0 else []
+        out["margin_pct"] = [(float(x) / margin0 - 1.0) * 100 for x in margin] if margin0 else []
+        out["nfci"] = [float(x) for x in nfci]
+        out["ok"] = True
+    except Exception as e:  # noqa: BLE001
+        logger.warning("FRED 联动序列拉取失败: %s", e)
+        out["error"] = str(e)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # 14. Vol / OI PCR（每只个股的期权 PCR）
 # ---------------------------------------------------------------------------
@@ -1816,6 +1899,16 @@ def fetch_all_news_multi_source(
             has_any = True
         except Exception as e:  # noqa: BLE001
             payload["errors"].append(f"SerpApi: {e}")
+
+    # 1.5) 政策新闻免费兜底（Google News RSS，无需 key）—— 政策板块不能为空
+    try:
+        free_policy = fetch_policy_news_free(top_n=8)
+        if free_policy:
+            payload["policy"] = _dedup_news(payload.get("policy", []) + free_policy)[:10]
+            payload["sources_used"].append("Google News RSS(政策)")
+            has_any = True
+    except Exception as e:  # noqa: BLE001
+        payload["errors"].append(f"政策RSS: {e}")
 
     # 2) Finnhub / NewsAPI 宏观 (作为补充)
     if newsapi_key:
