@@ -5,7 +5,13 @@ ta>=0.11.0
 requests>=2.31.0
 fredapi>=0.5.1
 openai>=1.0.0
-streamlit>=1.30.0
+# 锁定 Streamlit 到稳定版：避开 1.61.0（2026-08-05 当天发布）与 starlette 1.x 的
+# GZipResponder 不兼容 bug —— 表现为 server 启动 health check 即 500，与业务代码无关。
+# 1.59.1 是 Jul 8 正式稳定版，支持 Python 3.14，无此 bug。
+streamlit==1.59.1
+# 强制 starlette 停留在 0.x：1.x 的 GZipResponder 新增必填参数 thread_minimum_size，
+# 会令 Streamlit 自带 gzip 中间件启动即崩。官方修复 1.61.x 后可移除本行（届时改回 streamlit 最新）。
+starlette<1.0
 plotly>=5.18.0
 akshare>=1.13.0
 serpapi>=0.1.0
