@@ -1498,14 +1498,21 @@ def page_stock_deepdive():
                 if v > 1.0: return "#16a34a"  # 偏高（看空保护）
                 if v < 0.7: return "#dc2626"  # 偏低（看多情绪）
                 return "#f59e0b"
+            def pcr_fmt(v):
+                # 修复：f-string 格式说明符不能与条件表达式直接组合
+                # （原写法 `{v:.2f if v is not None else "—"}` 运行时抛 ValueError）
+                try:
+                    return f"{v:.2f}" if v is not None else "—"
+                except (TypeError, ValueError):
+                    return "—"
             st.markdown(
                 f'<div class="card" style="font-size:13px;">'
                 f'<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
                 f'<span>到期日</span><b>{pcr.get("expiry","—")}</b></div>'
                 f'<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
-                f'<span>Vol PCR</span><b style="color:{pcr_color(vol_pcr)};font-size:18px;">{vol_pcr:.2f if vol_pcr is not None else "—"}</b></div>'
+                f'<span>Vol PCR</span><b style="color:{pcr_color(vol_pcr)};font-size:18px;">{pcr_fmt(vol_pcr)}</b></div>'
                 f'<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
-                f'<span>OI PCR</span><b style="color:{pcr_color(oi_pcr)};font-size:18px;">{oi_pcr:.2f if oi_pcr is not None else "—"}</b></div>'
+                f'<span>OI PCR</span><b style="color:{pcr_color(oi_pcr)};font-size:18px;">{pcr_fmt(oi_pcr)}</b></div>'
                 f'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);">'
                 f'<span>Call/Put Vol</span><span>{pcr.get("call_volume", 0):,} / {pcr.get("put_volume", 0):,}</span></div>'
                 f'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);">'
