@@ -222,6 +222,108 @@ GLOBAL_CSS = """
     .brief-box h2 { font-size: 16px; }
     .brief-box h3 { font-size: 15px; }
     .brief-box strong { color: #fbbf24; }
+
+    /* ===== 需求1：统一栅格与对齐 =====
+       同一行（st.columns）内的卡片采用统一基线高度与一致字号，
+       模块尺寸不随文字内容剧烈伸缩；标题/正文/数字字号全部固定。 */
+    /* 卡片统一基线高度 + 内边距，避免内容多寡导致高度跳变 */
+    .card {
+        box-sizing: border-box;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+        line-height: 1.55;
+        padding: 14px 16px;
+    }
+    /* 小信息卡（雷达/状态条等）单独基线，避免被大卡拉伸 */
+    .card.compact { min-height: 96px; padding: 10px 12px; }
+    .card > h4 { flex: 0 0 auto; margin: 0 0 8px 0; }
+    .card .body-fill { flex: 1 1 auto; }
+    /* 统一标题/正文字号，杜绝伸缩导致的视觉跳变 */
+    .section-title { font-size: 16px; }
+    .card h3 { font-size: 14px; color: var(--text); font-weight: 700; }
+    .card h4 { font-size: 14px; color: var(--text-dim); font-weight: 700; }
+    .stock-row { font-size: 13px; }
+    /* 指标数字统一字号 */
+    .card .big, .metric-big { font-size: 26px; font-weight: 800; color: var(--text); }
+    /* 同行动态高度时，列内卡片底色统一，视觉对齐更整齐 */
+    [data-testid="column"] > div { display: flex; }
+    [data-testid="column"] > div > div { width: 100%; }
+
+    /* ===== DSA 暗色玻璃态（明日观察位专用） =====
+       在浅色页面中嵌入深色玻璃态组件，backdrop-filter 让卡片与下方背景融合；
+       配色与参考 DSA 风格保持一致（青色强调 + 三色状态）。*/
+    .dsa-glass {
+        background: linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(30,41,59,0.92) 100%);
+        border: 1px solid rgba(125,180,210,0.20);
+        border-radius: 14px;
+        padding: 16px 18px;
+        color: #e2e8f0;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        box-shadow: 0 4px 18px rgba(2,6,23,0.18);
+        margin-bottom: 12px;
+    }
+    .dsa-glass .title { font-size: 14px; font-weight: 700; color: #67e8f9; margin-bottom: 6px; letter-spacing: 0.3px; }
+    .dsa-glass .sub { font-size: 11px; color: #94a3b8; }
+    .dsa-glass .num { font-size: 24px; font-weight: 800; color: #f1f5f9; }
+    .dsa-glass .acc { color: #67e8f9; }
+
+    /* 状态 pill：ok / caution / danger / neutral */
+    .tw-pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 10px; border-radius: 999px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
+    }
+    .tw-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .tw-pill.ok { background: rgba(52,211,153,0.15); color: #34d399; }
+    .tw-pill.caution { background: rgba(251,191,36,0.15); color: #fbbf24; }
+    .tw-pill.danger { background: rgba(248,113,113,0.15); color: #f87171; }
+    .tw-pill.neutral { background: rgba(148,163,184,0.18); color: #94a3b8; }
+
+    /* 明日观察位 4 维度网格 */
+    .tw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .tw-tile {
+        background: rgba(15,23,42,0.55);
+        border: 1px solid rgba(125,180,210,0.15);
+        border-radius: 10px;
+        padding: 10px 12px;
+        color: #cbd5e1;
+    }
+    .tw-tile .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .tw-tile .name { font-size: 12px; color: #94a3b8; font-weight: 600; }
+    .tw-tile .state { font-size: 13px; font-weight: 700; margin: 2px 0 6px 0; }
+    .tw-tile .ev { font-size: 11px; line-height: 1.5; color: #cbd5e1; opacity: 0.88; }
+    .tw-tile .meta { font-size: 10px; color: #64748b; margin-top: 4px; }
+    /* 状态条强度可视化 */
+    .tw-bar { height: 4px; background: rgba(148,163,184,0.18); border-radius: 2px; margin-top: 6px; }
+    .tw-bar .fill { height: 100%; border-radius: 2px; }
+    .tw-bar .fill.ok { background: #34d399; }
+    .tw-bar .fill.caution { background: #fbbf24; }
+    .tw-bar .fill.danger { background: #f87171; }
+    .tw-bar .fill.neutral { background: #94a3b8; }
+
+    /* 整体策略卡 */
+    .tw-overall {
+        background: linear-gradient(135deg, rgba(8,47,73,0.85) 0%, rgba(13,71,161,0.85) 100%);
+        border: 1px solid rgba(125,180,210,0.25);
+        border-radius: 12px;
+        padding: 14px 16px;
+        color: #f0f9ff;
+        margin-bottom: 10px;
+    }
+    .tw-overall .head { display: flex; align-items: center; justify-content: space-between; }
+    .tw-overall .action { font-size: 18px; font-weight: 800; }
+    .tw-overall .summary { font-size: 12px; color: #cbd5e1; margin-top: 6px; line-height: 1.6; }
+    .tw-overall .ok { color: #34d399; }
+    .tw-overall .caution { color: #fbbf24; }
+    .tw-overall .danger { color: #f87171; }
+
+    /* 风险/数字高亮 */
+    .tw-num-up { color: #f87171; font-weight: 700; }   /* 涨（A股红）*/
+    .tw-num-down { color: #34d399; font-weight: 700; } /* 跌（A股绿）*/
+    @media (max-width: 700px) { .tw-grid { grid-template-columns: 1fr; } }
 </style>
 """
 st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
@@ -445,6 +547,132 @@ def _donut(score: float, size: int = 74, label: str = "评分") -> str:
         f'<span class="val" style="font-size:{max(12, size//4)}px;">{s:.0f}</span></div>'
         f'<div style="font-size:10px;color:var(--text-dim);text-align:center;margin-top:4px;">{label}</div>'
     )
+
+
+# ---------------------------------------------------------------------------
+# 明日观察位（v3.2：同花顺 Financial-API + 规则引擎 + DeepSeek 研判）
+# ---------------------------------------------------------------------------
+
+def _tw_pill(status: str) -> str:
+    """根据 status 返回对应的 .tw-pill HTML 片段。"""
+    s = (status or "neutral").lower()
+    label = {"ok": "正向", "caution": "关注", "danger": "警示", "neutral": "中性"}.get(s, "中性")
+    return f'<span class="tw-pill {s}">{label}</span>'
+
+
+def _tw_evidence_html(text: str) -> str:
+    """统一 evidence 文本渲染（控制行高 + 字号）。"""
+    safe = (text or "").replace("<", "&lt;").replace(">", "&gt;")
+    return f'<div class="ev">{safe}</div>'
+
+
+def _render_tomorrow_watch(symbol: str) -> None:
+    """
+    渲染「明日观察位」模块（DSA 暗色玻璃风格）。
+    调用 U.compute_tomorrow_watch 拉取 K 线 + 主力资金 → 渲染四维度。
+    提供 AI 研判按钮（DeepSeek / OpenRouter），无 LLM Key 时降级为规则 summary。
+    """
+    st.markdown(
+        '<div class="section-title"><span class="accent">🔮</span>明日观察位 · '
+        '<span style="font-size:11px;color:var(--text-dim);font-weight:500;">'
+        '规则引擎 + DeepSeek 研判</span></div>',
+        unsafe_allow_html=True,
+    )
+
+    # 1) 拉取数据：A 股自动尝试主力资金流；其他市场传 None
+    capital_flow = None
+    if symbol.endswith((".SS", ".SZ")):
+        try:
+            capital_flow = U.fetch_capital_flow_eastmoney(symbol)
+        except Exception:  # noqa: BLE001
+            capital_flow = None
+    try:
+        with st.spinner(f"计算 {symbol} 明日观察位…"):
+            watch = U.compute_tomorrow_watch(symbol, capital_flow=capital_flow)
+    except Exception as e:  # noqa: BLE001
+        st.error(f"明日观察位计算失败：{e}")
+        return
+
+    if not watch.get("ok"):
+        st.warning(f"⚠️ {watch.get('reason', '数据不足')}")
+        return
+
+    raw = watch.get("raw", {})
+
+    # 2) 整体策略卡（顶部强调）
+    ov = watch.get("overall", {})
+    overall_html = (
+        f'<div class="tw-overall">'
+        f'<div class="head">'
+        f'<div>'
+        f'<div style="font-size:11px;color:#7dd3fc;letter-spacing:0.5px;">整体策略 · OVERALL</div>'
+        f'<div class="action {ov.get("status","ok")}">{ov.get("action","—")}</div>'
+        f'</div>'
+        f'<div style="text-align:right;font-size:11px;color:#94a3b8;">'
+        f'评分 {ov.get("score",0)}/100<br>信心 {watch.get("support",{}).get("score",50)}%'
+        f'</div>'
+        f'</div>'
+        f'<div class="summary">{ov.get("summary","")}</div>'
+        f'<div style="font-size:10px;color:#64748b;margin-top:8px;">'
+        f'现价 {raw.get("current_price")} · 日 {raw.get("chg_pct",0):+.2f}% · '
+        f'MA5 {raw.get("ma5")} · MA20 {raw.get("ma20")} · RSI {raw.get("rsi")} · '
+        f'量比 {raw.get("vol_ratio5")}x</div>'
+        f'</div>'
+    )
+    st.markdown(overall_html, unsafe_allow_html=True)
+
+    # 3) 四维度 2x2 网格
+    dims = [
+        ("support",  "🛡️ 支撑观察", f'近期低点 {raw.get("support_level")} · 距离 {watch["support"].get("distance_pct","—")}%'),
+        ("breakout", "📈 放量信号", f'量比5d {raw.get("vol_ratio5")}x · 量比20d {raw.get("vol_ratio20")}x'),
+        ("capital",  "💰 主力资金", ("有数据" if watch["capital"].get("has_data") else "暂无数据")),
+        ("risk",     "⚠️ 风险预警", f'ATR% {raw.get("atr_pct")}% · MACD柱 {raw.get("macd_hist")}'),
+    ]
+    tiles = []
+    for key, name, meta in dims:
+        d = watch.get(key, {})
+        score = d.get("score", 50)
+        tiles.append(
+            f'<div class="tw-tile">'
+            f'<div class="head">'
+            f'<div class="name">{name}</div>'
+            f'{_tw_pill(d.get("status","neutral"))}'
+            f'</div>'
+            f'<div class="state" style="color:{"#34d399" if d.get("status")=="ok" else "#fbbf24" if d.get("status")=="caution" else "#f87171" if d.get("status")=="danger" else "#94a3b8"};">{d.get("state","—")}</div>'
+            f'{_tw_evidence_html(d.get("evidence",""))}'
+            f'<div class="meta">{meta}</div>'
+            f'<div class="tw-bar"><div class="fill {d.get("status","neutral")}" style="width:{max(0,min(100,score))}%;"></div></div>'
+            f'</div>'
+        )
+    grid_html = '<div class="dsa-glass"><div class="title">四维度量化研判</div><div class="tw-grid">' + "".join(tiles) + '</div></div>'
+    st.markdown(grid_html, unsafe_allow_html=True)
+
+    # 4) AI 研判按钮（DeepSeek / OpenRouter）
+    btn_key = f"tw_ai_{symbol}"
+    ai_state_key = f"tw_ai_text_{symbol}"
+    cols = st.columns([1, 1, 2])
+    with cols[0]:
+        if st.button("🤖 生成 AI 研判", key=btn_key, use_container_width=True,
+                     help="调用 DeepSeek / OpenRouter 基于上述结构化结论生成自然语言研判"):
+            with st.spinner("AI 研判中…"):
+                text = U.narrate_tomorrow_watch(watch)
+            st.session_state[ai_state_key] = text or watch["overall"]["summary"]
+    with cols[1]:
+        if st.button("🗑️ 清空", key=f"tw_ai_clr_{symbol}", use_container_width=True):
+            st.session_state.pop(ai_state_key, None)
+            st.rerun()
+    with cols[2]:
+        st.caption("提示：未配置 DEEPSEEK_API_KEY 时降级展示规则 summary。")
+
+    if st.session_state.get(ai_state_key):
+        st.markdown(
+            f'<div class="dsa-glass" style="background:linear-gradient(135deg, rgba(8,47,73,0.85) 0%, rgba(15,23,42,0.92) 100%);">'
+            f'<div class="title">🧠 AI 研判</div>'
+            f'<div style="font-size:13px;line-height:1.85;color:#e2e8f0;">{st.session_state[ai_state_key]}</div>'
+            f'<div style="font-size:10px;color:#64748b;margin-top:8px;text-align:right;">非投资建议 · 仅供研究参考</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
 
 def page_dashboard():
@@ -840,6 +1068,19 @@ def page_dashboard():
         st.markdown(_radar_group_card("cross_asset", "跨资产 Cross", "🌐"), unsafe_allow_html=True)
         st.markdown(_radar_group_card("a_share", "A股 A-Share", "🇨🇳"), unsafe_allow_html=True)
 
+    # ===== 需求4：宏观数值文字总结（结合宏观雷达）=====
+    try:
+        _macro_text = U.macro_risk_narrative(radar)
+        st.markdown(
+            f'<div class="card" style="min-height:auto;background:linear-gradient(135deg,#f8fafc 0%,#eef2f7 100%);border-left:4px solid var(--accent);">'
+            f'<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">📝 宏观解读（基于雷达数值）</div>'
+            f'<div style="font-size:12.5px;line-height:1.7;color:var(--text);white-space:pre-line;">{_macro_text}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.debug("宏观文字总结失败: %s", e)
+
     # ===== v2.3 新增：🌍 全球市场三段（美股 / A股 / 港股）=====
     st.markdown('<div class="section-title"><span class="accent">🌍</span>全球市场总览（按市场分段）</div>', unsafe_allow_html=True)
     seg_us, seg_cn, seg_hk = st.tabs(["🇺🇸 美股 (US)", "🇨🇳 A股 (CN)", "🇭🇰 港股 (HK)"])
@@ -1078,6 +1319,37 @@ def page_dashboard():
                         )
             st.markdown("</div>", unsafe_allow_html=True)
 
+    # ===== 需求2：Dashboard 模块导航（逻辑递进 + 勾稽关系）=====
+    st.markdown('<div class="section-title"><span class="accent">🗺️</span>Dashboard 指标导航 &amp; 勾稽关系</div>', unsafe_allow_html=True)
+    _dash_modules = [
+        ("① 市场状态条", "US/HK/CN 开盘 · Fear&amp;Greed · VIX", "情绪温度，决定当日「交易窗口」是否打开。"),
+        ("② 宏观风险雷达", "VIX/DXY · 利率曲线 · 金银/铜金比 · 跨资产 · A股", "系统风险底色，决定整体「仓位基调」（绿灯放大、红灯防守）。"),
+        ("③ 全球市场总览", "美股 / A股 / 港股主指数 + 情绪", "大类资产方向，承接雷达结论、给出市场β。"),
+        ("④ 今日重点 &amp; 自选扫描", "Top 机会(评分) / Top 风险(超买·回撤·杠杆)", "个股线索入口，由宏观与市场方向收敛到具体标的。"),
+        ("⑤ 全市场热力图", "美股 / 港股 / A股 按板块涨跌幅", "板块与个股强弱分布，定位资金主线。"),
+        ("⑥ 维科夫吸筹扫描", "选股第一层：7 事件量价序列", "纯量价判定「是否在吸筹」，为④的线索做结构背书。"),
+        ("⑦ 经济日程 &amp; FedWatch", "非农/CPI/PCE/FOMC · 下次会议概率", "事件驱动风险，短线扰动②与③、并验证④的假设。"),
+        ("⑧ AI 报告", "Morning Brief / Evening Recap", "把①~⑦综合成叙事结论，形成可执行的当日视角。"),
+    ]
+    _mod_rows = "".join(
+        f'<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px;align-items:baseline;">'
+        f'<div style="flex:0 0 150px;font-weight:700;color:var(--accent);">{t}</div>'
+        f'<div style="flex:0 0 230px;color:var(--text-dim);">{sub}</div>'
+        f'<div style="flex:1;color:var(--text);">{desc}</div>'
+        f'</div>'
+        for t, sub, desc in _dash_modules
+    )
+    st.markdown(
+        f'<div class="card" style="min-height:auto;">'
+        f'<div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">'
+        f'📐 逻辑递进：<b>宏观定调(①②) → 市场方向(③) → 个股线索(④⑤) → 结构确认(⑥) → 事件校验(⑦) → 综合叙事(⑧)</b>。'
+        f'勾稽要点：雷达②决定③④的仓位与方向；维科夫⑥为④的线索做量价背书；FedWatch/日程⑦短线扰动②并验证④。'
+        f'</div>'
+        f'{_mod_rows}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
     # ===== 第二行：今日重点 + Top 机会 + Top 风险 =====
     st.markdown('<div class="section-title">🎯 今日重点 & 自选扫描</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1.2, 1, 1])
@@ -1122,6 +1394,7 @@ def page_dashboard():
         st.markdown("</div>", unsafe_allow_html=True)
 
     # Top 机会
+    top_syms = []
     with c2:
         st.markdown('<div class="card"><h4>🟢 Top 机会 (AI 评分)</h4>', unsafe_allow_html=True)
         if STOCKS_DF is not None and not STOCKS_DF.empty:
@@ -1134,6 +1407,7 @@ def page_dashboard():
                 top = tmp.head(5)
             for _, r in top.iterrows():
                 sym = r["symbol"]
+                top_syms.append(sym)
                 score = r.get("AI评分", "—")
                 chg = safe_float(r.get("涨跌幅"))
                 st.markdown(
@@ -1145,6 +1419,7 @@ def page_dashboard():
         st.markdown("</div>", unsafe_allow_html=True)
 
     # Top 风险
+    risk_syms = []
     with c3:
         st.markdown('<div class="card"><h4>🔴 Top 风险</h4>', unsafe_allow_html=True)
         if STOCKS_DF is not None and not STOCKS_DF.empty:
@@ -1163,6 +1438,7 @@ def page_dashboard():
             for sym, lev in (LEV_MAP or {}).items():
                 if lev.get("综合风险等级") == "高" and not any(s == sym for s, *_ in risks):
                     risks.append((sym, "杠杆高危", "⚠️"))
+                    risk_syms.append(sym)
             for sym, msg, ic in risks[:6]:
                 st.markdown(
                     f"<div class='stock-row' style='display:flex;justify-content:space-between;align-items:center;'><span><b>{sym}</b> · {msg}</span><span>{ic}</span></div>",
@@ -1170,9 +1446,26 @@ def page_dashboard():
                 )
             if not risks:
                 st.caption("当前无显著风险信号")
-        else:
-            st.caption("暂无数据")
-        st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.caption("暂无数据")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # ===== 需求5：Top 机会 与 Top 风险 冲突说明（典型如 MSFT 同现）=====
+    _conflict = sorted(set(top_syms) & set(risk_syms))
+    if _conflict:
+        _ex = "、".join(_conflict)
+        st.markdown(
+            f'<div class="card" style="min-height:auto;background:#fffbeb;border-left:4px solid #f59e0b;">'
+            f'<div style="font-size:12.5px;line-height:1.7;color:#92400e;">'
+            f'⚠️ <b>冲突说明：{_ex} 同时出现在「Top 机会」与「Top 风险」。</b><br>'
+            f'这并非系统矛盾，而是「<b>机会与风险并存</b>」的典型信号：'
+            f'<b>机会面</b>来自其高 AI 评分 / 强势趋势 / 基本面（趋势与结构占优）；'
+            f'<b>风险面</b>来自短线超买(RSI&gt;70)、近期回撤或高杠杆（追高回吐 / 强平风险）。'
+            f'<br>操作含义：宜用<b>分批介入 + R 倍数纪律</b>（见个股深度分析·交易策略），而非一次性追高；'
+            f'机会决定「买不买」，风险决定「买多少、止损在哪」。'
+            f'</div></div>',
+            unsafe_allow_html=True,
+        )
 
     # ===== 第三行：美股 / 港股 / A股 热力图 =====
     st.markdown('<div class="section-title"><span class="accent">🔥</span>全市场热力图</div>', unsafe_allow_html=True)
@@ -1229,6 +1522,41 @@ def page_dashboard():
                     evs = " → ".join(e["event"] for e in w["events"]) or "无"
                     st.markdown(f"**{wsym}** ({w['stage']}) 置信度 {w['confidence']} · 事件序列: {evs}")
                     st.caption(w["summary"])
+
+            # ===== 需求6：维科夫吸筹 · 内嵌 AI 分析指引（结合智能荐股）=====
+            _top_w = wyc_rows[0][1]
+            _exp = screener.explain_wyckoff(_top_w)
+            st.markdown(
+                f'<div class="card" style="min-height:auto;background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-left:4px solid #0284c7;">'
+                f'<div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">'
+                f'🧠 维科夫吸筹 · AI 解读（以最高置信 {wyc_rows[0][0]} 为例）</div>'
+                f'<div style="font-size:12.5px;line-height:1.7;color:#0c4a6e;">'
+                f'<b>置信度含义：</b>{_exp["confidence_meaning"]}<br>'
+                f'<b>当前阶段：</b>{_exp["stage_meaning"]}<br>'
+                f'<b>事件序列：</b>{_exp["sequence_meaning"]}'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
+            # 可选：调用 DeepSeek 生成第三层叙事（仅基于结构化数据，无 key 时降级）
+            if st.button("🤖 生成 AI 研判（DeepSeek · 仅解释结构化数据）", key="wyc_ai_dash", use_container_width=True):
+                with st.spinner("调用 DeepSeek 生成研判…"):
+                    _wh_top = _fetch_price_history(wyc_rows[0][0], period="6mo", interval="1d")
+                    _mf_top = screener.score_multi_factor(_wh_top) if (_wh_top is not None and not _wh_top.empty) else {"score": "—", "bias": "—", "threshold_pass": False, "factors": {}}
+                    _prompt = screener.build_screener_narrative_prompt(
+                        _top_w, _mf_top, wyc_rows[0][0], U.STOCK_NAMES.get(wyc_rows[0][0], ""),
+                    )
+                    _ai = U._call_llm(
+                        messages=[
+                            {"role": "system", "content": "你是量化研究助理，输出简体中文，只解释给定数据，不编造价格/消息/目标价。"},
+                            {"role": "user", "content": _prompt},
+                        ],
+                        prefer="deepseek",
+                    )
+                if _ai:
+                    st.success(_ai)
+                else:
+                    st.info("未配置 DEEPSEEK_API_KEY（或调用失败），已降级展示上方结构化解读。配置方式：Streamlit Cloud → Secrets 增加 DEEPSEEK_API_KEY。")
+            st.caption("💡 指引：" + _exp["guidance"].replace("\n", " "))
         else:
             st.caption("K线数据不足，无法扫描（需要至少 120 根日K）")
     else:
@@ -1453,13 +1781,25 @@ def page_stock_deepdive():
         # 1) 股票概览
         chg = safe_float(r.get("涨跌幅"))
         price = safe_float(r.get("收盘价"))
+        _price_src = "data/stocks.csv"
+        # 需求10：A股实时价校正（东方财富 push2），避免展示过期/错误股价
+        if sym.endswith((".SS", ".SZ")):
+            try:
+                _acode = sym.split(".")[0]
+                _aq = U.fetch_a_share_quote(_acode)
+                if _aq and _aq.get("最新价"):
+                    price = float(_aq["最新价"])
+                    chg = float(_aq.get("涨跌幅", chg))
+                    _price_src = "东方财富实时"
+            except Exception:  # noqa: BLE001
+                pass
         st.markdown(
             f"""
 <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
             <div style="font-size:22px;font-weight:800;">{sym} <span style='font-size:13px;color:var(--text-dim);font-weight:500;'>{market_label}</span></div>
-            <div style="font-size:11px;color:var(--text-dim);">data/stocks.csv · {DATA.get('cards', {}).get('generated_at', '—') if isinstance(DATA.get('cards'), dict) else '—'}</div>
+            <div style="font-size:11px;color:var(--text-dim);">{_price_src} · {DATA.get('cards', {}).get('generated_at', '—') if isinstance(DATA.get('cards'), dict) else '—'}</div>
         </div>
         <div style="text-align:right;">
             <div style="font-size:32px;font-weight:800;color:{color_for_change(chg)};">{price:.2f}</div>
@@ -1544,11 +1884,14 @@ def page_stock_deepdive():
                 _stop = _risk._num(sniper.get("stop_loss"))
                 if _buy is not None and _stop is not None and _stop < _buy:
                     _atr_v = safe_float(r.get("ATR"))
-                    plan = _risk.r_multiple_plan(_buy, _stop, current_price=safe_float(r.get("收盘价")), atr=_atr_v or None)
+                    plan = _risk.r_multiple_plan(_buy, _stop, current_price=price, atr=_atr_v or None)
                     if plan.get("ok"):
                         st.markdown("##### 📐 R 倍数分批止盈（垫厚利润）")
                         st.caption("原逻辑：单一止盈目标一次性了结，容易卖飞或回吐。新逻辑：以入场风险 R 为单位，分三批兑现，边涨边垫高止损。")
                         _s1, _s2, _s3 = plan["stages"]
+                        _trail = _s3.get("price")
+                        _ma20 = safe_float(r.get("MA20"))
+                        _trail_note = f"（≈ MA20 {_ma20:.2f}）" if _ma20 and _trail and _ma20 > _trail else ""
                         _row = (
                             f"<div class='card' style='padding:10px 12px;font-size:12px;'>"
                             f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
@@ -1556,17 +1899,23 @@ def page_stock_deepdive():
                             f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;color:var(--text-dim);'>"
                             f"<span>当前盈亏</span><b style='color:{color_for_change(plan.get('current_pnl_pct', 0))};'>{plan.get('current_pnl_pct', 0):+.2f}% ({plan.get('current_pnl_R', 0):+.2f}R)</b></div>"
                             f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
-                            f"<span>+1R ({_s1['price_pct']:+.1f}%)</span><b style='color:#2563eb;'>{_s1['price']:.2f} · {_s1['action']}</b></div>"
+                            f"<span>① +1R ({_s1['price_pct']:+.1f}%)</span><b style='color:#2563eb;'>{_s1['price']:.2f} · 减仓 1/3，止损上移至成本价</b></div>"
                             f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
-                            f"<span>+2R ({_s2['price_pct']:+.1f}%)</span><b style='color:#16a34a;'>{_s2['price']:.2f} · {_s2['action']}</b></div>"
+                            f"<span>② +2R ({_s2['price_pct']:+.1f}%)</span><b style='color:#16a34a;'>{_s2['price']:.2f} · 再减 1/3，止损上移至 +1R</b></div>"
                             f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
-                            f"<span>剩余 1/3</span><b style='color:#f59e0b;'>{_s3['action']}</b></div>"
+                            f"<span>③ 剩余 1/3</span><b style='color:#f59e0b;'>{_s3['action']}</b></div>"
+                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;background:#fffbeb;padding:4px 6px;border-radius:6px;'>"
+                            f"<span style='color:#92400e;'>清仓触发价</span><b style='color:#b45309;'>{_trail:.2f}{_trail_note} · 回撤至此或跌破 MA20 即清仓</b></div>"
                             f"<div style='font-size:11px;color:var(--accent);font-weight:600;margin-top:4px;'>▶ {plan.get('current_stage','')}</div>"
                             f"</div>"
                         )
                         st.markdown(_row, unsafe_allow_html=True)
+                        st.caption("具体减仓价位点已标注：① 到 +1R 价减 1/3 并保本；② 到 +2R 价再减 1/3 并锁定 +1R；③ 剩余移动止损，回撤至清仓触发价或破 MA20 出局。原逻辑（单一止盈目标一次性了结）已被替代，避免卖飞或回吐。")
             except Exception as e:  # noqa: BLE001
                 logger.debug("R 倍数计划生成失败: %s", e)
+
+        # ===== v3.2 明日观察位（DSA 暗色玻璃态：规则引擎 + AI 研判） =====
+        _render_tomorrow_watch(sym)
 
         lev = LEV_MAP.get(sym, {})
         if lev and lev.get("details"):
@@ -1677,6 +2026,30 @@ def page_stock_deepdive():
                     )
                     if w["events"]:
                         st.caption("事件序列: " + " → ".join(e["event"] for e in w["events"]))
+                    # 需求6：内嵌 AI 解读（置信度 + 事件序列含义 + 操作指引）
+                    _exp2 = screener.explain_wyckoff(w)
+                    st.markdown(
+                        f'<div style="font-size:11.5px;line-height:1.6;color:var(--text-dim);margin-top:6px;padding:6px 8px;background:#f0f9ff;border-radius:6px;border-left:3px solid #0284c7;">'
+                        f'<b style="color:#0369a1;">AI 解读：</b>{_exp2["confidence_meaning"]}<br>'
+                        f'{_exp2["stage_meaning"]}'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                    if st.button("🤖 生成 AI 研判（DeepSeek）", key=f"wyc_ai_{sym}", use_container_width=True):
+                        with st.spinner("调用 DeepSeek…"):
+                            _mf2 = screener.score_multi_factor(wh2) if (wh2 is not None and not wh2.empty) else {"score": "—", "bias": "—", "threshold_pass": False, "factors": {}}
+                            _prompt2 = screener.build_screener_narrative_prompt(w, _mf2, sym, U.STOCK_NAMES.get(sym, ""))
+                            _ai2 = U._call_llm(
+                                messages=[
+                                    {"role": "system", "content": "你是量化研究助理，输出简体中文，只解释给定数据，不编造价格/消息/目标价。"},
+                                    {"role": "user", "content": _prompt2},
+                                ],
+                                prefer="deepseek",
+                            )
+                        if _ai2:
+                            st.success(_ai2)
+                        else:
+                            st.info("未配置 DEEPSEEK_API_KEY（或调用失败），已降级展示上方结构化解读。")
                 else:
                     st.caption(f"维科夫检测不可用：{w.get('error','')}")
             else:
@@ -1829,9 +2202,12 @@ def page_stock_deepdive():
         if not sym_news:
             with st.spinner(f"实时拉取 {sel} 新闻…"):
                 if sel.endswith((".SS", ".SZ")):
-                    sym_news = (U.fetch_eastmoney_stock_news(sel)
-                                or U.fetch_10jqka_news(top_n=5)
-                                or U.fetch_xueqiu_news(top_n=5))
+                    # A 股：东方财富个股快讯（按个股精确过滤，已验证可用）为主源，
+                    # 失败降级同花顺/雪球全局快讯。巨潮官方「全市场公告」已在新闻中心大盘页提供。
+                    _em = U.fetch_eastmoney_stock_news(sel)
+                    sym_news = list(_em or [])
+                    if not sym_news:
+                        sym_news = U.fetch_10jqka_news(top_n=5) or U.fetch_xueqiu_news(top_n=5)
                 else:
                     sym_news = U.fetch_yahoo_rss(ticker=sel)
                     if not sym_news and not sel.endswith(".HK"):

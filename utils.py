@@ -451,6 +451,34 @@ def _normalize_close_series(df: pd.DataFrame) -> Optional[pd.Series]:
     return close
 
 
+def next_fomc_meeting(asof: Optional[Any] = None) -> str:
+    """
+    动态计算「下一场 FOMC 会议」的起始日期（杜绝硬编码过期日期的低级错误）。
+
+    输入：FOMC_2026_DATES 为每场会议的两日配对（[start, end, start, end, ...]）。
+    返回：第一场 'start' >= 今天（或 asof）的会议起始日；若全部已过期，返回最后一场。
+    """
+    try:
+        from datetime import date as _date
+        ref = asof.date() if hasattr(asof, "date") else (_date.today() if asof is None else _date.fromisoformat(str(asof)[:10]))
+    except Exception:  # noqa: BLE001
+        from datetime import date as _date
+        ref = _date.today()
+    future = [d for d in FOMC_2026_DATES if _safe_parse_date(d) is not None and _safe_parse_date(d) >= ref]
+    if future:
+        return future[0]
+    # 全部过期：返回最后一场的起始日（仍比返回过去日期更有信息量）
+    return FOMC_2026_DATES[0] if FOMC_2026_DATES else "TBD"
+
+
+def _safe_parse_date(s: str):
+    try:
+        from datetime import date as _date
+        return _date.fromisoformat(str(s)[:10])
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def calc_fedwatch_from_futures() -> Dict[str, Any]:
     """
     用 SR3 (3 月 SOFR 期货) 反推市场隐含的下次会议利率区间概率。
@@ -477,7 +505,7 @@ def calc_fedwatch_from_futures() -> Dict[str, Any]:
         return {"error": str(e), "meetings": []}
 
     current_ffr = 3.625  # 兜底；2026-08 联邦基金目标区间 3.50%-3.75% 中点（理想情况用 FRED DFF）
-    next_meeting = FOMC_2026_DATES[0] if FOMC_2026_DATES else "TBD"
+    next_meeting = next_fomc_meeting()  # 动态计算下一场会议（不再写死 2026-01-27 等过期日期）
     cut_bps = round((implied_rate - current_ffr) * 100)
     if cut_bps <= 0:
         prob_cut = 5.0
@@ -1469,39 +1497,96 @@ def fetch_stocktwits(symbol: str, limit: int = 10) -> List[Dict[str, Any]]:
 
 def fetch_eastmoney_stock_news(symbol: str) -> List[Dict[str, Any]]:
     """
-    东方财富网个股新闻（完全免费，无 key）。
-    API: https://np-anotice-stock.eastmoney.com/api/security/ann?cb=&sr=-1&page_size=20&page_index=1&ann_type=A&client_source=web&stock_list=SZ000001
+    A 股个股新闻（东方财富个股快讯，完全免费，无 key，按个股精确过滤）。
+    接口：np-listapi.eastmoney.com/comm/wap/getListInfo，用 mTypeAndCode 指定个股：
+      - 沪市 → 1.XXXXXX  - 深市 → 0.XXXXXX
+    返回标准新闻条目：{title, link, source, date, snippet}（link 为可点击全文 URL）。
+    说明：原 ann（公告）接口已不可用（恒返回空），本函数改用可正常按个股过滤的快讯接口。
     """
     out: List[Dict[str, Any]] = []
-    if not symbol.endswith((".HK", ".SS", ".SZ")):
-        return out  # 仅 A 股 / 港股
+    if not symbol.endswith((".SS", ".SZ")):
+        return out  # 仅 A 股
+    code = symbol.replace(".SS", "").replace(".SZ", "")
+    mkt = "1" if symbol.endswith(".SS") else "0"
     try:
-        # 简化：转成东方财富内部代码
-        if symbol.endswith(".HK"):
-            # 港股东财代码不通用，跳过
-            return out
-        if symbol.endswith(".SS"):
-            secid = f"1.{symbol.replace('.SS', '')}"
-        elif symbol.endswith(".SZ"):
-            secid = f"0.{symbol.replace('.SZ', '')}"
-        else:
-            return out
-        url = "https://np-anotice-stock.eastmoney.com/api/security/ann"
-        params = {"sr": -1, "page_size": 10, "page_index": 1, "ann_type": "A", "client_source": "web", "stock_list": secid}
+        url = "https://np-listapi.eastmoney.com/comm/wap/getListInfo"
+        params = {"client": "wap", "type": 1, "mTypeAndCode": f"{mkt}.{code}", "pageSize": 10, "pageIndex": 1}
         data = _safe_get_json(url, params=params)
-        if not data or "data" not in data:
-            return out
-        for item in (data.get("data") or {}).get("list", [])[:10]:
+        items = []
+        if isinstance(data, dict):
+            items = (data.get("data") or {}).get("list", []) or []
+        for it in items[:10]:
+            title = it.get("Art_Title") or it.get("title") or ""
+            if not title:
+                continue
+            link = it.get("Art_Url") or it.get("Art_OriginUrl") or it.get("url") or ""
             out.append({
-                "title": item.get("title", ""),
-                "link": item.get("art_code", ""),
-                "source": "东方财富网",
-                "date": item.get("notice_date", ""),
+                "title": title,
+                "link": link,
+                "source": it.get("Art_MediaName") or it.get("source") or "东方财富网",
+                "date": it.get("Art_ShowTime") or it.get("showTime") or it.get("date") or "",
+                "snippet": it.get("Art_Summary") or it.get("summary") or "",
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.debug("EastMoney 个股新闻 %s 失败: %s", symbol, e)
+    return out
+
+
+def fetch_cninfo_market_announcements(top_n: int = 10) -> List[Dict[str, Any]]:
+    """
+    巨潮资讯网（交易所官方）全市场最新公告 —— A 股最权威的公告源。
+
+    重要说明：cninfo 公开接口（hisAnnouncement/query）对「按个股过滤」不稳定——
+    传入 stockCode/orgId 仍返回全市场最新公告（已实测：totalAnnouncement≈47 万，
+    返回条目为其他股票，且 orgId 查询接口目前 404）。因此本函数直接以「全市场公告
+    快讯」形态使用，这正是该接口最可靠、最有价值的输出，与东方财富「个股快讯」互补：
+       · 个股深度页 → 用 fetch_eastmoney_stock_news（按股精准）
+       · 大盘/新闻中心 → 用本函数（官方全市场公告，权威且稳定）
+    """
+    out: List[Dict[str, Any]] = []
+    try:
+        url = "https://www.cninfo.com.cn/new/hisAnnouncement/query"
+        payload = {"pageNum": 1, "pageSize": top_n, "tabName": "latest"}
+        data = _safe_post_json(url, payload)
+        if not data:
+            return out
+        for a in (data.get("announcements") or [])[:top_n]:
+            title = a.get("announcementTitle") or ""
+            if not title:
+                continue
+            sec_name = a.get("secName") or ""
+            aid = a.get("announcementId") or ""
+            out.append({
+                "title": (f"{sec_name}：" if sec_name else "") + title,
+                "link": f"https://www.cninfo.com.cn/new/disclosure/detail?announcementId={aid}" if aid else "",
+                "source": "巨潮资讯网(官方)",
+                "date": _cninfo_ts(a.get("announcementTime")),
                 "snippet": "",
             })
     except Exception as e:  # noqa: BLE001
-        logger.debug("EastMoney %s 失败: %s", symbol, e)
+        logger.debug("cninfo 全市场公告失败: %s", e)
     return out
+
+
+def _cninfo_ts(ms) -> str:
+    """巨潮公告时间戳（毫秒）转 'YYYY-MM-DD'。"""
+    try:
+        return datetime.fromtimestamp(int(ms) / 1000).strftime("%Y-%m-%d")
+    except (TypeError, ValueError):
+        return ""
+
+
+def _safe_post_json(url: str, payload: Dict[str, Any], headers: Optional[Dict[str, str]] = None, timeout: int = 10) -> Optional[Dict]:
+    """POST 并解析 JSON（与 _safe_get_json 对称）。"""
+    try:
+        h = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.cninfo.com.cn/", "Content-Type": "application/x-www-form-urlencoded"}
+        if headers:
+            h.update(headers)
+        resp = requests.post(url, data=payload, headers=h, timeout=timeout)
+        return resp.json()
+    except Exception as e:  # noqa: BLE001
+        logger.debug("POST %s 失败: %s", url, e)
+        return None
 
 
 def fetch_eastmoney_global_news(top_n: int = 15) -> List[Dict[str, Any]]:
@@ -2066,6 +2151,10 @@ def fetch_all_news_multi_source(
       3. Yahoo RSS（始终可用，免费）
       4. Stocktwits（始终可用，免费）
       5. EastMoney（始终可用，免费）
+      6. 同花顺/雪球 快讯（A 股/中文宏观，无 key）
+      7. 巨潮资讯 全市场公告（A 股官方公告，无 key，大盘页）
+    A 股个股新闻：东方财富「个股快讯」按股精确过滤（已验证可用）；巨潮按股过滤接口不稳定，
+    故巨潮仅作为「全市场公告」在大盘/新闻中心提供。
     每个 source 失败不影响其他。
     """
     payload: Dict[str, Any] = {
@@ -2155,6 +2244,16 @@ def fetch_all_news_multi_source(
     except Exception as e:  # noqa: BLE001
         payload["errors"].append(f"雪球: {e}")
 
+    # 4.7) 巨潮资讯全市场公告（A 股官方公告，无 key，稳定可用）
+    try:
+        cn = fetch_cninfo_market_announcements(top_n=8)
+        if cn:
+            payload["macro"].extend(cn)
+            payload["sources_used"].append("巨潮资讯网(官方公告)")
+            has_any = True
+    except Exception as e:  # noqa: BLE001
+        payload["errors"].append(f"巨潮: {e}")
+
     # 5) 个股新闻
     # A 股个股补充：同花顺/雪球全局快讯（循环外预取一次，避免重复请求）
     _a_share_extra: List[Dict[str, Any]] = []
@@ -2193,12 +2292,12 @@ def fetch_all_news_multi_source(
                 per_sym.extend(fetch_stocktwits(sym))
             except Exception as e:  # noqa: BLE001
                 pass
-        # 东方财富 + 同花顺 + 雪球（A 股）
+        # 东方财富（A 股个股精准快讯，已验证可用）
         if is_cn:
             try:
                 per_sym.extend(fetch_eastmoney_stock_news(sym))
             except Exception as e:  # noqa: BLE001
-                pass
+                payload["errors"].append(f"EastMoney {sym}: {e}")
             if _a_share_extra:
                 per_sym.extend(_a_share_extra)
         payload["stocks"][sym] = _dedup_news(per_sym)[:8]
@@ -2905,6 +3004,53 @@ def compute_macro_risk_radar():
     return out
 
 
+def macro_risk_narrative(radar: Dict[str, Any]) -> str:
+    """
+    结合宏观风险雷达，生成一段中文文字总结，说明各维度数据反映的问题与趋势。
+    纯基于雷达已有的 metrics / signal / note，不引入外部假设。
+    """
+    if not radar:
+        return "宏观数据暂不可用，无法生成总结。"
+    parts = []
+    overall = radar.get("overall", {})
+    sig = overall.get("signal", "yellow")
+    label = {"green": "偏宽松/扩张", "yellow": "信号混合、谨慎观望", "red": "偏紧缩/衰退"}.get(sig, "—")
+    parts.append(
+        f"【总体】当前宏观综合灯号为「{ {'green':'🟢 正常','yellow':'🟡 关注','red':'🔴 警戒'}.get(sig,'—') }」——{overall.get('note','')}（{label}）。"
+    )
+
+    # 逐维度解读
+    def _dim(key, name, good, bad):
+        g = radar.get(key, {})
+        if not g:
+            return
+        s = g.get("signal", "yellow")
+        note = g.get("note", "")
+        m = g.get("metrics", {}) or {}
+        mtxt = "，".join(f"{k} {v}" for k, v in m.items() if v not in (None, "")) if m else ""
+        verdict = good if s == "green" else (bad if s == "red" else "需留意边际变化")
+        line = f"【{name}】{note}（{verdict}）"
+        if mtxt:
+            line += f" 当前读数：{mtxt}。"
+        parts.append(line)
+
+    _dim("regime", "周期", "周期处于扩张期，股债风险偏好健康", "周期出现衰退/紧缩共振，应压低仓位与久期")
+    _dim("risk", "恐慌/波动", "波动率处于低位，风险偏好稳定，可适度积极", "VIX/VXN 突破警戒，市场进入恐慌定价，需防守")
+    _dim("rates", "利率曲线", "利率曲线正常、利差健康，估值环境友好", "2s10s 倒挂或利差扁平，衰退/周期顶部信号显现")
+    _dim("ratios", "金银/铜金比", "比值处于常态区间", "金银比/铜金比异常，反映避险或工业需求背离")
+    _dim("cross_asset", "跨资产", "BTC/原油风险偏好代理处于常态", "跨资产联动发出风险偏好转折信号")
+    _dim("a_share", "A股", "A股资金面平稳/北向净流入，结构偏多", "A股资金面承压/北向净流出，需降低风险暴露")
+
+    # 勾稽建议
+    if sig == "red":
+        parts.append("【勾稽结论】宏观底色偏紧，个股估值与风险偏好承压；应优先控制总仓位，等待雷达转绿再放大暴露。")
+    elif sig == "green":
+        parts.append("【勾稽结论】宏观环境友好，可顺势放大权益暴露，但需结合个股维科夫结构与 R 倍数纪律分批介入。")
+    else:
+        parts.append("【勾稽结论】宏观信号分化，建议中性仓位、结构择优；以个股自身吸筹结构与止盈纪律对冲宏观不确定性。")
+    return "\n".join(parts)
+
+
 # ---- ZhuLinsen YAML 加载 + 拼接到 Morning Brief ----
 
 def ensure_zhu_linsen_repo(repo_dir="vendor/daily_stock_analysis"):
@@ -3242,3 +3388,407 @@ def recommend_stocks(metrics) -> Dict[str, Any]:
         "strategy_meta": {"threshold": 60, "med_pe": round(med_pe, 1), "med_ret20": round(med_ret20, 2),
                           "weights": {"tech": 0.35, "val": 0.20, "mom": 0.20, "rs": 0.25}},
     }
+
+
+# ---------------------------------------------------------------------------
+# 17. 明日观察位（规则引擎 + LLM 研判）
+# ---------------------------------------------------------------------------
+
+def _tw_rsi(close: pd.Series, period: int = 14) -> pd.Series:
+    """RSI(period)（Wilder 平滑），用于明日观察位风险维度。"""
+    delta = close.diff()
+    gain = delta.clip(lower=0.0)
+    loss = (-delta).clip(lower=0.0)
+    avg_gain = gain.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean()
+    avg_loss = loss.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean()
+    rs = avg_gain / avg_loss.replace(0, 1e-12)
+    return 100 - 100 / (1 + rs)
+
+
+def _tw_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """ATR(period)（真实波幅均值）。"""
+    h, l, c = df["high"], df["low"], df["close"]
+    prev_c = c.shift(1)
+    tr = pd.concat([(h - l).abs(), (h - prev_c).abs(), (l - prev_c).abs()], axis=1).max(axis=1)
+    return tr.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean()
+
+
+def _tw_macd_hist(close: pd.Series) -> pd.Series:
+    """MACD 柱状值（默认 12/26/9）。"""
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+    dif = ema12 - ema26
+    dea = dif.ewm(span=9, adjust=False).mean()
+    return (dif - dea) * 2
+
+
+def _tw_ma(close: pd.Series, n: int) -> pd.Series:
+    return close.rolling(n, min_periods=1).mean()
+
+
+def _tw_evidence(text: str) -> str:
+    return text.strip()
+
+
+def compute_tomorrow_watch(
+    symbol: str,
+    df: Optional[pd.DataFrame] = None,
+    capital_flow: Optional[Dict[str, Any]] = None,
+    *,
+    support_lookback: int = 20,
+    breakout_vol_mult: float = 1.5,
+    oversold_rsi: float = 30.0,
+    overbought_rsi: float = 70.0,
+    risk_vol_pct: float = 5.0,
+) -> Dict[str, Any]:
+    """
+    「明日观察位」规则引擎：基于近 N 日 K 线 + 资金流（可选）生成 4 维研判。
+
+    输入：
+      - symbol:  yfinance 代码（"600519.SS" / "AAPL" / "0700.HK"）
+      - df:      DataFrame(columns=[date,open,high,low,close,volume])，缺省时自动从
+                 fetch_history_fixed() 取最近 60 个交易日
+      - capital_flow: dict（东财主力资金），可选；keys 推荐 main_net_inflow, main_5d_sum, main_20d_sum（单位：元）
+
+    输出 dict 结构：
+      {
+        "ok": True/False,                     # 数据是否足够
+        "reason": "..." (失败原因),
+        "support":   {state, status, value, evidence, score},
+        "breakout":  {state, status, value, evidence, score},
+        "capital":   {state, status, value, evidence, score},
+        "risk":      {state, status, value, evidence, score},
+        "overall":   {action, status, score, summary},  # 整体结论
+        "raw":       {current_price, ma5/20, rsi, atr, vol_ratio, main_net_inflow, ...},
+      }
+
+    状态语义：
+      - state  (中文): 守/观察/突破/放量/流入/中性/警示 等
+      - status (色码): "ok" | "caution" | "danger" | "neutral"
+      - score        : 0-100 信心分（用于综合排序/UI 强度条）
+    """
+    if df is None:
+        # Fallback 1: yfinance 直接拉（最稳定，含 OHLCV）
+        df = _safe_yf_ohlcv(symbol, days=120)
+        # Fallback 2: 尝试 utils.fetch_history_fixed（返回 Series），仅收价 → 用日线 close + 内部 NaN
+        if (df is None or len(df) < 20):
+            try:
+                hist = fetch_history_fixed(period="6mo")  # {ticker: Series(close)}
+                ser = hist.get(symbol)
+                if ser is not None and len(ser) >= 20:
+                    s = ser.tail(60).reset_index()
+                    s.columns = ["date", "close"]
+                    df = s.assign(open=s["close"], high=s["close"], low=s["close"], volume=0)
+            except Exception:  # noqa: BLE001
+                pass
+        if df is None or len(df) < 20:
+            return {"ok": False, "reason": f"无 {symbol} 历史数据（yfinance/兜底源均不可用）", "overall": {
+                "action": "观察", "status": "neutral", "score": 50, "summary": "数据不足，建议先观察。"
+            }}
+
+    if df is None or len(df) < 20 or "close" not in df.columns:
+        return {"ok": False, "reason": "K 线行数不足（需 ≥20）", "overall": {
+            "action": "观察", "status": "neutral", "score": 50, "summary": "样本不足，建议先观察。"
+        }}
+
+    df = df.tail(max(support_lookback + 10, 60)).reset_index(drop=True)
+    close = df["close"]
+    high = df["high"]
+    low = df["low"]
+    vol = df["volume"]
+    cur = float(close.iloc[-1])
+    prev = float(close.iloc[-2]) if len(close) >= 2 else cur
+    chg_pct = (cur / prev - 1.0) * 100 if prev > 0 else 0.0
+
+    ma5 = float(_tw_ma(close, 5).iloc[-1])
+    ma20 = float(_tw_ma(close, 20).iloc[-1])
+    rsi = float(_tw_rsi(close, 14).iloc[-1])
+    atr = float(_tw_atr(df, 14).iloc[-1])
+    atr_pct = (atr / cur * 100) if cur > 0 else 0.0
+    macd_hist = float(_tw_macd_hist(close).iloc[-1])
+
+    vol_today = float(vol.iloc[-1])
+    vol_avg5 = float(vol.tail(5).mean())
+    vol_avg20 = float(vol.tail(20).mean())
+    vol_ratio5 = vol_today / vol_avg5 if vol_avg5 > 0 else 1.0
+    vol_ratio20 = vol_today / vol_avg20 if vol_avg20 > 0 else 1.0
+
+    # --- 1. 支撑观察 ---
+    support_window = low.tail(support_lookback)
+    support_level = float(support_window.min())
+    dist_to_support = (cur - support_level) / support_level * 100 if support_level > 0 else 0
+    if dist_to_support <= 1.5 and chg_pct <= 0:
+        sup_state, sup_status, sup_score = "已破支撑", "danger", 25
+        sup_ev = _tw_evidence(f"近 {support_lookback} 日低点 {support_level:.2f}，现价 {cur:.2f} 距支撑仅 {dist_to_support:.1f}%，且当日收跌 — 支撑已破。")
+    elif dist_to_support <= 5:
+        sup_state, sup_status, sup_score = "贴近支撑", "caution", 50
+        sup_ev = _tw_evidence(f"近 {support_lookback} 日低点 {support_level:.2f}，现价 {cur:.2f} 距支撑 {dist_to_support:.1f}%，明日重点观察能否守稳。")
+    elif chg_pct <= -2 and cur < ma5 < ma20:
+        sup_state, sup_status, sup_score = "均线压制", "caution", 45
+        sup_ev = _tw_evidence(f"现价 {cur:.2f} 跌破 MA5 ({ma5:.2f}) 且 MA5 低于 MA20 ({ma20:.2f})，短线结构转弱。")
+    else:
+        sup_state, sup_status, sup_score = "支撑稳固", "ok", 80
+        sup_ev = _tw_evidence(f"近 {support_lookback} 日低点 {support_level:.2f}，现价 {cur:.2f} 高出 {dist_to_support:.1f}%，支撑稳固。")
+
+    # --- 2. 放量信号（突破 vs 下跌）---
+    high_vol = vol_ratio5 >= breakout_vol_mult
+    big_up = chg_pct >= 1.5
+    big_down = chg_pct <= -1.5
+    if high_vol and big_up:
+        br_state, br_status, br_score = "放量突破", "ok", 85
+        br_ev = _tw_evidence(f"量比 {vol_ratio5:.2f}x（5 日均量）且当日 +{chg_pct:.1f}%，放量突破信号明确。")
+    elif high_vol and big_down:
+        br_state, br_status, br_score = "放量下跌", "danger", 20
+        br_ev = _tw_evidence(f"量比 {vol_ratio5:.2f}x 且当日 {chg_pct:.1f}%，放量下跌 — 主力出货概率大。")
+    elif high_vol:
+        br_state, br_status, br_score = "放量震荡", "caution", 50
+        br_ev = _tw_evidence(f"量比 {vol_ratio5:.2f}x 但当日仅 {chg_pct:+.1f}%，多空分歧、方向待定。")
+    elif big_up:
+        br_state, br_status, br_score = "缩量上行", "caution", 55
+        br_ev = _tw_evidence(f"当日 +{chg_pct:.1f}% 但量比仅 {vol_ratio5:.2f}x，缩量上行需补量确认。")
+    elif big_down:
+        br_state, br_status, br_score = "缩量下跌", "ok", 60
+        br_ev = _tw_evidence(f"当日 {chg_pct:.1f}% 但量比 {vol_ratio5:.2f}x，缩量下跌 — 抛压有限。")
+    else:
+        br_state, br_status, br_score = "缩量整理", "neutral", 50
+        br_ev = _tw_evidence(f"量比 {vol_ratio5:.2f}x，当日 {chg_pct:+.1f}%，进入缩量整理阶段。")
+
+    # --- 3. 主力资金 ---
+    if capital_flow:
+        main_today = float(capital_flow.get("main_net_inflow") or 0)
+        main_5d = float(capital_flow.get("main_5d_sum") or 0)
+        main_20d = float(capital_flow.get("main_20d_sum") or 0)
+        # 阈值：>0 流入；<0 流出；累计 5 日 < 0 且当日 < 0 → 警示
+        if main_today > 0 and main_5d > 0:
+            cf_state, cf_status, cf_score = "持续流入", "ok", 80
+            cf_ev = _tw_evidence(f"主力今日净流入 {main_today/1e4:.0f} 万，5 日累计 {main_5d/1e4:.0f} 万。")
+        elif main_today > 0 and main_5d < 0:
+            cf_state, cf_status, cf_score = "短期回流", "caution", 55
+            cf_ev = _tw_evidence(f"主力今日净流入 {main_today/1e4:.0f} 万，但 5 日累计仍为 {main_5d/1e4:.0f} 万。")
+        elif main_today < 0 and main_5d < 0:
+            cf_state, cf_status, cf_score = "持续流出", "danger", 25
+            cf_ev = _tw_evidence(f"主力今日净流出 {-main_today/1e4:.0f} 万，5 日累计 {-main_5d/1e4:.0f} 万 — 主力离场信号。")
+        else:
+            cf_state, cf_status, cf_score = "资金中性", "neutral", 50
+            cf_ev = _tw_evidence(f"主力今日 {main_today/1e4:+.0f} 万，5 日累计 {main_5d/1e4:+.0f} 万，整体中性。")
+        cf_value = {"today_wan": round(main_today/1e4, 1), "5d_wan": round(main_5d/1e4, 1),
+                    "20d_wan": round(main_20d/1e4, 1)}
+    else:
+        cf_state, cf_status, cf_score = "资金未知", "neutral", 50
+        cf_ev = _tw_evidence("暂无主力资金数据（未配置东财资金流接口），明日重点用其他三维度交叉验证。")
+        cf_value = None
+
+    # --- 4. 风险预警（综合 RSI / MACD / 波动率）---
+    risk_notes: List[str] = []
+    risk_danger = 0
+    if rsi >= overbought_rsi:
+        risk_danger += 1
+        risk_notes.append(f"RSI {rsi:.0f} ≥ {overbought_rsi:.0f}，超买")
+    elif rsi <= oversold_rsi:
+        risk_notes.append(f"RSI {rsi:.0f} ≤ {oversold_rsi:.0f}，超卖（机会型）")
+    if atr_pct >= risk_vol_pct:
+        risk_danger += 1
+        risk_notes.append(f"ATR/现价 {atr_pct:.1f}% ≥ {risk_vol_pct:.0f}%，高波动")
+    if macd_hist < 0 and chg_pct < 0:
+        risk_danger += 1
+        risk_notes.append("MACD 柱状为负且当日收跌，动能向下")
+    if cur > ma20 * 1.08:
+        risk_danger += 1
+        risk_notes.append(f"现价较 MA20 偏离 +{(cur/ma20-1)*100:.1f}%，过热")
+    if risk_danger >= 2:
+        rk_state, rk_status, rk_score = "风险偏高", "danger", 25
+    elif risk_danger == 1:
+        rk_state, rk_status, rk_score = "风险中性", "caution", 55
+    else:
+        rk_state, rk_status, rk_score = "风险可控", "ok", 80
+    rk_ev = _tw_evidence("；".join(risk_notes) if risk_notes else "RSI / MACD / 波动率均在合理区间。")
+
+    # --- 整体结论（按风险优先规则）---
+    # 规则：风险预警 danger → 减仓；否则资金流 danger → 减仓；
+    # 否则支撑 danger 或放量下跌 → 减仓/观察；否则全 ok → 持有；其他观察
+    if rk_status == "danger":
+        action, ov_status, ov_score = "减仓", "danger", 25
+        ov_summary = f"风险预警维度评为「{rk_state}」({rk_ev}) — 优先降低风险暴露，谨防次日继续放量下跌。"
+    elif cf_status == "danger":
+        action, ov_status, ov_score = "减仓", "danger", 30
+        ov_summary = f"主力资金持续流出（{cf_ev}），建议降低仓位以对冲主力离场风险。"
+    elif br_status == "danger" or sup_status == "danger":
+        action, ov_status, ov_score = "减仓/观望", "danger", 30
+        if br_status == "danger":
+            ov_summary = f"放量下跌信号 — {br_ev} 建议先减仓观察。"
+        else:
+            ov_summary = f"支撑位已破 — {sup_ev} 建议减仓等待企稳。"
+    elif sup_status == "caution" or br_status == "caution" or cf_status == "caution":
+        action, ov_status, ov_score = "观察", "caution", 50
+        cautions = []
+        if sup_status == "caution": cautions.append(f"支撑 {sup_state}")
+        if br_status == "caution": cautions.append(f"量价 {br_state}")
+        if cf_status == "caution": cautions.append(f"资金 {cf_state}")
+        ov_summary = f"次要点位「{'; '.join(cautions)}」，建议明日盘中确认分时强度再决定加减仓。"
+    else:
+        action, ov_status, ov_score = "持有", "ok", 80
+        ov_summary = f"四维度均为正向（{sup_state} / {br_state} / {cf_state} / {rk_state}），可继续持有，关注 MA5 ({ma5:.2f}) 守稳。"
+
+    return {
+        "ok": True,
+        "symbol": symbol,
+        "support":  {"state": sup_state, "status": sup_status, "score": sup_score, "value": round(support_level, 4),
+                    "evidence": sup_ev, "distance_pct": round(dist_to_support, 2)},
+        "breakout": {"state": br_state, "status": br_status, "score": br_score,
+                    "value": round(vol_ratio5, 2), "evidence": br_ev,
+                    "vol_ratio5": round(vol_ratio5, 2), "vol_ratio20": round(vol_ratio20, 2)},
+        "capital":  {"state": cf_state, "status": cf_status, "score": cf_score, "value": cf_value,
+                    "evidence": cf_ev, "has_data": bool(capital_flow)},
+        "risk":     {"state": rk_state, "status": rk_status, "score": rk_score, "value": round(atr_pct, 2),
+                    "evidence": rk_ev, "rsi": round(rsi, 1), "atr_pct": round(atr_pct, 2),
+                    "macd_hist": round(macd_hist, 4)},
+        "overall":  {"action": action, "status": ov_status, "score": ov_score, "summary": ov_summary},
+        "raw": {
+            "current_price": round(cur, 4),
+            "prev_close": round(prev, 4),
+            "chg_pct": round(chg_pct, 2),
+            "ma5": round(ma5, 4),
+            "ma20": round(ma20, 4),
+            "rsi": round(rsi, 1),
+            "atr": round(atr, 4),
+            "atr_pct": round(atr_pct, 2),
+            "macd_hist": round(macd_hist, 4),
+            "vol_today": int(vol_today),
+            "vol_avg5": int(vol_avg5),
+            "vol_avg20": int(vol_avg20),
+            "vol_ratio5": round(vol_ratio5, 2),
+            "vol_ratio20": round(vol_ratio20, 2),
+            "support_level": round(support_level, 4),
+        },
+    }
+
+
+def _safe_yf_ohlcv(symbol: str, days: int = 120) -> Optional[pd.DataFrame]:
+    """
+    轻量级 yfinance OHLCV 拉取（仅在 compute_tomorrow_watch 内部 fallback 使用），
+    不引入新依赖（yfinance 已在 utils.py 中使用）。失败返回 None。
+    """
+    try:
+        import yfinance as yf
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period=f"{max(60, days)}d", auto_adjust=False)
+        if df is None or df.empty:
+            return None
+        df = df.reset_index()
+        # 统一列名
+        rename = {"Date": "date", "Datetime": "date", "index": "date",
+                  "Open": "open", "High": "high", "Low": "low", "Close": "close",
+                  "Volume": "volume"}
+        df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
+        keep = [c for c in ("date", "open", "high", "low", "close", "volume") if c in df.columns]
+        return df[keep].copy() if keep else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def narrate_tomorrow_watch(
+    watch: Dict[str, Any],
+    *,
+    prefer: str = "deepseek",
+    max_tokens: int = 350,
+) -> Optional[str]:
+    """
+    LLM 自然语言研判：基于 compute_tomorrow_watch 结构化输出生成 150-250 字研判。
+    无 LLM Key / 失败时返回 None —— 调用方应回退到 watch["overall"]["summary"]。
+    """
+    if not watch or not watch.get("ok"):
+        return None
+    raw = watch.get("raw", {})
+    parts = [
+        f"标的：{watch.get('symbol', '')}",
+        f"现价：{raw.get('current_price')}（日 {raw.get('chg_pct', 0):+.2f}%）",
+        f"MA5 / MA20：{raw.get('ma5')} / {raw.get('ma20')}",
+        f"量比（5d / 20d）：{raw.get('vol_ratio5')} / {raw.get('vol_ratio20')}",
+        f"RSI(14)：{raw.get('rsi')} | ATR%：{raw.get('atr_pct')}% | MACD 柱：{raw.get('macd_hist')}",
+        f"近期支撑：{raw.get('support_level')}",
+        "",
+        "四维度结论：",
+        f"· 支撑观察：{watch['support']['state']}（{watch['support']['evidence']}）",
+        f"· 放量信号：{watch['breakout']['state']}（{watch['breakout']['evidence']}）",
+        f"· 主力资金：{watch['capital']['state']}（{watch['capital']['evidence']}）",
+        f"· 风险预警：{watch['risk']['state']}（{watch['risk']['evidence']}）",
+        "",
+        f"整体规则结论：{watch['overall']['action']} — {watch['overall']['summary']}",
+    ]
+    user = "\n".join(parts)
+    system = (
+        "你是专业 A 股 / 港股 / 美股 量化分析师。"
+        "基于给出的结构化数据，输出一段 150-250 字的次日观察研判中文文本。"
+        "要求：(1) 明确给出操作倾向（持有/观察/减仓）和触发条件；"
+        "(2) 重点关注「放量下跌时优先提示降低风险暴露」；"
+        "(3) 不要重复结构化字段原文；"
+        "(4) 末尾加「非投资建议」四字。"
+    )
+    try:
+        return _call_llm(
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.55,
+            max_tokens=max_tokens,
+            prefer=prefer,
+        )
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def fetch_capital_flow_eastmoney(symbol: str) -> Optional[Dict[str, Any]]:
+    """
+    东方财富个股主力资金流（best-effort，无 Key）。返回 dict 或 None。
+    失败原因：接口反爬、限流、字段变动等；调用方应容错为 None 并降级。
+    """
+    if not symbol or not symbol.endswith((".SS", ".SZ")):
+        return None
+    try:
+        mkt = "1" if symbol.endswith(".SS") else "0"
+        code = symbol.replace(".SS", "").replace(".SZ", "")
+        secid = f"{mkt}.{code}"
+        url = "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get"
+        params = {"secid": secid, "fields1": "f1,f2,f3,f4", "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65",
+                  "klt": 101, "lmt": 30, "fqt": 0, "secid": secid}
+        data = _safe_get_json(url, params=params, timeout=8)
+        if not data:
+            return None
+        klines = (data.get("data") or {}).get("klines") or []
+        if not klines:
+            return None
+        # 字段：日期,主力净流入(元),小单,中单,大单,特大单,主力净流入占比
+        # 实际不同接口顺序略有不同，下面做最宽松解析
+        rows: List[List[str]] = []
+        for line in klines:
+            parts = line.split(",")
+            if len(parts) >= 3:
+                rows.append(parts)
+        if not rows:
+            return None
+        # 取最近一日 + 累计
+        last = rows[-1]
+        main_today = 0.0
+        try:
+            # 尝试解析主力净流入：通常在索引 1
+            main_today = float(last[1]) if len(last) >= 2 else 0.0
+        except (ValueError, IndexError):
+            main_today = 0.0
+        main_5d = 0.0
+        main_20d = 0.0
+        for i, r in enumerate(rows):
+            try:
+                v = float(r[1]) if len(r) >= 2 else 0.0
+            except (ValueError, IndexError):
+                v = 0.0
+            if i >= len(rows) - 5:
+                main_5d += v
+            if i >= len(rows) - 20:
+                main_20d += v
+        return {
+            "main_net_inflow": main_today,
+            "main_5d_sum": main_5d,
+            "main_20d_sum": main_20d,
+            "source": "东方财富",
+            "rows_n": len(rows),
+        }
+    except Exception:  # noqa: BLE001
+        return None

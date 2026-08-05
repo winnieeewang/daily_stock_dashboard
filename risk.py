@@ -146,12 +146,14 @@ def r_multiple_plan(
             },
             {
                 "stage": "剩余1/3",
-                "price": None,
-                "price_pct": None,
-                "action": "移动止损追踪，趋势破位（跌破 MA20 或 +2R 回撤 1R）时清仓",
+                "price": round(bp + r, 4),  # 移动止损触发位 = +1R 价位（锁定已兑现 +1R 利润，回撤至此即清仓）
+                "price_pct": round((bp + r) / bp * 100 - 100, 2),
+                "action": f"移动止损追踪，回撤至 +1R 价位（{round(bp + r, 4)}）或跌破 MA20 时清仓剩余 1/3",
             },
         ],
     }
+    # 移动止损的具体触发价（与第三批共用的清晰价位点）
+    plan["trail_trigger_price"] = round(bp + r, 4)
     cp = _num(current_price)
     if cp is not None:
         pnl_r = (cp - bp) / r

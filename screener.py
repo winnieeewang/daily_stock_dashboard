@@ -200,6 +200,71 @@ def detect_wyckoff_events(df: pd.DataFrame) -> Dict[str, Any]:
     return base
 
 
+def explain_wyckoff(w: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    把维科夫检测结果翻译成「人话」解释（需求6：内嵌 AI 分析指引）。
+    纯基于 detect_wyckoff_events 的结构化输出，不编造价格/消息。
+    返回：
+      {
+        "confidence_meaning": str,   # 置信度数字代表什么
+        "sequence_meaning": str,     # 事件序列的语义解释
+        "stage_meaning": str,        # 当前阶段含义
+        "guidance": str,             # 结合智能荐股/多因子的操作指引
+      }
+    """
+    if not w or not w.get("ok"):
+        return {
+            "confidence_meaning": "样本不足，无法判定吸筹结构。",
+            "sequence_meaning": "—",
+            "stage_meaning": "—",
+            "guidance": "需至少 120 根日K 才能进入第一层扫描；建议先补充历史数据。",
+        }
+    conf = w.get("confidence", 0)
+    found = [e["event"] for e in w.get("events", [])]
+    # 置信度含义
+    if conf >= 0.71:
+        cm = f"置信度 {conf:.0%}（{len(found)}/7 事件确认）——属于高置信吸筹结构，量价已经走完大部分经典序列。"
+    elif conf >= 0.43:
+        cm = f"置信度 {conf:.0%}（{len(found)}/7 事件确认）——中置信，已出现核心事件但尚未闭环，需后续事件确认。"
+    elif conf >= 0.14:
+        cm = f"置信度 {conf:.0%}（{len(found)}/7 事件）——仅弱迹象，趋势尚未扭转，仅作观察。"
+    else:
+        cm = f"置信度 {conf:.0%}（{len(found)}/7 事件）——未形成吸筹结构，当前更多是 {w.get('phase','未知')} 状态。"
+
+    # 事件序列语义
+    seq = " → ".join(found) if found else "（无事件）"
+    seq_meaning = (
+        f"已识别事件序列：{seq}。\n"
+        "语义：下跌末端先有【初步支撑 PS】，恐慌抛售形成【卖出高潮 SC】，"
+        "随后【自动反弹 AR】与【二次测试 ST】确认底部区间；若出现【弹簧 Spring】（假跌破后收回）"
+        "往往是最佳陷阱破位，接着【强势信号 SOS】放量突破、回踩【最后支撑点 LPS】不破，"
+        "吸筹即告完成、进入拉升。事件越靠后、越完整，确定性越高。"
+    )
+
+    # 阶段含义
+    stage_meaning = (
+        f"当前阶段：{w.get('stage','—')}；趋势阶段：{w.get('phase','—')}。"
+        "春/弹簧(Spring)与强势信号(SOS)是两条关键确认线——"
+        "没有 Spring 的突破易假，没有 SOS 的吸筹未闭环。"
+    )
+
+    # 结合智能荐股/多因子的指引
+    guidance = (
+        "【结合智能荐股的操作指引】\n"
+        "① 本扫描为选股三层架构第一层（纯量价结构），只回答『是否在吸筹』，不回答『值不值得买』。\n"
+        "② 高置信(≥71%)且处于 SOS/LPS 阶段：进入第二层多因子评分（POC/量能/板块联动/龙头/相对强度），"
+        "综合分 ≥60 才视为技术面共振；再用 recommend_stocks 的 PE 行业归一化与买入价位做估值校验。\n"
+        "③ 中/低置信：仅作自选观察，不急于介入；等待 Spring→SOS 闭环再加第二层过滤。\n"
+        "④ 任何介入都须套用 R 倍数分批止盈（见个股深度分析·交易策略），避免一次性追高卖飞。"
+    )
+    return {
+        "confidence_meaning": cm,
+        "sequence_meaning": seq_meaning,
+        "stage_meaning": stage_meaning,
+        "guidance": guidance,
+    }
+
+
 # ---------------------------------------------------------------------------
 # 第二层：多因子评分
 # ---------------------------------------------------------------------------

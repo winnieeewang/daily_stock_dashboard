@@ -1,0 +1,40 @@
+feat(v3.2): 接入同花顺 Financial-API + 明日观察位规则引擎 + DSA 暗色玻璃 UI
+
+## 1. utils_ths.py (新增) — 同花顺 Financial-API 适配层
+- 仅接行情只读（实时快照 / 历史K线 / 估值 / 公司行动），不接交易（仓库本身不提供）
+- 零破坏：未设 HITHINK_FINANCE_API_KEY 时所有函数返回空，ths_available=False
+- 兼容 yfinance 符号格式：yf_to_ths('600519.SS') = '600519.SH'
+- 进程级 1s 限流 + 网络/限流错误指数退避
+- 诊断接口 ths_status() 返回 key 状态（脱敏）
+
+## 2. utils.py (新增 3 函数)
+- compute_tomorrow_watch(symbol, df=None, capital_flow=None) — 4 维度规则引擎：
+    1) 支撑观察（近 20 日低点距离 + MA5/MA20 压制）
+    2) 放量信号（量比5d/20d + 涨跌，区分放量突破/放量下跌/缩量整理）
+    3) 主力资金（流入/流出/中性/未知，best-effort 东财接口）
+    4) 风险预警（RSI 超买超卖 + ATR% + MACD 柱 + MA20 偏离）
+  优先级：风险>资金>量价/支撑；放量下跌路径强制提示降低风险暴露（满足用户要求）
+  K线 fallback：utils._safe_yf_ohlcv → fetch_history_fixed
+- narrate_tomorrow_watch(watch) — DeepSeek/OpenRouter 自然语言研判，无 Key 时返回 None
+- fetch_capital_flow_eastmoney(symbol) — 东财主力资金（best-effort，A 股专属）
+
+## 3. app.py (DSA 暗色玻璃主题 + 明日观察位渲染)
+- GLOBAL_CSS 新增 .dsa-glass / .tw-pill / .tw-tile / .tw-overall / .tw-bar 样式族
+  （深色 backdrop-blur 玻璃态、青色 #67e8f9 强调、三色状态 ok/caution/danger）
+- 新增 _render_tomorrow_watch(symbol) 与 _tw_pill(status) 辅助
+- 在 page_stock_deepdive 的 R 倍数止盈后、杠杆强平前注入明日观察位模块
+  - 顶部整体策略卡（操作倾向 + 评分 + 数字摘要 + 中文 summary）
+  - 2x2 网格：支撑观察 / 放量信号 / 主力资金 / 风险预警
+  - 🤖 生成 AI 研判 按钮 → DeepSeek/OpenRouter → 渲染
+  - 🗑️ 清空 按钮 + 无 Key 时降级 summary
+
+## 4. .gitignore
+- 新增 _ths_repo/（本地克隆的同花顺仓库参考用，体积大不入库）
+
+## 验证
+- py_compile 全部通过
+- 4 个真实标的（600519.SS / 000001.SZ / AAPL / 0700.HK）compute_tomorrow_watch 端到端
+  返回合理（基于 yfinance fallback）
+- 干净放量下跌场景验证：breakout=放量下跌(danger) → 整体减仓/观望(danger)
+- 主力资金持续流出场景验证：capital=持续流出(danger) → 整体减仓(danger)
+- 未设 HITHINK_FINANCE_API_KEY 时 utils_ths 全部函数返回空，不破坏现有功能
