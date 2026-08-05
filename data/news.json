@@ -1,48 +1,2298 @@
 {
-  "macro": [],
-  "policy": [],
+  "macro": [
+    {
+      "title": "Leonardo DiCaprio and Jeff Bezos lead $200M project to save 100 of globe's most threatened species",
+      "link": "https://www.yahoo.com/news/science/articles/leonardo-dicaprio-jeff-bezos-lead-100028696.html",
+      "source": "Yahoo Finance",
+      "date": "2026-08-04T10:00:28Z",
+      "snippet": ""
+    },
+    {
+      "title": "Air Force says two advanced stealthy aircraft are ahead of schedule, with first delivery set for 2027",
+      "link": "https://www.yahoo.com/news/us/articles/air-force-says-two-advanced-212040276.html",
+      "source": "Yahoo Finance",
+      "date": "2026-08-04T21:20:40Z",
+      "snippet": ""
+    },
+    {
+      "title": "Man gets third-degree burns from hot sand after using disposable beach BBQ",
+      "link": "https://www.yahoo.com/news/us/articles/man-gets-third-degree-burns-121702301.html",
+      "source": "Yahoo Finance",
+      "date": "2026-08-05T12:17:02Z",
+      "snippet": ""
+    },
+    {
+      "title": "Trump vowed to 'bring free speech back.' Judges in 75 cases ruled that he has stifled it",
+      "link": "https://www.yahoo.com/news/politics/articles/trump-vowed-to-bring-free-speech-back-judges-in-75-cases-ruled-that-he-has-stifled-it-135031173.html",
+      "source": "Yahoo Finance",
+      "date": "2026-08-04T13:50:31Z",
+      "snippet": ""
+    },
+    {
+      "title": "Grocer-turned-lawmaker says Mamdani’s government-run stores 'might not even last a year’",
+      "link": "https://www.yahoo.com/news/politics/articles/grocer-turned-lawmaker-says-mamdani-130027342.html",
+      "source": "Yahoo Finance",
+      "date": "2026-08-05T13:00:27Z",
+      "snippet": ""
+    },
+    {
+      "title": "Slain LSU student Madison Brooks’ alleged rapist wants supporters banned from wearing pink at trial: report",
+      "link": "https://www.yahoo.com/news/us/articles/slain-lsu-student-madison-brooks-175926573.html",
+      "source": "Yahoo Finance",
+      "date": "2026-08-04T17:59:26Z",
+      "snippet": ""
+    },
+    {
+      "title": "US Supreme Court won't halt $655 million judgment against Palestinians over attacks",
+      "link": "https://www.yahoo.com/news/politics/articles/us-supreme-court-wont-halt-205821242.html",
+      "source": "Yahoo Finance",
+      "date": "2026-08-03T21:02:27Z",
+      "snippet": ""
+    },
+    {
+      "title": "Sanders warns Democrats: Any effort to fast-track Social Security changes would undercut party trust",
+      "link": "https://www.yahoo.com/news/politics/articles/sanders-warns-democrats-effort-fast-150211136.html",
+      "source": "Yahoo Finance",
+      "date": "2026-08-04T15:02:11Z",
+      "snippet": ""
+    },
+    {
+      "title": "First deaths from lettuce-linked outbreak",
+      "link": "https://www.yahoo.com/news/videos/first-deaths-lettuce-linked-outbreak-224824368.html",
+      "source": "Yahoo Finance",
+      "date": "2026-08-03T22:48:24Z",
+      "snippet": ""
+    },
+    {
+      "title": "Google's AI reshuffle: Chief scientist Jeff Dean exits and Demis Hassabis steps down as DeepMind CEO",
+      "link": "https://www.cnbc.com/2026/08/05/google-chief-scientist-jeff-dean-leaving-company-after-27-years.html",
+      "source": "CNBC",
+      "date": "Wed, 05 Aug 2026 18:51:53 GMT",
+      "snippet": "Google's AI divisions are getting reshuffled, the search giant announced on Wednesday."
+    },
+    {
+      "title": "Trump admin refunds $100 billion in 'liberation day' tariffs",
+      "link": "https://www.cnbc.com/2026/08/05/trump-tariffs-refunds-ieepa-lawsuit.html",
+      "source": "CNBC",
+      "date": "Wed, 05 Aug 2026 16:47:52 GMT",
+      "snippet": "The Trump administration has taken steps to effectively re-create the IEEPA tariff regime using other legal authorities. They already face court challenges."
+    },
+    {
+      "title": "Iran, Oman say Strait of Hormuz talks in final stages, as Trump again teases a deal being close",
+      "link": "https://www.cnbc.com/2026/08/05/us-iran-war-trump-hormuz-bessent-iran-deal-close.html",
+      "source": "CNBC",
+      "date": "Wed, 05 Aug 2026 18:47:59 GMT",
+      "snippet": "Trump's latest remarks signaling again that a deal with Iran to reopen the Hormuz Strait is close at hand drove oil prices lower and sent stocks soaring."
+    },
+    {
+      "title": "S&P 500 gives up gain as 4-day rally loses momentum; Dow boosted by Nvidia: Live updates",
+      "link": "https://www.cnbc.com/2026/08/04/stock-market-today-live-updates.html",
+      "source": "CNBC",
+      "date": "Wed, 05 Aug 2026 18:31:18 GMT",
+      "snippet": "The Dow Jones Industrial Average rose to a new all-time intraday record on Wednesday, building on its big rally in recent days."
+    },
+    {
+      "title": "Why AT&T, Verizon and T-Mobile shares are down after SpaceX’s earnings",
+      "link": "https://www.marketwatch.com/story/why-at-t-verizon-and-t-mobile-shares-are-down-after-spacexs-earnings-033a07ce?mod=mw_rss_topstories",
+      "source": "MarketWatch",
+      "date": "Wed, 05 Aug 2026 18:57:00 GMT",
+      "snippet": "SpaceX thinks it will be able to build wireless capabilities without massive network investments."
+    },
+    {
+      "title": "Retail investors are buying the dip on SpaceX’s stock before more shares flood the market",
+      "link": "https://www.marketwatch.com/story/retail-investors-are-buying-the-dip-on-spacexs-stock-before-more-shares-flood-the-market-9f83e00f?mod=mw_rss_topstories",
+      "source": "MarketWatch",
+      "date": "Wed, 05 Aug 2026 18:51:00 GMT",
+      "snippet": "Retail investors were doing what they do best on Wednesday: Buying the dip in SpaceX shares aggressively, even as the company’s stock sank after it released its first earnings report."
+    },
+    {
+      "title": "SolarEdge’s stock is shedding a quarter of its value as sales woes trump AI progress",
+      "link": "https://www.marketwatch.com/story/solaredges-stock-is-shedding-a-quarter-of-its-value-as-sales-woes-trump-ai-progress-8ce8159d?mod=mw_rss_topstories",
+      "source": "MarketWatch",
+      "date": "Wed, 05 Aug 2026 18:31:00 GMT",
+      "snippet": "The company faces challenges in Europe, which led to a weaker-than-expected revenue forecast."
+    },
+    {
+      "title": "Alphabet’s stock drops as Google loses another key AI executive",
+      "link": "https://www.marketwatch.com/story/alphabets-stock-drops-as-google-loses-another-key-ai-executive-38de45a2?mod=mw_rss_topstories",
+      "source": "MarketWatch",
+      "date": "Wed, 05 Aug 2026 17:50:00 GMT",
+      "snippet": "Jeff Dean, Google’s chief scientist and one of its first employees, is leaving to launch his own company."
+    },
+    {
+      "title": "Shopify expects Q3 revenue growth in the low 30s as it expands agentic commerce infrastructure",
+      "link": "https://seekingalpha.com/news/4626580-shopify-expects-q3-revenue-growth-in-the-low-30s-as-it-expands-agentic-commerce?utm_source=feed_news_all&utm_medium=referral&feed_item_type=news",
+      "source": "Seeking Alpha",
+      "date": "Wed, 05 Aug 2026 15:01:41 -0400",
+      "snippet": ""
+    },
+    {
+      "title": "Talos projects 2026 oil production of 64,000-68,000 bpd as it targets Q3 bolt-on close",
+      "link": "https://seekingalpha.com/news/4626579-talos-projects-2026-oil-production-of-64000minus-68000-bpd-as-it-targets-q3-bolt-on-close?utm_source=feed_news_all&utm_medium=referral&feed_item_type=news",
+      "source": "Seeking Alpha",
+      "date": "Wed, 05 Aug 2026 15:01:39 -0400",
+      "snippet": ""
+    },
+    {
+      "title": "American Financial projects $125M pre-tax core operating gain from Charleston Harbor sale expected to close in Q3 2026",
+      "link": "https://seekingalpha.com/news/4626578-american-financial-projects-125m-pre-tax-core-operating-gain-from-charleston-harbor-sale?utm_source=feed_news_all&utm_medium=referral&feed_item_type=news",
+      "source": "Seeking Alpha",
+      "date": "Wed, 05 Aug 2026 15:01:34 -0400",
+      "snippet": ""
+    },
+    {
+      "title": "Ecovyst outlines 2026 adjusted EBITDA of $195M-$207M following Calabrian acquisition",
+      "link": "https://seekingalpha.com/news/4626577-ecovyst-outlines-2026-adjusted-ebitda-of-195m-207m-following-calabrian-acquisition?utm_source=feed_news_all&utm_medium=referral&feed_item_type=news",
+      "source": "Seeking Alpha",
+      "date": "Wed, 05 Aug 2026 15:01:29 -0400",
+      "snippet": ""
+    },
+    {
+      "title": "Gold set for best day since early Feb amid easing dollar, rising Hormuz deal hopes",
+      "link": "https://www.investing.com/news/stock-market-news/gold-steadies-as-mideast-diplomacy-fed-outlook-keep-traders-cautious-4836345",
+      "source": "Investing.com",
+      "date": "2026-08-05 18:38:49",
+      "snippet": ""
+    },
+    {
+      "title": "Yemen’s Houthis say they attacked Saudi oil tankers in Red Sea, Gulf of Aden",
+      "link": "https://www.investing.com/news/commodities-news/yemens-houthis-say-they-attacked-saudi-oil-tanker-in-red-sea-4836522",
+      "source": "Investing.com",
+      "date": "2026-08-05 18:36:09",
+      "snippet": ""
+    },
+    {
+      "title": "Rand Capital Q2 2026 slides: portfolio grows despite income pressure",
+      "link": "https://www.investing.com/news/company-news/rand-capital-q2-2026-slides-portfolio-grows-despite-income-pressure-93CH-4839017",
+      "source": "Investing.com",
+      "date": "2026-08-05 18:34:10",
+      "snippet": ""
+    },
+    {
+      "title": "Rand Capital Q2 2026 slides: new deals offset portfolio pressure",
+      "link": "https://www.investing.com/news/company-news/rand-capital-q2-2026-slides-new-deals-offset-portfolio-pressure-93CH-4839015",
+      "source": "Investing.com",
+      "date": "2026-08-05 18:30:56",
+      "snippet": ""
+    },
+    {
+      "title": "均瑶健康：湖北均瑶大健康饮品股份有限公司独立董事关于《上海证券交易所关于湖北均瑶大健康饮品股份有限公司2025年年度报告的信息披露监管问询函》的独立董事意见",
+      "link": "https://www.cninfo.com.cn/new/disclosure/detail?announcementId=1225460887",
+      "source": "巨潮资讯网(官方)",
+      "date": "2026-08-05",
+      "snippet": ""
+    },
+    {
+      "title": "均瑶健康：北京德皓国际会计师事务所（特殊普通合伙）关于湖北均瑶大健康饮品股份有限公司2025年年度报告的信息披露监管问询函的回复说明德皓函字[2026]00000185号",
+      "link": "https://www.cninfo.com.cn/new/disclosure/detail?announcementId=1225460886",
+      "source": "巨潮资讯网(官方)",
+      "date": "2026-08-05",
+      "snippet": ""
+    },
+    {
+      "title": "均瑶健康：湖北均瑶大健康饮品股份有限公司关于2025年年度报告的信息披露监管问询函的回复公告",
+      "link": "https://www.cninfo.com.cn/new/disclosure/detail?announcementId=1225460885",
+      "source": "巨潮资讯网(官方)",
+      "date": "2026-08-05",
+      "snippet": ""
+    },
+    {
+      "title": "工业互联网ETF鹏华：鹏华中证工业互联网主题交易型开放式指数证券投资基金基金产品资料概要（更新）",
+      "link": "https://www.cninfo.com.cn/new/disclosure/detail?announcementId=1225460862",
+      "source": "巨潮资讯网(官方)",
+      "date": "2026-08-05",
+      "snippet": ""
+    },
+    {
+      "title": "工业互联网ETF鹏华：鹏华中证工业互联网主题交易型开放式指数证券投资基金更新的招募说明书",
+      "link": "https://www.cninfo.com.cn/new/disclosure/detail?announcementId=1225460861",
+      "source": "巨潮资讯网(官方)",
+      "date": "2026-08-05",
+      "snippet": ""
+    }
+  ],
+  "policy": [
+    {
+      "title": "事关货币政策、债券市场，央行重要部署 - 中国日报网",
+      "link": "https://news.google.com/rss/articles/CBMifEFVX3lxTE00eHN5bWIyMzBqNmZ5OXduZU84aDgyNEFpVTlEQVpEajg2b3RuSjRaQkFDSkZEUU5EMkU0ZU5YOHlWT25LVlZ1eXdxTXVJYWtXX1FwRWx1RmRUeHJZSE93WGFrTVBST3FCOHBwSzJmcTdDTEhTN1dFcUw2ZXA?oc=5",
+      "source": "GoogleNews[zh-CN]",
+      "date": "Sun, 02 Aug 2026 23:19:37 GMT",
+      "snippet": "<a href=\"https://news.google.com/rss/articles/CBMifEFVX3lxTE00eHN5bWIyMzBqNmZ5OXduZU84aDgyNEFpVTlEQVpEajg2b3RuSjRaQkFDSkZEUU5EMkU0ZU5YOHlWT25LVlZ1eXdxTXVJYWtXX1FwRWx1RmRUeHJZSE93WGFrTVBST3FCOHBwSzJmcT"
+    },
+    {
+      "title": "央行：综合运用并适时调整货币政策工具 发挥好两项支持资本市场货币政策工具作用 - 东方财富",
+      "link": "https://news.google.com/rss/articles/CBMiYEFVX3lxTE4xanB0VmJ6X0dicXpDS1ZmTHJmVnpNS2ZUeXRweFlTZUVGa1h3U09QNE1rUGFIYlZFMWZYWGx5Ql9nYm5IMGhvRGR4dEFERC1Ha1FHSllaTlo1dXhmZ0s2eA?oc=5",
+      "source": "GoogleNews[zh-CN]",
+      "date": "Tue, 04 Aug 2026 04:28:50 GMT",
+      "snippet": "<a href=\"https://news.google.com/rss/articles/CBMiYEFVX3lxTE4xanB0VmJ6X0dicXpDS1ZmTHJmVnpNS2ZUeXRweFlTZUVGa1h3U09QNE1rUGFIYlZFMWZYWGx5Ql9nYm5IMGhvRGR4dEFERC1Ha1FHSllaTlo1dXhmZ0s2eA?oc=5\" target=\"_blan"
+    },
+    {
+      "title": "央行上海总部：扎实落实适度宽松的货币政策，积极推动金融机构深挖有效信贷需求 - thepaper.cn",
+      "link": "https://news.google.com/rss/articles/CBMiYEFVX3lxTE1HSWFUbDROZG1fMWZCWVVBcWk4eDB6aWMyRnJUR2ExSEc4ZFNZVFY5djB0WFZ2bC1kYzk3TmhuZXAwcVRaUUJQQzBVS2hfcHA3RU9EZ1NOMURNYUhibGpTcA?oc=5",
+      "source": "GoogleNews[zh-CN]",
+      "date": "Wed, 05 Aug 2026 05:37:00 GMT",
+      "snippet": "<a href=\"https://news.google.com/rss/articles/CBMiYEFVX3lxTE1HSWFUbDROZG1fMWZCWVVBcWk4eDB6aWMyRnJUR2ExSEc4ZFNZVFY5djB0WFZ2bC1kYzk3TmhuZXAwcVRaUUJQQzBVS2hfcHA3RU9EZ1NOMURNYUhibGpTcA?oc=5\" target=\"_blan"
+    },
+    {
+      "title": "中国证监会与香港证监会联合公布深化两地市场务实合作与密切协同发展的新举措 - 东方财富",
+      "link": "https://news.google.com/rss/articles/CBMiYEFVX3lxTFA0X2JKUzN4VFRldEh0ODRlRFBfY0lYSGFJRy1Ia2h2WnJzYzVxQ2JTOF9QSmFiNURBMkdva0hWWDhTMWVkcUF6UGluNVpiYWlKZGhfTVBSSWRka2Z0ek50Ng?oc=5",
+      "source": "GoogleNews[zh-CN]",
+      "date": "Mon, 03 Aug 2026 02:59:18 GMT",
+      "snippet": "<a href=\"https://news.google.com/rss/articles/CBMiYEFVX3lxTFA0X2JKUzN4VFRldEh0ODRlRFBfY0lYSGFJRy1Ia2h2WnJzYzVxQ2JTOF9QSmFiNURBMkdva0hWWDhTMWVkcUF6UGluNVpiYWlKZGhfTVBSSWRka2Z0ek50Ng?oc=5\" target=\"_blan"
+    },
+    {
+      "title": "中国证监会主席吴清在香港推出人民币国债期货上市仪式上的致辞（全文） - 经济形势报告网",
+      "link": "https://news.google.com/rss/articles/CBMiYkFVX3lxTE5EdkpiYzVEZWxmYVNVQU9WTld0VkplN3VXRUZfcUFINE9qcVU4M0N1eW1kbzlOWFFYQkRzaWhTSlBaQ0RZS2REVFBNQ3FyaXZwdjZNRU8xNl85VU1zVEZDenVR?oc=5",
+      "source": "GoogleNews[zh-CN]",
+      "date": "Mon, 03 Aug 2026 08:57:12 GMT",
+      "snippet": "<a href=\"https://news.google.com/rss/articles/CBMiYkFVX3lxTE5EdkpiYzVEZWxmYVNVQU9WTld0VkplN3VXRUZfcUFINE9qcVU4M0N1eW1kbzlOWFFYQkRzaWhTSlBaQ0RZS2REVFBNQ3FyaXZwdjZNRU8xNl85VU1zVEZDenVR?oc=5\" target=\"_bl"
+    },
+    {
+      "title": "大礼包来了！中国证监会与香港证监会联手，IPO、ETF、期货全面深化合作 - 新京报",
+      "link": "https://news.google.com/rss/articles/CBMiYkFVX3lxTE83WlAxMkE5NXM1dTZuZ0lpWUIyTGtVRWhPRDg4V3ZYS09UaHV3VVBiZVZXZVhLWVJwN2M1Sm5pdHBuTDVmUWp0VHV0T3Z5dkdSM0Z5Q3VBVmlvVDl6eDZtT1hR?oc=5",
+      "source": "GoogleNews[zh-CN]",
+      "date": "Mon, 03 Aug 2026 03:45:00 GMT",
+      "snippet": "<a href=\"https://news.google.com/rss/articles/CBMiYkFVX3lxTE83WlAxMkE5NXM1dTZuZ0lpWUIyTGtVRWhPRDg4V3ZYS09UaHV3VVBiZVZXZVhLWVJwN2M1Sm5pdHBuTDVmUWp0VHV0T3Z5dkdSM0Z5Q3VBVmlvVDl6eDZtT1hR?oc=5\" target=\"_bl"
+    },
+    {
+      "title": "国务院研究促进有效投资政策措施：谋划推动一批重大项目、重大工程 - 每日经济新闻",
+      "link": "https://news.google.com/rss/articles/CBMiZkFVX3lxTE43M0IwX2RQWUlBMDBBZ0k1c1VlLUFzSGhNaE5qOTdkQ1IxMUR5SzZhd2UtdnlXNVlrN011WU92dS1QZ3JYNXF6SFJOUjFVZ2RlcGVHMW9QeGx0SHk1WXlrRm5ORGVrZw?oc=5",
+      "source": "GoogleNews[zh-CN]",
+      "date": "Sun, 08 Feb 2026 08:00:00 GMT",
+      "snippet": "<a href=\"https://news.google.com/rss/articles/CBMiZkFVX3lxTE43M0IwX2RQWUlBMDBBZ0k1c1VlLUFzSGhNaE5qOTdkQ1IxMUR5SzZhd2UtdnlXNVlrN011WU92dS1QZ3JYNXF6SFJOUjFVZ2RlcGVHMW9QeGx0SHk1WXlrRm5ORGVrZw?oc=5\" targe"
+    },
+    {
+      "title": "国务院办公厅印发《关于推动文化高质量发展的若干经济政策》的通知 - 中华人民共和国生态环境部",
+      "link": "https://news.google.com/rss/articles/CBMickFVX3lxTFBmc1d3aGRnQzhyWnBfdVVPNVl4V01mbVJibTRjRVhhWmtFRmQ4Vm5vSmV3cmNHZ1ktWmJfZ2NZd2JOR1Y3dzF0SEd1aGo0cDZ3RXJGRG50REFNaFFTZzNYS1ZCcEdzWlJrSVdubzN5TWY4QQ?oc=5",
+      "source": "GoogleNews[zh-CN]",
+      "date": "Mon, 27 Jan 2025 08:00:00 GMT",
+      "snippet": "<a href=\"https://news.google.com/rss/articles/CBMickFVX3lxTFBmc1d3aGRnQzhyWnBfdVVPNVl4V01mbVJibTRjRVhhWmtFRmQ4Vm5vSmV3cmNHZ1ktWmJfZ2NZd2JOR1Y3dzF0SEd1aGo0cDZ3RXJGRG50REFNaFFTZzNYS1ZCcEdzWlJrSVdubzN5TW"
+    }
+  ],
   "stocks": {
-    "MU": [],
-    "AAOI": [],
-    "GOOGL": [],
-    "MSFT": [],
-    "AMZN": [],
-    "MRVL": [],
-    "LITE": [],
-    "SNDK": [],
-    "NVDA": [],
-    "ORCL": [],
-    "SPCX": [],
-    "SKHY": [],
-    "TSLA": [],
-    "0700.HK": [],
-    "0883.HK": [],
-    "3750.HK": [],
+    "MU": [
+      {
+        "title": "Micron Stock Rises After Musk Flags Surging Memory Prices",
+        "link": "https://finance.yahoo.com/m/f5eedee3-91bc-3ed5-bec2-f82ba4e8a537/micron-stock-rises-after-musk.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:51:00 +0000",
+        "snippet": "FEATURE   Micron Technology stock rose Wednesday after good news about future memory prices from SpaceX CEO Elon Musk.  Micron shares were up 3.2% at $921 by midafternoon. That comes after a 7.6% gain"
+      },
+      {
+        "title": "Micron's Supply Crunch Is Turning Into a Pricing Story",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/microns-supply-crunch-turning-pricing-174506815.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:45:06 +0000",
+        "snippet": "Micron, Samsung and SK Hynix have reportedly committed significant portions of their 2027 output."
+      },
+      {
+        "title": "Micron Stock Jumps 6% as DRAM Market Share Expands",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/micron-stock-jumps-6-dram-144511923.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 14:45:11 +0000",
+        "snippet": "Micron gained ground on SK Hynix as AI-driven memory demand supported a fivefold increase in DRAM revenue."
+      },
+      {
+        "title": "Bank of America doubles down on Micron stock price for 2026",
+        "link": "https://www.thestreet.com/investing/stocks/bank-of-america-doubles-down-on-micron-stock-price-for-2026-semiconductor?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 14:17:00 +0000",
+        "snippet": "Memory stocks have always been among the most volatile in the semiconductor sector. They run hard when the cycle is right, then give back a lot of it when investors start pricing in the next downturn."
+      },
+      {
+        "title": "How To Bank 14% On MU Stock Before Buying A Single Share",
+        "link": "https://www.trefis.com/articles/610184/how-to-bank-14-on-mu-stock-before-buying-a-single-share/2026-08-05?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:24:36 +0000",
+        "snippet": "Get paid a significant income stream now, which you keep no matter what, for the chance to buy a semiconductor leader at a steep discount if it ever gets there."
+      },
+      {
+        "title": "Beyond Capex: Big Tech Quietly Locks In $2.7 Trillion in Long-Term Commitments",
+        "link": "https://finance.yahoo.com/m/2e0c54b6-b4ac-3e1f-803a-ce721bfb389d/beyond-capex%3A-big-tech.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:31:00 +0000",
+        "snippet": "Tech investors hoping that a wave of AI spending will moderate in 2027 are likely to be disappointed."
+      },
+      {
+        "title": "Micron (MU) Has More to Gain Than Nvidia (NVDA) Has to Lose From Samsung’s 2028 Warning",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/micron-mu-more-gain-nvidia-171417442.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:14:17 +0000",
+        "snippet": "Samsung said on July 30 that memory shortages could worsen in 2027 and persist through 2028. The warning strengthened the pricing outlook for Micron Technology, Inc. (NASDAQ:MU) while exposing a poten"
+      },
+      {
+        "title": "A Chinese memory manufacturer has scooped up one fourteenth of the market",
+        "link": "https://www.pcgamer.com/hardware/memory/chinese-memory-maker-cxmt-mops-up-even-more-market-share-away-from-the-likes-of-samsung-sk-hynix-and-micron-giving-me-hope-that-competition-is-the-way-out-of-the-memory-crisis/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:29:44 +0000",
+        "snippet": "That's a bigger deal than you'd think"
+      }
+    ],
+    "AAOI": [
+      {
+        "title": "New report warns China transceiver ban would hurt U.S. AI giants",
+        "link": "https://finance.yahoo.com/technology/ai/articles/report-warns-china-transceiver-ban-093946021.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 09:39:46 +0000",
+        "snippet": "Investing.com - Chinese optical module makers control roughly two-thirds of global transceiver supply, and no Western alternative can absorb that volume within the next one to two years, Counterpoint "
+      },
+      {
+        "title": "Applied Optoelectronics to Present at Rosenblatt's 6th Annual Technology Summit",
+        "link": "https://finance.yahoo.com/technology/articles/applied-optoelectronics-present-rosenblatts-6th-201000616.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 20:10:00 +0000",
+        "snippet": "SUGAR LAND, Texas, Aug. 04, 2026 (GLOBE NEWSWIRE) -- Applied Optoelectronics, Inc. (NASDAQ: AAOI) (“AOI”), a leading provider of advanced optical and HFC networking products that power AI, today annou"
+      },
+      {
+        "title": "Marvell Surges as China Ban Report Reignites Optical-Networking Stocks",
+        "link": "https://finance.yahoo.com/m/d907cc32-bb09-37ff-9b73-71565d5b1823/marvell-surges-as-china-ban.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 18:06:00 +0000",
+        "snippet": "Marvell stock rises along with Corning, Lumentum, and Coherent following a report about plans to restrict Chinese data-center components."
+      },
+      {
+        "title": "Should You Buy, Sell or Hold AAOI Stock Ahead of Q2 Earnings?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/buy-sell-hold-aaoi-stock-175700466.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 17:57:00 +0000",
+        "snippet": "Applied Optoelectronics heads into Q2 earnings with AI-driven 800G demand and CATV growth, but valuation and production constraints loom."
+      },
+      {
+        "title": "Applied Optoelectronics Rockets 17%, Coherent Climbs 11%, Lumentum Gains 6% on Reported U.S. Ban of Chinese Optics",
+        "link": "https://247wallst.com/investing/2026/08/04/applied-optoelectronics-rockets-17-coherent-climbs-11-lumentum-gains-6-on-reported-u-s-ban-of-chinese-optics/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 13:46:42 +0000",
+        "snippet": "A reported U.S. ban on Chinese data center optical hardware sent a handful of domestic suppliers rocketing higher, but the proposal is still a draft and could be softened or dropped entirely before th"
+      },
+      {
+        "title": "Optical component stocks rally on proposed U.S. ban on Chinese tech",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/optical-component-stocks-rally-proposed-113406255.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 11:34:06 +0000",
+        "snippet": "U.S. optical component stocks surged following a Reuters report that the Trump administration is drafting a ban on U.S. imports of new Chinese data center hardware. Applied Optoelectronics jumped 16%,"
+      },
+      {
+        "title": "Applied Optoelectronics (AAOI) Rockets 18% as Investors Eye Another Strong Quarter",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/applied-optoelectronics-aaoi-rockets-18-200529294.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 20:05:29 +0000",
+        "snippet": "Applied Optoelectronics (NASDAQ:AAOI) grew its share prices by as much as 17.6 percent on Monday to $110.95 apiece, as investors resumed buying positions ahead of an expected strong earnings performan"
+      },
+      {
+        "title": "AAOI Stock Just Popped 15%: 3 Reasons Applied Optoelectronics Could Keep Climbing",
+        "link": "https://247wallst.com/investing/2026/08/03/aaoi-stock-just-popped-15-3-reasons-applied-optoelectronics-could-keep-climbing/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 16:59:11 +0000",
+        "snippet": "Applied Optoelectronics just cleared the hardest gate in optical networking, and the move that followed may be the smallest gain investors see all year. Here are the three structural forces now pushin"
+      }
+    ],
+    "GOOGL": [
+      {
+        "title": "What’s the ‘Ceiling’ on How Much Microsoft, Amazon, and Google Can Spend on AI?",
+        "link": "https://247wallst.com/videos/whats-the-ceiling-on-how-much-microsoft-amazon-and-google-can-spend-on-ai/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:01:28 +0000",
+        "snippet": "In this segment of the AI Investor Podcast from 24/7 Wall St., Eric Bleeker lays out his framework for evaluating the AI trade, describing it as a stool resting on three legs: technological progress, "
+      },
+      {
+        "title": "Wall Street rallies, Dow closes at record on Iran talks optimism",
+        "link": "https://finance.yahoo.com/video/wall-street-rallies-dow-closes-224337380.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 22:43:37 +0000",
+        "snippet": "STORY: U.S. stocks kicked off August with a rally on Monday, as the Dow added about one-and-a-third percent to close at a record high, the S&amp;P 500 climbed one-and-a-half percent and the Nasdaq add"
+      },
+      {
+        "title": "The AI spending boom is hitting a key Wall Street metric: Chart of the Day",
+        "link": "https://finance.yahoo.com/technology/article/the-ai-spending-boom-is-hitting-a-key-wall-street-metric-chart-of-the-day-181157588.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 18:11:57 +0000",
+        "snippet": "The AI spending boom is becoming so large so quickly that it's hitting an important metric watched by investors: free cash flow."
+      },
+      {
+        "title": "Reddit stock tumbles the most on record as lack of new AI deals, US daily users metric disappoints",
+        "link": "https://finance.yahoo.com/markets/article/reddit-stock-tumbles-the-most-on-record-as-lack-of-new-ai-deals-us-daily-users-metric-disappoints-153413759.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 31 Jul 2026 15:34:13 +0000",
+        "snippet": "Reddit shares plunged the most on record on Friday after US daily users, lack of new AI deal announcements dissapointed investors."
+      },
+      {
+        "title": "Uber stock drops as bookings guidance disappoints; CEO bets on robotaxi push to grow overall business",
+        "link": "https://finance.yahoo.com/markets/stocks/article/uber-stock-drops-as-bookings-guidance-disappoints-ceo-bets-on-robotaxi-push-to-grow-overall-business-150729446.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 15:07:29 +0000",
+        "snippet": "Uber reported second-quarter results on Wednesday that beat on bookings and profit, but shares fell as the ride-hailing giant's bookings guidance missed analyst projections. Uber says its robotaxi pus"
+      },
+      {
+        "title": "AI CapEx fears: Is big tech overspending?",
+        "link": "https://finance.yahoo.com/video/ai-capex-fears-big-tech-100000522.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 10:00:00 +0000",
+        "snippet": "Host Kenny Polcari joins Man Group Chief Market Strategist Kristina Hooper and Legato Financial CIO Ryan Kelly to debate the risks of massive AI CapEx spending and how a hawkish Federal Reserve could "
+      },
+      {
+        "title": "Amazon's AWS business has taken on a life of its own: Earnings call takeaways",
+        "link": "https://finance.yahoo.com/video/amazons-aws-business-taken-life-143824372.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 31 Jul 2026 14:38:24 +0000",
+        "snippet": "Amazon's (AMZN) AWS business saw 37% revenue growth this most recent quarter. Yahoo Finance Technology Editor Dan Howley chats with Yahoo Finance Executive Editor Brian Sozzi about the results and fut"
+      },
+      {
+        "title": "Where Apple is diverging from rest of Mag 7 earnings",
+        "link": "https://finance.yahoo.com/video/where-apple-diverging-rest-mag-143000980.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 31 Jul 2026 14:30:00 +0000",
+        "snippet": "Apple (AAPL) stock continues to drop on Friday while shares of Amazon (AMZN) surge since the two tech giants posted earnings results yesterday. Morning Brief Host Julie Hyman is joined by Yahoo Financ"
+      }
+    ],
+    "MSFT": [
+      {
+        "title": "Alphabet Is Still Up 16% in 2026. What Will It Take to Get GOOGL Stock Above $400?",
+        "link": "https://247wallst.com/investing/2026/08/05/alphabet-is-still-up-16-in-2026-what-will-it-take-to-get-googl-stock-above-400/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:30:05 +0000",
+        "snippet": "A sweeping AI leadership overhaul sent Alphabet shares sliding Wednesday, rattling investor confidence despite a blowout earnings quarter. The path to $400 hinges on something far less obvious than ex"
+      },
+      {
+        "title": "IREN Signed $2.8 Billion in New AI Contracts. The Whole Company Is Worth About $15 Billion.",
+        "link": "https://www.fool.com/investing/2026/08/05/iren-signed-28-billion-in-new-ai-contracts-the-who/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:07:00 +0000",
+        "snippet": "The customer list now includes Microsoft and Nvidia. The hard part is building fast enough to serve them."
+      },
+      {
+        "title": "OpenAI's Sam Altman Says the AI \"Singularity\" Has Arrived. Here's What That Could Mean for Nvidia and Microsoft Stock.",
+        "link": "https://www.fool.com/investing/2026/08/05/openais-sam-altman-says-the-ai-singularity-has-arr/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:50:00 +0000",
+        "snippet": "More capable AI could create multiple different profit opportunities."
+      },
+      {
+        "title": "Big Tech's blowout profits hide an uncomfortable truth",
+        "link": "https://www.thestreet.com/markets/big-tech-blowout-profits-hide-paper-gains-amazon-microsoft-meta-openai-anthropic-spacex?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:47:00 +0000",
+        "snippet": "Big Tech just closed out its second-quarter 2026 earnings season, and the results looked, on paper, like a triumph. Microsoft, Amazon, and Alphabet all posted numbers that blew past Wall Street's esti"
+      },
+      {
+        "title": "Alphabet, Microsoft, Amazon, and Oracle Just Gained $1.9 Trillion in 3 Days. Here's Why Microsoft's Run Isn't Over.",
+        "link": "https://www.fool.com/investing/2026/08/05/alphabet-microsoft-amazon-oracle-trillion-gain/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:40:00 +0000",
+        "snippet": "Cloud computing giants are back in favor as investor support for artificial intelligence (AI) capital expenditures grows."
+      },
+      {
+        "title": "Beyond Capex: Big Tech Quietly Locks In $2.7 Trillion in Long-Term Commitments",
+        "link": "https://finance.yahoo.com/m/2e0c54b6-b4ac-3e1f-803a-ce721bfb389d/beyond-capex%3A-big-tech.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:31:00 +0000",
+        "snippet": "Tech investors hoping that a wave of AI spending will moderate in 2027 are likely to be disappointed."
+      },
+      {
+        "title": "Never Mind AI Spending, This Number Is Boosting Microsoft, Google, and Amazon Stocks",
+        "link": "https://finance.yahoo.com/m/17f2b468-d059-3129-b29c-9bb1c6c2b27b/never-mind-ai-spending%2C-this.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:27:00 +0000",
+        "snippet": "The likes of Microsoft, Google, and Amazon have spurred concern about how much they’re spending on their AI clouds. But there’s another metric that bodes well for the AI trade."
+      },
+      {
+        "title": "Dan Ives Says Software Stocks Just Saw Their Most Disconnected Sell-Off Since the Late 1990s. Here's Why He's Still Bullish.",
+        "link": "https://www.fool.com/investing/2026/08/05/dan-ives-software-stocks-sell-off-bullish/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:50:00 +0000",
+        "snippet": "Microsoft, Salesforce, and ServiceNow continue to see strong demand, despite the sell-off in their share prices."
+      }
+    ],
+    "AMZN": [
+      {
+        "title": "Boeing-Lockheed Martin’s ULA said to plan $500m private bond sale",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/boeing-lockheed-martin-ula-said-182700940.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:27:00 +0000",
+        "snippet": "Investing.com -- United Launch Alliance plans to raise approximately $500 million through a private bond placement to refinance existing debt, according to a Bloomberg report Wednesday."
+      },
+      {
+        "title": "Just How Wide Is the Range of Outcomes for Netflix Stock?",
+        "link": "https://www.trefis.com/articles/610174/just-how-wide-is-the-range-of-outcomes-for-netflix-stock/2026-08-05?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:08:58 +0000",
+        "snippet": "The options market is pricing a sizable swing for the streaming giant, and if you hold the shares, you are already carrying that full two-sided risk."
+      },
+      {
+        "title": "Big Tech's blowout profits hide an uncomfortable truth",
+        "link": "https://www.thestreet.com/markets/big-tech-blowout-profits-hide-paper-gains-amazon-microsoft-meta-openai-anthropic-spacex?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:47:00 +0000",
+        "snippet": "Big Tech just closed out its second-quarter 2026 earnings season, and the results looked, on paper, like a triumph. Microsoft, Amazon, and Alphabet all posted numbers that blew past Wall Street's esti"
+      },
+      {
+        "title": "Alphabet, Microsoft, Amazon, and Oracle Just Gained $1.9 Trillion in 3 Days. Here's Why Microsoft's Run Isn't Over.",
+        "link": "https://www.fool.com/investing/2026/08/05/alphabet-microsoft-amazon-oracle-trillion-gain/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:40:00 +0000",
+        "snippet": "Cloud computing giants are back in favor as investor support for artificial intelligence (AI) capital expenditures grows."
+      },
+      {
+        "title": "Beyond Capex: Big Tech Quietly Locks In $2.7 Trillion in Long-Term Commitments",
+        "link": "https://finance.yahoo.com/m/2e0c54b6-b4ac-3e1f-803a-ce721bfb389d/beyond-capex%3A-big-tech.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:31:00 +0000",
+        "snippet": "Tech investors hoping that a wave of AI spending will moderate in 2027 are likely to be disappointed."
+      },
+      {
+        "title": "Uber’s Ride-Sharing Business Is Booming. Why the Stock Market Couldn’t Care Less.",
+        "link": "https://finance.yahoo.com/m/7fc8ede6-deb9-35cb-aeca-b413a5460f15/uber%E2%80%99s-ride-sharing-business.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:29:00 +0000",
+        "snippet": "The ride-hailing company reported mostly in-line second-quarter earnings and guidance that missed expectations."
+      },
+      {
+        "title": "Never Mind AI Spending, This Number Is Boosting Microsoft, Google, and Amazon Stocks",
+        "link": "https://finance.yahoo.com/m/17f2b468-d059-3129-b29c-9bb1c6c2b27b/never-mind-ai-spending%2C-this.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:27:00 +0000",
+        "snippet": "The likes of Microsoft, Google, and Amazon have spurred concern about how much they’re spending on their AI clouds. But there’s another metric that bodes well for the AI trade."
+      },
+      {
+        "title": "Amazon (AMZN) Booked a $53.4 Billion Gain, Mostly From Anthropic, While Alphabet (GOOGL) Weighs a $15 Billion Commitment",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/amazon-amzn-booked-53-4-170456051.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:04:56 +0000",
+        "snippet": "Amazon.com, Inc. (NASDAQ:AMZN) disclosed on July 30 that its second-quarter net income included $53.4 billion of non-operating pre-tax other income, primarily from its Anthropic investments. Net incom"
+      }
+    ],
+    "MRVL": [
+      {
+        "title": "Marvell Stock Amplifies The Market You Already Own",
+        "link": "https://www.trefis.com/articles/610206/marvell-stock-amplifies-the-market-you-already-own/2026-08-05?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:13:54 +0000",
+        "snippet": "Its five-year correlation to the index says overlap, and its past-year capture readings say that overlap arrives magnified in both directions."
+      },
+      {
+        "title": "Can MRVL's Communications Recovery Drive Broad-Based Growth?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/mrvls-communications-recovery-drive-broad-155200097.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 15:52:00 +0000",
+        "snippet": "Marvell Technology's communications business is rebounding as AI networking demand accelerates, but can that momentum offset margin pressure and uneven recovery trends?"
+      },
+      {
+        "title": "The Ultimate Bull Case for NVIDIA Is Here: Their Powerful B200 Systems Are Sold Out",
+        "link": "https://247wallst.com/investing/2026/08/05/the-ultimate-bull-case-for-nvidia-is-here-their-powerful-b200-systems-are-sold-out/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 15:00:06 +0000",
+        "snippet": "NVIDIA just delivered its loudest quarter of the AI era, yet shares sit nearly 30% below their peak while B200 systems vanish from shelves faster than they ship. The bull case for a run to $300 hinges"
+      },
+      {
+        "title": "Amazon’s AWS CEO Just Sent Shivers Down the Spines of AI Bears. Supply is Mostly ‘Spoken For’ Through 2028.",
+        "link": "https://247wallst.com/investing/2026/08/05/amazons-aws-ceo-just-sent-shivers-down-the-spines-of-ai-bears-supply-is-mostly-spoken-for-through-2028/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 12:11:18 +0000",
+        "snippet": "AWS chief Matt Garman just posted something on X that stopped AI skeptics cold, and the suppliers quietly sitting on his order books are already feeling it in their stock prices."
+      },
+      {
+        "title": "Semiconductor Rally Powers S&P 500 to Fresh Record High",
+        "link": "https://finance.yahoo.com/technology/articles/semiconductor-rally-powers-p-500-120000858.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 12:00:00 +0000",
+        "snippet": "MRVL, AMD and MU rallied as AI optimism, earnings anticipation and strong memory demand powered a semiconductor surge that helped lift the S&amp;P 500 to a record high."
+      },
+      {
+        "title": "AI and Chip Stocks Drop After Musk's Nvidia Bombshell",
+        "link": "https://finance.yahoo.com/m/7d273947-122c-347f-9baa-ad635bda1b6d/ai-and-chip-stocks-drop-after.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 10:41:57 +0000",
+        "snippet": "Investors were once again trying to make sense of comments from Elon Musk on Wednesday, after the SpaceX CEO said his rocket and AI company would exclusively use Nvidia chips from now on.  AMD was the"
+      },
+      {
+        "title": "Marvel Biosciences Reports Positive Preclinical Data Demonstrating MB-204 Reverses Behavioural and Cognitive Deficits in a Mouse Model of Fragile X",
+        "link": "https://finance.yahoo.com/healthcare/articles/marvel-biosciences-reports-positive-preclinical-090000023.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 09:00:00 +0000",
+        "snippet": "CALGARY, Alberta, Aug. 05, 2026 (GLOBE NEWSWIRE) -- Marvel Biosciences Corp. (TSXV: MRVL | OTC: MBCOF), and its wholly-owned subsidiary, Marvel Biotechnology Inc. (collectively the “Company” or “Marve"
+      },
+      {
+        "title": "US Ban on Chinese Optical Parts Hurts Hyperscalers, Report Says",
+        "link": "https://finance.yahoo.com/technology/ai/articles/us-ban-chinese-optical-parts-082307752.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 08:23:07 +0000",
+        "snippet": "(Bloomberg) -- A potential ban on the import of Chinese optical transceiver modules into the US would inflict collateral damage on US hyperscalers, exacerbating a supply bottleneck that no American fi"
+      }
+    ],
+    "LITE": [
+      {
+        "title": "Is Lumentum (LITE) Quietly Redefining Its Moat With This Post-Retirement Quality Guru Arrangement?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/lumentum-lite-quietly-redefining-moat-151506282.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 15:15:06 +0000",
+        "snippet": "In late July 2026, Lumentum Holdings Inc. disclosed that long-serving Executive Vice President of Global Reliability & Quality Vincent Retort plans to retire in October 2026, then remain with the comp"
+      },
+      {
+        "title": "Buy These 2 High-Flying AI-Led Photonics Stocks With More Room to Grow",
+        "link": "https://finance.yahoo.com/technology/ai/articles/buy-2-high-flying-ai-125300882.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 12:53:00 +0000",
+        "snippet": "CRDO and LITE are riding AI-driven demand for photonics, with growth outlooks, expanding optical portfolios and bullish revenue targets."
+      },
+      {
+        "title": "New report warns China transceiver ban would hurt U.S. AI giants",
+        "link": "https://finance.yahoo.com/technology/ai/articles/report-warns-china-transceiver-ban-093946021.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 09:39:46 +0000",
+        "snippet": "Investing.com - Chinese optical module makers control roughly two-thirds of global transceiver supply, and no Western alternative can absorb that volume within the next one to two years, Counterpoint "
+      },
+      {
+        "title": "US Ban on Chinese Optical Parts Hurts Hyperscalers, Report Says",
+        "link": "https://finance.yahoo.com/technology/ai/articles/us-ban-chinese-optical-parts-082307752.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 08:23:07 +0000",
+        "snippet": "(Bloomberg) -- A potential ban on the import of Chinese optical transceiver modules into the US would inflict collateral damage on US hyperscalers, exacerbating a supply bottleneck that no American fi"
+      },
+      {
+        "title": "Lumentum, Coherent Leads Networking Stocks Rally as Trump Considers Chinese Hardware Ban",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/lumentum-coherent-leads-networking-stocks-182634665.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 18:26:34 +0000",
+        "snippet": "Lumentum, Coherent Leads Networking Stocks Rally as Trump Considers Chinese Hardware Ban"
+      },
+      {
+        "title": "Marvell Surges as China Ban Report Reignites Optical-Networking Stocks",
+        "link": "https://finance.yahoo.com/m/d907cc32-bb09-37ff-9b73-71565d5b1823/marvell-surges-as-china-ban.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 18:06:00 +0000",
+        "snippet": "Marvell stock rises along with Corning, Lumentum, and Coherent following a report about plans to restrict Chinese data-center components."
+      },
+      {
+        "title": "Buy this stock ahead of Q2 earnings: Mizuho",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/buy-stock-ahead-q2-earnings-144736120.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 14:47:36 +0000",
+        "snippet": "Investing.com -- Mizuho highlighted an optical components maker in a note Tuesday, telling investors it would be a buyer of the company ahead of its fiscal fourth-quarter results on Aug. 11."
+      },
+      {
+        "title": "Lumentum (LITE) Earnings Expected to Grow: What to Know Ahead of Next Week's Release",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/lumentum-lite-earnings-expected-grow-140004476.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 14:00:04 +0000",
+        "snippet": "Lumentum (LITE) possesses the right combination of the two key ingredients for a likely earnings beat in its upcoming report. Get prepared with the key expectations."
+      }
+    ],
+    "SNDK": [
+      {
+        "title": "Sandisk Just Had Its Worst Month Ever. Earnings Should Prove AI Demand Is Here to Stay.",
+        "link": "https://finance.yahoo.com/m/1b53b2c0-2a97-33a2-9ad0-71d1341b42cf/sandisk-just-had-its-worst.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:15:00 +0000",
+        "snippet": "The storage and memory maker is scheduled to report fiscal fourth-quarter financials after the stock market closes on Wednesday."
+      },
+      {
+        "title": "Sandisk stock steady ahead of AI highflier's earnings",
+        "link": "https://finance.yahoo.com/markets/stocks/article/sandisk-stock-steady-ahead-of-ai-highfliers-earnings-163703465.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:37:03 +0000",
+        "snippet": "Wall Street expects Sandisk to continue benefiting from AI infrastructure spend, particularly demand for storage and memory products used in data centers."
+      },
+      {
+        "title": "Micron Slips 9% in a Month: Is This the Right Time to Buy MU Stock?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/micron-slips-9-month-time-152300355.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 15:23:00 +0000",
+        "snippet": "Micron's 9.4% monthly slide contrasts with surging AI memory demand, sold-out 2026 HBM output, soaring profits and a discounted valuation."
+      },
+      {
+        "title": "Wall Street Extends Record-Setting Stock Rally",
+        "link": "https://finance.yahoo.com/m/3082dbf0-c418-37ce-9a8f-878315e2ec51/wall-street-extends.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 14:14:30 +0000",
+        "snippet": "Stocks kicked off Wednesday's session higher, extending the week's broad rally. The S&amp;P 500 was on pace to set another record high, up 0.6%. The Dow Jones Industrial Average rose 1.1% or 600 point"
+      },
+      {
+        "title": "Are Wall Street Analysts Bullish on Sandisk Stock?",
+        "link": "https://www.barchart.com/story/news/3663127/are-wall-street-analysts-bullish-on-sandisk-stock?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 12:56:56 +0000",
+        "snippet": "Sandisk has massively outperformed the broader market over the past year, and analysts are highly optimistic about the stock’s prospects."
+      },
+      {
+        "title": "Update: Potential Strait of Hormuz Deal Buoys US Equity Futures Pre-Bell",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/potential-strait-hormuz-deal-buoys-124948656.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 12:49:48 +0000",
+        "snippet": "(Updates with economic data, recent oil price movement, world markets' overview and corporate stock"
+      },
+      {
+        "title": "Stocks Rise Pre-Bell Amid Growing Hopes for Hormuz Deal; Traders Await More Corporate Earnings",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/stocks-rise-pre-bell-amid-121558765.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 12:15:58 +0000",
+        "snippet": "The benchmark US stock measures were trending higher in Wednesday's premarket activity amid growing"
+      },
+      {
+        "title": "ADP labor data; Earnings from Eli Lilly, Sandisk, & Disney: What to watch on Wednesday",
+        "link": "https://finance.yahoo.com/video/adp-labor-data-earnings-eli-120500658.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 12:05:00 +0000",
+        "snippet": "Yahoo Finance's Josh Lipton takes a closer look at the top stories for investors to watch on Wednesday, Aug. 5, including ADP's private payrolls data and earnings results from Eli Lilly (LLY), Disney "
+      }
+    ],
+    "NVDA": [
+      {
+        "title": "Eli Lilly’s Weight-Loss Drug Demand Is Nearly Limitless. Here’s What Comes Next for the $1 Trillion Drugmaker",
+        "link": "https://247wallst.com/investing/2026/08/05/eli-lillys-weight-loss-drug-demand-is-nearly-limitless-heres-what-comes-next-for-the-1-trillion-drugmaker/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:59:58 +0000",
+        "snippet": "Eli Lilly (NYSE:LLY) opened Wednesday’s session with a blowout second-quarter earnings report, sending shares sharply higher and cementing the drugmaker’s status as the only pharmaceutical company tra"
+      },
+      {
+        "title": "Can Disney Stock Stay Above $100 This Time?",
+        "link": "https://www.fool.com/investing/2026/08/05/can-disney-stock-stay-above-100-this-time/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:42:00 +0000",
+        "snippet": "A strong earnings report sends Disney stock into triple digits, but investors have seen this story before."
+      },
+      {
+        "title": "Warren Buffett Has a Lesson for AI Investors: Don't Ignore History.",
+        "link": "https://www.fool.com/investing/2026/08/05/warren-buffett-has-a-lesson-for-ai-investors-dont/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:37:00 +0000",
+        "snippet": "Warren Buffett once said investors would have been better off if someone had \"shot Orville down\" at Kitty Hawk."
+      },
+      {
+        "title": "Alphabet Is Still Up 16% in 2026. What Will It Take to Get GOOGL Stock Above $400?",
+        "link": "https://247wallst.com/investing/2026/08/05/alphabet-is-still-up-16-in-2026-what-will-it-take-to-get-googl-stock-above-400/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:30:05 +0000",
+        "snippet": "A sweeping AI leadership overhaul sent Alphabet shares sliding Wednesday, rattling investor confidence despite a blowout earnings quarter. The path to $400 hinges on something far less obvious than ex"
+      },
+      {
+        "title": "Uber Aims to Build the World's Largest Autonomous Vehicle Platform. Can It Compete With Tesla?",
+        "link": "https://www.fool.com/investing/2026/08/05/uber-aims-to-build-the-world-s-largest-autonomous-vehicle-platform-can-it-compete-with-tesla/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:30:01 +0000",
+        "snippet": "Uber is investing aggressively in robotaxis."
+      },
+      {
+        "title": "Why Is the U.S. Treasury Intervening in Currency Markets and What Does It Mean for Investors?",
+        "link": "https://www.fool.com/investing/2026/08/05/us-treasury-intervening-in-currency-markets-and/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:25:00 +0000",
+        "snippet": "The U.S. Treasury has been buying yen to prop up its value relative to other world currencies."
+      },
+      {
+        "title": "How To Bank 14% On MU Stock Before Buying A Single Share",
+        "link": "https://www.trefis.com/articles/610184/how-to-bank-14-on-mu-stock-before-buying-a-single-share/2026-08-05?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:24:36 +0000",
+        "snippet": "Get paid a significant income stream now, which you keep no matter what, for the chance to buy a semiconductor leader at a steep discount if it ever gets there."
+      },
+      {
+        "title": "Why Nvidia Stock Rallied Today",
+        "link": "https://www.fool.com/investing/2026/08/05/why-nvidia-stock-rallied-today/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:15:09 +0000",
+        "snippet": "The company will be the exclusive provider of AI chips to another big name in the space."
+      }
+    ],
+    "ORCL": [
+      {
+        "title": "Alphabet, Microsoft, Amazon, and Oracle Just Gained $1.9 Trillion in 3 Days. Here's Why Microsoft's Run Isn't Over.",
+        "link": "https://www.fool.com/investing/2026/08/05/alphabet-microsoft-amazon-oracle-trillion-gain/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:40:00 +0000",
+        "snippet": "Cloud computing giants are back in favor as investor support for artificial intelligence (AI) capital expenditures grows."
+      },
+      {
+        "title": "Beyond Capex: Big Tech Quietly Locks In $2.7 Trillion in Long-Term Commitments",
+        "link": "https://finance.yahoo.com/m/2e0c54b6-b4ac-3e1f-803a-ce721bfb389d/beyond-capex%3A-big-tech.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:31:00 +0000",
+        "snippet": "Tech investors hoping that a wave of AI spending will moderate in 2027 are likely to be disappointed."
+      },
+      {
+        "title": "Larry Ellison Just Collected a $579 Million Dividend Check. Here’s What $100,000 of Oracle Stock Would Pay You.",
+        "link": "https://247wallst.com/investing/2026/08/05/larry-ellison-just-collected-a-579-million-dividend-check-heres-what-100000-of-oracle-stock-would-pay-you/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:33:26 +0000",
+        "snippet": "Oracle's latest dividend payment landed very differently depending on who was collecting it. The gap between the company's biggest shareholder and a serious retail investor reveals something striking "
+      },
+      {
+        "title": "[Latest] Global Generative AI In Clinical Trials Market Size/Share Worth USD 1.86 Billion by 2035 at a 9.63% CAGR: Healthcare Foresights (Analysis, Outlook, Leaders, Report, Trends, Forecast, Segmentation, Growth Rate, Value, SWOT Analysis)",
+        "link": "https://finance.yahoo.com/healthcare/articles/latest-global-generative-ai-clinical-163000800.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:30:00 +0000",
+        "snippet": "[220+ Pages Latest Report] According to a market research study published by Healthcare Foresights, the demand analysis of Global Generative AI In Clinical Trials Market size & share revenue was value"
+      },
+      {
+        "title": "SpaceX Has Already Lost AI Race",
+        "link": "https://247wallst.com/investing/2026/08/05/spacex-has-already-lost-ai-race/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 14:53:54 +0000",
+        "snippet": "SpaceX is pouring billions into AI while renting out its data centers to rivals, yet its models trail the competition and its consumer apps barely register. Something does not add up."
+      },
+      {
+        "title": "Microsoft Azure Fiscal 2026 Sales Exceed $100B: Hold the Stock Now?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/microsoft-azure-fiscal-2026-sales-143000852.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 14:30:00 +0000",
+        "snippet": "MSFT's Azure tops $100B in annual revenues as AI and cloud growth accelerate, but can strong fundamentals outweigh valuation and spending concerns?"
+      },
+      {
+        "title": "BillingPlatform Expands Executive Team with Three Industry Veterans to Accelerate AI-Native Platform Strategy and Scale its Market Advantage",
+        "link": "https://finance.yahoo.com/technology/ai/articles/billingplatform-expands-executive-team-three-130300196.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 13:03:00 +0000",
+        "snippet": "BillingPlatform, the leader in AI-native monetization for global enterprises, today announced the expansion of its executive team with three strategic appointments: Steven Springsteel as Chief Financi"
+      },
+      {
+        "title": "Oracle Stock Tumbles as Debt Risk Just Hit a Record High",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/oracle-stock-tumbles-debt-risk-123543035.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 12:35:43 +0000",
+        "snippet": "Oracle's AI Expansion Comes Under Pressure as Default Risk Surges"
+      }
+    ],
+    "SPCX": [
+      {
+        "title": "Elon Musk Thinks the SpaceX Crash is an ‘Insane Opportunity’—Should You Trust Him?",
+        "link": "https://247wallst.com/investing/2026/08/05/elon-musk-thinks-the-spacex-crash-is-an-insane-opportunity-should-you-trust-him/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:58:13 +0000",
+        "snippet": "SpaceX just posted its first public earnings report and shares cratered in after-hours trading, but Elon Musk is calling the selloff a buying opportunity. Before you follow his lead, there are some se"
+      },
+      {
+        "title": "Why Nvidia Stock Rallied Today",
+        "link": "https://www.fool.com/investing/2026/08/05/why-nvidia-stock-rallied-today/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:15:09 +0000",
+        "snippet": "The company will be the exclusive provider of AI chips to another big name in the space."
+      },
+      {
+        "title": "Update: US Equity Indexes Mixed as SpaceX Hits Nasdaq, Deal Reportedly Reached on Proposed Hormuz Route",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/us-equity-indexes-mixed-spacex-181248189.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:12:48 +0000",
+        "snippet": "(Updates with index/price moves, macroeconomic data and company/geopolitical news from the first par"
+      },
+      {
+        "title": "SpaceX's AI Ambition Is Starting to Test Investor Patience",
+        "link": "https://finance.yahoo.com/technology/ai/articles/spacexs-ai-ambition-starting-test-180702926.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:07:02 +0000",
+        "snippet": "A sixfold jump in capital spending overshadowed stronger results and a more ambitious long-term revenue target."
+      },
+      {
+        "title": "Update: Equity Markets Mixed Intraday as US Seen Nearing Hormuz Deal",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/equity-markets-mixed-intraday-us-175651090.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:56:51 +0000",
+        "snippet": "(Updates with latest market prices and developments.) US benchmark equity indexes were mixed intr"
+      },
+      {
+        "title": "SpaceX shares tumble despite earnings beat",
+        "link": "http://videos.coindesk.com/previews/jRIwL7Dj?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:54:29 +0000",
+        "snippet": "SpaceX reported its first quarterly results as a public company, beating on revenue but falling 11% as investors focused on heavy capital spending. Its 18,712 bitcoin lost roughly $195 million in valu"
+      },
+      {
+        "title": "Wall Street Isn't Worried About SpaceX Price Declines",
+        "link": "https://finance.yahoo.com/m/3a172a5a-deef-34c9-adad-ed20a824d306/wall-street-isn%27t-worried.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:51:02 +0000",
+        "snippet": "SpaceX stock has been weak for weeks.  Analysts are sticking with their price targets.  The average analyst price target for SpaceX stock is about $227 a share, according to FactSet, down $1 since Spa"
+      },
+      {
+        "title": "Micron Stock Rises After Musk Flags Surging Memory Prices",
+        "link": "https://finance.yahoo.com/m/f5eedee3-91bc-3ed5-bec2-f82ba4e8a537/micron-stock-rises-after-musk.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:51:00 +0000",
+        "snippet": "FEATURE   Micron Technology stock rose Wednesday after good news about future memory prices from SpaceX CEO Elon Musk.  Micron shares were up 3.2% at $921 by midafternoon. That comes after a 7.6% gain"
+      }
+    ],
+    "SKHY": [
+      {
+        "title": "Apple's Search for Cheaper Memory Just Hit a Wall",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/apples-search-cheaper-memory-just-183310958.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:33:10 +0000",
+        "snippet": "Apple reportedly approached CXMT for lower mobile-memory prices."
+      },
+      {
+        "title": "Micron Stock Rises After Musk Flags Surging Memory Prices",
+        "link": "https://finance.yahoo.com/m/f5eedee3-91bc-3ed5-bec2-f82ba4e8a537/micron-stock-rises-after-musk.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:51:00 +0000",
+        "snippet": "FEATURE   Micron Technology stock rose Wednesday after good news about future memory prices from SpaceX CEO Elon Musk.  Micron shares were up 3.2% at $921 by midafternoon. That comes after a 7.6% gain"
+      },
+      {
+        "title": "Micron's Supply Crunch Is Turning Into a Pricing Story",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/microns-supply-crunch-turning-pricing-174506815.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:45:06 +0000",
+        "snippet": "Micron, Samsung and SK Hynix have reportedly committed significant portions of their 2027 output."
+      },
+      {
+        "title": "Beyond Capex: Big Tech Quietly Locks In $2.7 Trillion in Long-Term Commitments",
+        "link": "https://finance.yahoo.com/m/2e0c54b6-b4ac-3e1f-803a-ce721bfb389d/beyond-capex%3A-big-tech.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:31:00 +0000",
+        "snippet": "Tech investors hoping that a wave of AI spending will moderate in 2027 are likely to be disappointed."
+      },
+      {
+        "title": "How Should Investors Play SKHY Stock Amid Volatility Since U.S. Debut?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/investors-play-skhy-stock-amid-165000579.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:50:00 +0000",
+        "snippet": "SKHY has pulled back after a blockbuster U.S. debut, but AI memory demand, expansion plans and valuation keep the long-term investment case in focus."
+      },
+      {
+        "title": "Micron Stock Jumps 6% as DRAM Market Share Expands",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/micron-stock-jumps-6-dram-144511923.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 14:45:11 +0000",
+        "snippet": "Micron gained ground on SK Hynix as AI-driven memory demand supported a fivefold increase in DRAM revenue."
+      },
+      {
+        "title": "EXCLUSIVE: The Memory Bottleneck Is Set To Persist Until 2028, Expert Says",
+        "link": "https://finance.yahoo.com/technology/ai/articles/exclusive-memory-bottleneck-set-persist-142643974.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 14:26:43 +0000",
+        "snippet": "The artificial intelligence boom has created a strange problem for the memory industry. While companies build more capacity — Samsung Electronics Co. Ltd. (OTC:SSNLF), SK Hynix Inc. (NASDAQ:SKHY) and "
+      },
+      {
+        "title": "The companies defying macro uncertainty and raising guidance: AlphaCheck",
+        "link": "https://finance.yahoo.com/markets/article/the-companies-defying-macro-uncertainty-and-raising-guidance-alphacheck-140605238.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 14:06:05 +0000",
+        "snippet": "Investors have plenty of reasons to be uncertain right now. But that has not wholly shaken companies' faith in their ability to deliver strong earnings growth this year."
+      }
+    ],
+    "TSLA": [
+      {
+        "title": "Elon Musk Thinks the SpaceX Crash is an ‘Insane Opportunity’—Should You Trust Him?",
+        "link": "https://247wallst.com/investing/2026/08/05/elon-musk-thinks-the-spacex-crash-is-an-insane-opportunity-should-you-trust-him/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:58:13 +0000",
+        "snippet": "SpaceX just posted its first public earnings report and shares cratered in after-hours trading, but Elon Musk is calling the selloff a buying opportunity. Before you follow his lead, there are some se"
+      },
+      {
+        "title": "Uber Aims to Build the World's Largest Autonomous Vehicle Platform. Can It Compete With Tesla?",
+        "link": "https://www.fool.com/investing/2026/08/05/uber-aims-to-build-the-world-s-largest-autonomous-vehicle-platform-can-it-compete-with-tesla/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:30:01 +0000",
+        "snippet": "Uber is investing aggressively in robotaxis."
+      },
+      {
+        "title": "Uber’s Ride-Sharing Business Is Booming. Why the Stock Market Couldn’t Care Less.",
+        "link": "https://finance.yahoo.com/m/7fc8ede6-deb9-35cb-aeca-b413a5460f15/uber%E2%80%99s-ride-sharing-business.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:29:00 +0000",
+        "snippet": "The ride-hailing company reported mostly in-line second-quarter earnings and guidance that missed expectations."
+      },
+      {
+        "title": "Michael Burry Sends Stark Warning on S&P 500 Crash",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/michael-burry-sends-stark-warning-171931417.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:19:31 +0000",
+        "snippet": "Michael Burry sounds the alarm on a 1987-style selloff despite fresh market highs"
+      },
+      {
+        "title": "Michael Burry Drops Shocking Take on AI Stocks",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/michael-burry-drops-shocking-ai-165752178.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:57:52 +0000",
+        "snippet": "Calm markets may be encouraging investors to take greater risks"
+      },
+      {
+        "title": "Elon Musk Just Explained Why Memory Could Be the Next AI Winner.",
+        "link": "https://www.fool.com/investing/2026/08/05/elon-musk-just-explained-why-memory-could-be-the-next-ai-winner/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:53:06 +0000",
+        "snippet": "Memory stocks have been under pressure, but Elon Musk has a different view."
+      },
+      {
+        "title": "4 Things All Dividend Investors Need to Know About Building Passive Income Right Now",
+        "link": "https://www.fool.com/investing/2026/08/05/4-things-dividend-investors-know-passive-income/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:20:00 +0000",
+        "snippet": "Follow these guidelines and you'll be on your way to building a durable and sustainable long-term income stream."
+      },
+      {
+        "title": "SpaceX’s $1T Goal and 3 More Shockers From Musk on the Earnings Call",
+        "link": "https://finance.yahoo.com/m/954539eb-42ed-35a5-bc45-3f6a2bec5755/spacex%E2%80%99s-%241t-goal-and-3-more.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 15:28:00 +0000",
+        "snippet": "SpaceX  and  Tesla  CEO Elon Musk is famous for his sky-high ambitions, including reaching Mars one day.  After SpaceX’s earnings report Tuesday, Musk laid out four more brazen goals for the rocket an"
+      }
+    ],
+    "0700.HK": [
+      {
+        "title": "Tencent Hy3 Now Available Globally, Extending Practical AI Across Products, Workflows and Cloud Services",
+        "link": "https://finance.yahoo.com/technology/ai/articles/tencent-hy3-now-available-globally-060000966.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 06:00:00 +0000",
+        "snippet": "Tencent today announced broader international access to Tencent Hy3 (Tencent Hy, formerly known as Tencent Hunyuan) following the model's official release on 6 July. The rollout broadens access for de"
+      },
+      {
+        "title": "Tencent (SEHK:700) Stock May Be Undervalued Despite Fresh AI Spending Questions",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/tencent-sehk-700-stock-may-170839116.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 17:08:39 +0000",
+        "snippet": "Tencent Holdings stock has delivered a 47.9% gain over the past three years, yet recent share price pressure and mixed shorter term returns leave investors weighing whether the current level still ref"
+      },
+      {
+        "title": "Tencent (SEHK:700) Launches Digital Jingdezhen To Bring Porcelain Heritage Into Gaming",
+        "link": "https://finance.yahoo.com/technology/ai/articles/tencent-sehk-700-launches-digital-160958283.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 16:09:58 +0000",
+        "snippet": "Tencent Holdings (SEHK:700) has launched Digital Jingdezhen, an AI-powered cultural heritage game. The project focuses on reviving porcelain craft traditions through immersive digital experiences. Pla"
+      },
+      {
+        "title": "Alibaba's Latest AI Move Is Getting Investors' Attention",
+        "link": "https://finance.yahoo.com/technology/ai/articles/alibabas-latest-ai-move-getting-155631013.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 15:56:31 +0000",
+        "snippet": "The model uses 2.4 trillion parameters and will be released publicly next week."
+      },
+      {
+        "title": "Alibaba Stock Soars After Unveiling New Qwen AI Model",
+        "link": "https://finance.yahoo.com/technology/ai/articles/alibaba-stock-soars-unveiling-qwen-121120900.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 12:11:20 +0000",
+        "snippet": "Alibaba Stock Rallies After Unveiling Powerful New Qwen AI Model"
+      },
+      {
+        "title": "Tencent Cloud and tapmad Partner to Deliver Seamless Streaming for a Global Football Tournament in Pakistan",
+        "link": "https://finance.yahoo.com/media-advertising/articles/tencent-cloud-tapmad-partner-deliver-040000698.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 04:00:00 +0000",
+        "snippet": "Tencent Cloud, the cloud business of global technology company Tencent, today announced its partnership with tapmad, Pakistan's leading OTT streaming platform helping to deliver a seamless and immersi"
+      },
+      {
+        "title": "Jack Ma-Backed OceanBase Seeks Up to $443 Million for AI Push",
+        "link": "https://finance.yahoo.com/technology/ai/articles/jack-ma-backed-oceanbase-seeks-020218977.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 29 Jul 2026 02:02:18 +0000",
+        "snippet": "(Bloomberg) -- Jack Ma-backed OceanBase is seeking to raise money to help it operate more independently and bankroll its expansion into AI database services, according to people familiar with the matt"
+      },
+      {
+        "title": "TSMC and Tencent break into the top 100 of the Fortune Global 500 list, as Asia rides the AI boom",
+        "link": "https://finance.yahoo.com/technology/articles/tsmc-tencent-break-top-100-210000080.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 28 Jul 2026 21:00:00 +0000",
+        "snippet": "Here's who's rising, and who's debuting, from Asia on this year's Global 500, Fortune's ranking of the world's largest companies by revenue."
+      }
+    ],
+    "0883.HK": [
+      {
+        "title": "Tech Turmoil Troubles Asian Stock Markets",
+        "link": "https://finance.yahoo.com/markets/world-indices/articles/tech-turmoil-troubles-asian-stock-103830698.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 20 Jul 2026 10:38:30 +0000",
+        "snippet": "Asian stock markets turned in a mixed performance Monday, with Seoul retreating on another chip-sect"
+      },
+      {
+        "title": "Chinese banks set for $41 million payday from chipmaker's $8.6 billion IPO",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/chinese-banks-set-41-million-081639387.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Thu, 16 Jul 2026 08:16:39 +0000",
+        "snippet": "Six Chinese investment banks working on chipmaker CXMT's $8.6 billion IPO are set to take home at least $41 million in fees, company filings showed, in a ‌boost for an industry whose income pool has s"
+      },
+      {
+        "title": "ExxonMobil Expands Nigeria Presence With $1B Usan Infill Project",
+        "link": "https://finance.yahoo.com/energy/articles/exxonmobil-expands-nigeria-presence-1b-182000177.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 10 Jul 2026 18:20:00 +0000",
+        "snippet": "XOM's $1B Usan Infill Project marks its return to drilling in Nigeria and adds 40,000 barrels per day within 18 months."
+      },
+      {
+        "title": "ConocoPhillips or Occidental Petroleum: Which Oil Stock Should You Buy Now?",
+        "link": "https://www.fool.com/coverage/better-buy/2026/07/01/conocophillips-or-occidental-petroleum-which-oil-stock-should-you-buy-now/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 01 Jul 2026 19:44:37 +0000",
+        "snippet": "Global reach, high-tech pivots, and balance sheets set these oil giants apart as they navigate shifting energy demand and sector risks in 2026."
+      },
+      {
+        "title": "Cnooc Q1 Profit Rises To 39.14 Billion Yuan As Oil Prices Climb",
+        "link": "https://finance.yahoo.com/sectors/energy/articles/cnooc-q1-profit-rises-39-193953312.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 28 Apr 2026 19:39:53 +0000",
+        "snippet": "Higher crude prices and 8.6% output growth supported earnings, while capital spending increased to sustain production expansion"
+      },
+      {
+        "title": "CNOOC Limited Achieves Strong Start with Dual Growth in Production and Performance in Q1 2026",
+        "link": "https://finance.yahoo.com/sectors/energy/articles/cnooc-limited-achieves-strong-start-092300670.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 28 Apr 2026 09:23:00 +0000",
+        "snippet": "CNOOC Limited (\"the Company\", SEHK: 00883 (HKD counter) and 80883 (RMB counter), SSE: 600938) today announced its operating results for the first quarter of 2026. The Company continued to increase res"
+      },
+      {
+        "title": "Top Asian Dividend Stocks To Consider In April 2026",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/top-asian-dividend-stocks-consider-043159465.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 28 Apr 2026 04:31:59 +0000",
+        "snippet": "As global markets navigate a complex landscape marked by geopolitical tensions and fluctuating economic indicators, investors are increasingly turning their attention to the Asian markets, where stabi"
+      },
+      {
+        "title": "CNOOC Limited Released 2025 Environmental, Social and Governance Report",
+        "link": "https://finance.yahoo.com/sectors/energy/articles/cnooc-limited-released-2025-environmental-093600518.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Thu, 09 Apr 2026 09:36:00 +0000",
+        "snippet": "CNOOC Limited (\"the Company\", SEHK: 00883 (HKD counter) and 80883 (RMB counter), SSE: 600938) released its 2025 Environmental, Social and Governance (ESG) Report in Hong Kong today."
+      }
+    ],
+    "3750.HK": [
+      {
+        "title": "Spain seeks common EU rules as regions court Chinese investors – report",
+        "link": "https://www.just-auto.com/news/spain-seeks-common-eu-rules/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 15:59:42 +0000",
+        "snippet": "Reuters reported that Spanish officials want faster approval of a “Made in Europe” law."
+      },
+      {
+        "title": "A New $200 Million SPAC Just Launched on Nasdaq to Buy Video Game and Media Companies",
+        "link": "https://247wallst.com/investing/2026/07/31/a-new-200-million-spac-just-launched-on-nasdaq-to-buy-video-game-and-media-companies-2/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 31 Jul 2026 13:49:16 +0000",
+        "snippet": "A fresh blank-check company just landed on Nasdaq with a mandate to shake up gaming and digital media M&amp;A, and the acquisition targets it chooses could signal where the next wave of consolidation "
+      },
+      {
+        "title": "Catalyst Acquisition Corp. Announces Closing of $200 Million Initial Public Offering",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/catalyst-acquisition-corp-announces-closing-200500830.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 29 Jul 2026 20:05:00 +0000",
+        "snippet": "New York, New York, July 29, 2026 (GLOBE NEWSWIRE) -- Catalyst Acquisition Corp. (NASDAQ: CATLU) (the “Company”) today announced the closing of its initial public offering of 20,000,000 units at an of"
+      },
+      {
+        "title": "After Ford Soars 44% on AI Fever, Traders Want Proof It’s Real",
+        "link": "https://finance.yahoo.com/technology/ai/articles/ford-soars-44-ai-fever-125343578.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 28 Jul 2026 12:53:43 +0000",
+        "snippet": "(Bloomberg) -- Two months after Ford Motor Co. became the latest old-economy manufacturer to be swept up in the artificial-intelligence rally, investors are looking for proof the enthusiasm was justif"
+      },
+      {
+        "title": "Catalyst Acquisition Corp. Announces Pricing of $200 Million Initial Public Offering",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/catalyst-acquisition-corp-announces-pricing-003000296.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 28 Jul 2026 00:30:00 +0000",
+        "snippet": "SANTA MONICA, July 27, 2026 (GLOBE NEWSWIRE) -- Catalyst Acquisition Corp. (“Catalyst” or the “Company”) announced today that it priced its initial public offering of 20,000,000 units at $10.00 per un"
+      },
+      {
+        "title": "DeepSeek pauses fundraising round after founder's leaked comments",
+        "link": "https://www.proactiveinvestors.com/companies/news/1096085/deepseek-pauses-fundraising-round-after-founder-s-leaked-comments-1096085.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 27 Jul 2026 15:19:00 +0000",
+        "snippet": "DeepSeek has paused its second fundraising round after private comments made by founder Liang Wenfeng were leaked online, according to a Bloomberg News report. Bloomberg reported that the Chinese AI s"
+      },
+      {
+        "title": "DeepSeek Said to Tell Backers of Funding Pause After Viral Posts",
+        "link": "https://finance.yahoo.com/technology/ai/articles/deepseek-said-tell-backers-funding-144955175.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Sat, 25 Jul 2026 14:49:55 +0000",
+        "snippet": "(Bloomberg) -- DeepSeek has told prospective investors in its second fundraising round that it’s suspending the deal for now, people familiar with the matter said, days after comments widely attribute"
+      },
+      {
+        "title": "Nvidia Returns to NZS Growth Fund",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/nvidia-returns-nzs-growth-fund-122207528.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 21 Jul 2026 12:22:07 +0000",
+        "snippet": "NZS shifts capital toward AI infrastructure and healthcare leaders"
+      }
+    ],
     "07709.HK": [],
     "00981.HK": [],
-    "688809.SS": [],
-    "300408.SZ": [],
-    "300679.SZ": [],
-    "000426.SZ": [],
-    "002624.SZ": [],
-    "601872.SS": [],
-    "601975.SS": [],
-    "002258.SZ": [],
-    "001331.SZ": [],
-    "600150.SS": [],
+    "688809.SS": [
+      {
+        "title": "A股，两板块大涨！多股尾盘拉升，“股王” 封涨停！",
+        "link": "http://finance.eastmoney.com/a/202608043831233452.html",
+        "source": "证券时报",
+        "date": "2026-08-04 16:52:00",
+        "snippet": ""
+      },
+      {
+        "title": "芯片制造耗材企业韬盛科技科创板IPO撤单 曾因技术秘密纠纷涉诉",
+        "link": "http://finance.eastmoney.com/a/202607303826672933.html",
+        "source": "科创板日报",
+        "date": "2026-07-30 15:35:00",
+        "snippet": ""
+      },
+      {
+        "title": "市值超9亿元，A股又现“天价”离婚案",
+        "link": "http://finance.eastmoney.com/a/202607263821245359.html",
+        "source": "每日经济新闻",
+        "date": "2026-07-26 19:17:09",
+        "snippet": ""
+      },
+      {
+        "title": "强一股份斥资超10亿元超募资金投资探针卡研发生产，顺客户高要求延期一募投项目",
+        "link": "http://finance.eastmoney.com/a/202607253821115077.html",
+        "source": "深圳商报·读创",
+        "date": "2026-07-25 12:34:21",
+        "snippet": ""
+      },
+      {
+        "title": "强一股份：拟使用10.27亿元超募资金投资在建项目并延期部分募投项目",
+        "link": "http://finance.eastmoney.com/a/202607243820775070.html",
+        "source": "财联社",
+        "date": "2026-07-24 21:51:44",
+        "snippet": ""
+      },
+      {
+        "title": "A股缩量调整，成交额跌破2万亿元！半导体设备却逆市大涨",
+        "link": "http://stock.eastmoney.com/a/202607243820482481.html",
+        "source": "21世纪经济报道",
+        "date": "2026-07-24 16:19:45",
+        "snippet": ""
+      },
+      {
+        "title": "销售高景气+国产替代！半导体设备逆势走强 2026业绩高增股来了",
+        "link": "http://finance.eastmoney.com/a/202607243820244822.html",
+        "source": "东方财富研究中心",
+        "date": "2026-07-24 11:45:38",
+        "snippet": ""
+      },
+      {
+        "title": "回调风险已释放？半导体设备集体异动，至纯科技直线涨停",
+        "link": "http://finance.eastmoney.com/a/202607243820205758.html",
+        "source": "21世纪经济报道",
+        "date": "2026-07-24 10:59:00",
+        "snippet": ""
+      }
+    ],
+    "300408.SZ": [
+      {
+        "title": "Chaozhou Three-Circle seeks $1 billion Hong Kong IPO",
+        "link": "https://qz.com/chaozhou-three-circle-hong-kong-ipo-1-billion-050426?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 04 May 2026 13:22:14 +0000",
+        "snippet": "The Shenzhen-listed ceramic components maker is awaiting regulatory approval, with a deal possible as early as the end of June"
+      },
+      {
+        "title": "Three-Circle seeks to raise up to $1 billion in Hong Kong listing, sources say",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/three-circle-seeks-raise-1-080828962.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 04 May 2026 08:08:28 +0000",
+        "snippet": "Chaozhou Three-Circle Group, a Chinese maker of small ceramic components used in phones, cars, data centres ‌and telecom equipment, aims to raise up to $1 billion in a Hong Kong ‌listing, two sources "
+      },
+      {
+        "title": "产品供需趋紧 MLCC行业进入新一轮景气周期",
+        "link": "http://finance.eastmoney.com/a/202608063832942139.html",
+        "source": "证券日报",
+        "date": "2026-08-06 00:54:00",
+        "snippet": ""
+      },
+      {
+        "title": "3家公司被纳入港股通标的",
+        "link": "http://finance.eastmoney.com/a/202608063832941955.html",
+        "source": "证券日报",
+        "date": "2026-08-06 00:46:00",
+        "snippet": ""
+      },
+      {
+        "title": "强势股追踪 主力资金连续5日净流入80股",
+        "link": "http://finance.eastmoney.com/a/202608053832894756.html",
+        "source": "证券时报网",
+        "date": "2026-08-05 22:04:00",
+        "snippet": ""
+      },
+      {
+        "title": "MLCC概念上涨7.01%，8股主力资金净流入超亿元",
+        "link": "http://finance.eastmoney.com/a/202608053832893352.html",
+        "source": "证券时报网",
+        "date": "2026-08-05 22:04:00",
+        "snippet": ""
+      },
+      {
+        "title": "MiniMax等3家公司自8月6日起纳入港股通",
+        "link": "http://finance.eastmoney.com/a/202608053832897672.html",
+        "source": "中国证券报·中证网",
+        "date": "2026-08-05 21:59:00",
+        "snippet": ""
+      },
+      {
+        "title": "三环集团：关于完成董事会换届选举及聘任高级管理人员的公告",
+        "link": "http://finance.eastmoney.com/a/202608053832881056.html",
+        "source": "证券日报",
+        "date": "2026-08-05 21:50:00",
+        "snippet": ""
+      }
+    ],
+    "300679.SZ": [
+      {
+        "title": "3 Asian Stocks Estimated To Be Up To 42.3% Below Intrinsic Value",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/3-asian-stocks-estimated-42-223426438.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 15 Apr 2026 22:34:26 +0000",
+        "snippet": "As geopolitical tensions ease with the U.S.-Iran ceasefire, Asian markets have shown resilience, buoyed by optimism around de-escalating conflicts and improved investor sentiment. In this environment,"
+      },
+      {
+        "title": "Asian Stocks That Might Be Trading Below Their Estimated Value",
+        "link": "https://finance.yahoo.com/news/asian-stocks-might-trading-below-043750938.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 16 Feb 2026 04:37:50 +0000",
+        "snippet": "As global markets navigate the complexities of AI disruption and economic shifts, Asian stocks have shown resilience, with indices like Japan's Nikkei 225 experiencing notable gains. In this environme"
+      },
+      {
+        "title": "Asian Market Value Stocks Priced Below Estimated Worth",
+        "link": "https://finance.yahoo.com/news/asian-market-value-stocks-priced-223418108.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Sun, 15 Feb 2026 22:34:18 +0000",
+        "snippet": "As global markets grapple with concerns over AI disruptions and fluctuating economic indicators, the Asian stock markets present intriguing opportunities for value investors. In this environment, iden"
+      },
+      {
+        "title": "电连技术：累计回购公司股份3392600股",
+        "link": "http://finance.eastmoney.com/a/202608033830017051.html",
+        "source": "证券日报",
+        "date": "2026-08-03 20:54:00",
+        "snippet": ""
+      },
+      {
+        "title": "电连技术：截至2026年7月20日公司股东户数为27953户",
+        "link": "http://finance.eastmoney.com/a/202607273822291432.html",
+        "source": "证券日报",
+        "date": "2026-07-27 19:25:00",
+        "snippet": ""
+      },
+      {
+        "title": "电连技术：公司射频连接器技术能力与应用场景可覆盖卫星通信、商业航天等多个领域",
+        "link": "http://finance.eastmoney.com/a/202607273822199175.html",
+        "source": "证券日报",
+        "date": "2026-07-27 17:19:00",
+        "snippet": ""
+      },
+      {
+        "title": "电连技术：公司高速线缆连接组件产品种类齐全",
+        "link": "http://finance.eastmoney.com/a/202607273822164230.html",
+        "source": "证券日报",
+        "date": "2026-07-27 16:34:00",
+        "snippet": ""
+      },
+      {
+        "title": "电连技术：公司相关产品可应用于传感器配置较高的人形机器人领域",
+        "link": "http://finance.eastmoney.com/a/202607273822162896.html",
+        "source": "证券日报",
+        "date": "2026-07-27 16:34:00",
+        "snippet": ""
+      }
+    ],
+    "000426.SZ": [
+      {
+        "title": "Asian Market Stocks That May Be Trading Below Estimated Fair Value",
+        "link": "https://finance.yahoo.com/news/asian-market-stocks-may-trading-223428399.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 15 Sep 2025 22:34:28 +0000",
+        "snippet": "As global markets anticipate interest rate cuts and grapple with inflation concerns, Asian stock markets have shown resilience, with notable gains in key indices like Japan's Nikkei 225 and China's CS"
+      },
+      {
+        "title": "Global Stocks Estimated To Be Trading Below Intrinsic Value By Up To 43.3%",
+        "link": "https://finance.yahoo.com/news/global-stocks-estimated-trading-below-093803166.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 15 Sep 2025 09:38:03 +0000",
+        "snippet": "As global markets continue to navigate the complexities of interest rate expectations and economic indicators, investors are keenly watching for opportunities amid fluctuating indices. With major U.S."
+      },
+      {
+        "title": "【一图看懂】“算力金属”价格狂飙，哪些公司受益？",
+        "link": "http://finance.eastmoney.com/a/202607313828494157.html",
+        "source": "中国证券报·中证金牛座",
+        "date": "2026-07-31 18:32:01",
+        "snippet": ""
+      },
+      {
+        "title": "重仓黄金股的基金，悄悄大涨",
+        "link": "http://finance.eastmoney.com/a/202607313828440320.html",
+        "source": "中新经纬",
+        "date": "2026-07-31 17:48:00",
+        "snippet": ""
+      },
+      {
+        "title": "7月31日投资避雷针：4连板人气股提示风险 不涉及人形机器人整机制造",
+        "link": "http://finance.eastmoney.com/a/202607313827384274.html",
+        "source": "财联社",
+        "date": "2026-07-31 08:37:15",
+        "snippet": ""
+      },
+      {
+        "title": "安全事故致1人死亡，兴业银锡重要子公司采矿系统、选矿尾矿系统双双停产",
+        "link": "http://finance.eastmoney.com/a/202607303827093950.html",
+        "source": "深圳商报·读创",
+        "date": "2026-07-30 22:54:25",
+        "snippet": ""
+      },
+      {
+        "title": "发生致1人死亡事故！兴业银锡公告：重要子公司选矿尾矿系统停产",
+        "link": "http://finance.eastmoney.com/a/202607303827071856.html",
+        "source": "中国基金报",
+        "date": "2026-07-30 22:23:00",
+        "snippet": ""
+      },
+      {
+        "title": "兴业银锡：银漫矿业采矿系统、选矿尾矿系统均已停产",
+        "link": "http://finance.eastmoney.com/a/202607303826962869.html",
+        "source": "每日经济新闻",
+        "date": "2026-07-30 20:44:28",
+        "snippet": ""
+      }
+    ],
+    "002624.SZ": [
+      {
+        "title": "High Growth Tech Stocks In Asia To Watch April 2026",
+        "link": "https://finance.yahoo.com/sectors/technology/articles/high-growth-tech-stocks-asia-223553402.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 29 Apr 2026 22:35:53 +0000",
+        "snippet": "As global markets navigate geopolitical tensions and economic shifts, the Asian tech sector continues to capture investor interest with its potential for high growth, particularly as technology stocks"
+      },
+      {
+        "title": "ByteDance AI Launch Sends COL Group Up 20%, Lifts China Media Stocks",
+        "link": "https://finance.yahoo.com/news/bytedance-ai-launch-sends-col-195930598.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 09 Feb 2026 19:59:30 +0000",
+        "snippet": "Shares of Chinese media and AI application firms rose after ByteDance unveiled its Seedance 2.0 video-generation app on Feb. 7."
+      },
+      {
+        "title": "蓝鲸一线直击2026chinajoy｜AI如何驱动游戏产业迭代变革？",
+        "link": "http://finance.eastmoney.com/a/202608033829865974.html",
+        "source": "蓝鲸财经",
+        "date": "2026-08-03 17:17:29",
+        "snippet": ""
+      },
+      {
+        "title": "与游戏产业共生，电竞赛事怎样在上海提升含金量",
+        "link": "http://finance.eastmoney.com/a/202608023829113939.html",
+        "source": "界面新闻",
+        "date": "2026-08-02 14:02:34",
+        "snippet": ""
+      },
+      {
+        "title": "对话完美世界伊迪：《异环》重塑增长曲线，多元布局探索新发力点",
+        "link": "http://finance.eastmoney.com/a/202608013829009837.html",
+        "source": "21世纪经济报道",
+        "date": "2026-08-01 13:01:18",
+        "snippet": ""
+      },
+      {
+        "title": "老牌厂商突围求变，《异环》闯关出海，完美世界寻找竞争新支点",
+        "link": "http://finance.eastmoney.com/a/202608013829003327.html",
+        "source": "每日经济新闻",
+        "date": "2026-08-01 11:31:44",
+        "snippet": ""
+      },
+      {
+        "title": "AI造游戏、“非遗”进副本，ChinaJoy上海火热启幕",
+        "link": "http://finance.eastmoney.com/a/202608013828991953.html",
+        "source": "南方都市报",
+        "date": "2026-08-01 09:32:00",
+        "snippet": ""
+      },
+      {
+        "title": "ChinaJoy首日直击：一句话生成游戏雏形 脑电波测你有多“上头”",
+        "link": "http://finance.eastmoney.com/a/202607313828703739.html",
+        "source": "财联社",
+        "date": "2026-07-31 22:38:18",
+        "snippet": ""
+      }
+    ],
+    "601872.SS": [
+      {
+        "title": "Top Global Dividend Stocks For September 2025",
+        "link": "https://finance.yahoo.com/news/top-global-dividend-stocks-september-093147541.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 05 Sep 2025 09:31:47 +0000",
+        "snippet": "As global markets navigate a mix of steady inflation, geopolitical tensions, and evolving monetary policies, investors are eyeing opportunities in dividend stocks as a potential source of stability an"
+      },
+      {
+        "title": "招商轮船：订造5艘油轮，协议总价约24.85亿元",
+        "link": "http://finance.eastmoney.com/a/202608053832851661.html",
+        "source": "上海证券报·中国证券网",
+        "date": "2026-08-05 21:40:49",
+        "snippet": ""
+      },
+      {
+        "title": "招商轮船：拟24.85亿元新建5艘阿芙拉型油轮",
+        "link": "http://finance.eastmoney.com/a/202608053832822931.html",
+        "source": "中国证券报·中证网",
+        "date": "2026-08-05 21:25:56",
+        "snippet": ""
+      },
+      {
+        "title": "招商轮船(601872.SH)：订造5艘阿芙拉型油轮，协议总价约24.85亿元，2029-2030年交付",
+        "link": "http://finance.eastmoney.com/a/202608053832757833.html",
+        "source": "界面新闻",
+        "date": "2026-08-05 20:02:29",
+        "snippet": ""
+      },
+      {
+        "title": "晚间重要公告汇总",
+        "link": "http://finance.eastmoney.com/a/202608053832741570.html",
+        "source": "第一财经",
+        "date": "2026-08-05 19:35:44",
+        "snippet": ""
+      },
+      {
+        "title": "招商轮船：拟新建5艘阿芙拉型油轮 总价约24.85亿元",
+        "link": "http://finance.eastmoney.com/a/202608053832726476.html",
+        "source": "每日经济新闻",
+        "date": "2026-08-05 19:06:35",
+        "snippet": ""
+      },
+      {
+        "title": "券商8月金股转向价值风格 食品饮料、传媒行业权重明显增加",
+        "link": "http://finance.eastmoney.com/a/202608053832379682.html",
+        "source": "澎湃新闻",
+        "date": "2026-08-05 11:28:00",
+        "snippet": ""
+      },
+      {
+        "title": "6.52亿元资金今日流出交通运输股",
+        "link": "http://finance.eastmoney.com/a/202608043831237438.html",
+        "source": "证券时报网",
+        "date": "2026-08-04 16:49:00",
+        "snippet": ""
+      }
+    ],
+    "601975.SS": [
+      {
+        "title": "招商南油：截至2026年7月末公司股东总数为129862户",
+        "link": "http://finance.eastmoney.com/a/202608043831417837.html",
+        "source": "证券日报",
+        "date": "2026-08-04 20:34:00",
+        "snippet": ""
+      },
+      {
+        "title": "中船广船国际再获招商南油4艘5万吨级油船订单",
+        "link": "http://finance.eastmoney.com/a/202607303827062214.html",
+        "source": "界面新闻",
+        "date": "2026-07-30 22:01:06",
+        "snippet": ""
+      },
+      {
+        "title": "招商南油：第十一届董事会第十八次会议决议公告",
+        "link": "http://finance.eastmoney.com/a/202607173811271834.html",
+        "source": "证券日报",
+        "date": "2026-07-17 20:23:00",
+        "snippet": ""
+      },
+      {
+        "title": "港口航运板块短线拉升",
+        "link": "http://finance.eastmoney.com/a/202607143804969087.html",
+        "source": "第一财经",
+        "date": "2026-07-14 09:51:28",
+        "snippet": ""
+      },
+      {
+        "title": "港口航运板块短线拉升，国航远洋涨超10%",
+        "link": "http://finance.eastmoney.com/a/202607143804971550.html",
+        "source": "界面新闻",
+        "date": "2026-07-14 09:51:10",
+        "snippet": ""
+      },
+      {
+        "title": "招商南油：截至2026年6月末公司股东总数为128591户",
+        "link": "http://finance.eastmoney.com/a/202607013790426013.html",
+        "source": "证券日报",
+        "date": "2026-07-01 19:12:00",
+        "snippet": ""
+      },
+      {
+        "title": "上海航运交易所：原油运价大幅上调",
+        "link": "http://finance.eastmoney.com/a/202606273785402828.html",
+        "source": "每日经济新闻",
+        "date": "2026-06-27 09:11:56",
+        "snippet": ""
+      },
+      {
+        "title": "招商南油大宗交易成交68.43万股 成交额290.83万元",
+        "link": "http://finance.eastmoney.com/a/202606263785082056.html",
+        "source": "证券时报网",
+        "date": "2026-06-26 21:39:00",
+        "snippet": ""
+      }
+    ],
+    "002258.SZ": [
+      {
+        "title": "56.56亿元跨界并购落地 华润双鹤控股利尔化学",
+        "link": "http://finance.eastmoney.com/a/202608053831615664.html",
+        "source": "21世纪经济报道",
+        "date": "2026-08-05 07:00:00",
+        "snippet": ""
+      },
+      {
+        "title": "仿制药龙头跨界农化 华润双鹤56.56亿元并购成效待检验",
+        "link": "http://finance.eastmoney.com/a/202608053831571956.html",
+        "source": "经济参考报",
+        "date": "2026-08-05 03:57:42",
+        "snippet": ""
+      },
+      {
+        "title": "56.56亿元入主利尔化学，华润双鹤瞄准合成生物业务",
+        "link": "http://finance.eastmoney.com/a/202608043831151747.html",
+        "source": "新京报",
+        "date": "2026-08-04 15:13:00",
+        "snippet": ""
+      },
+      {
+        "title": "利尔化学：上半年公司大力开拓市场，主要产品市场需求良好，销量继续保持增长",
+        "link": "http://finance.eastmoney.com/a/202607313828697222.html",
+        "source": "证券日报",
+        "date": "2026-07-31 22:02:00",
+        "snippet": ""
+      },
+      {
+        "title": "利尔化学：利尔生物成立于2016年，专注于合成生物学研发和生物制造产业",
+        "link": "http://finance.eastmoney.com/a/202607313828496752.html",
+        "source": "证券日报",
+        "date": "2026-07-31 18:54:00",
+        "snippet": ""
+      },
+      {
+        "title": "利尔化学：公司始终高度重视企业文化建设",
+        "link": "http://finance.eastmoney.com/a/202607313828495449.html",
+        "source": "证券日报",
+        "date": "2026-07-31 18:54:00",
+        "snippet": ""
+      },
+      {
+        "title": "利尔化学：公司继续强化与战略客户合作，提升合作紧密度",
+        "link": "http://finance.eastmoney.com/a/202607313828493085.html",
+        "source": "证券日报",
+        "date": "2026-07-31 18:47:00",
+        "snippet": ""
+      },
+      {
+        "title": "利尔化学：公司持续看好草铵膦、精草铵膦的市场空间",
+        "link": "http://finance.eastmoney.com/a/202607313828490663.html",
+        "source": "证券日报",
+        "date": "2026-07-31 18:46:00",
+        "snippet": ""
+      }
+    ],
+    "001331.SZ": [
+      {
+        "title": "基金最新调研公司名单曝光",
+        "link": "http://finance.eastmoney.com/a/202608053832389875.html",
+        "source": "证券时报网",
+        "date": "2026-08-05 12:26:00",
+        "snippet": ""
+      },
+      {
+        "title": "胜通能源：公司控股股东七腾机器人长期聚焦石油、石化、天然气、化工等高危工业场景智能巡检机器人业务",
+        "link": "http://finance.eastmoney.com/a/202608043831505259.html",
+        "source": "证券日报",
+        "date": "2026-08-04 21:54:00",
+        "snippet": ""
+      },
+      {
+        "title": "胜通能源：目前七腾机器人生产基地主要位于重庆、合肥等地区",
+        "link": "http://finance.eastmoney.com/a/202608043831504576.html",
+        "source": "证券日报",
+        "date": "2026-08-04 21:54:00",
+        "snippet": ""
+      },
+      {
+        "title": "【调研快报】胜通能源接待聚鸣投资等18家机构调研",
+        "link": "http://stock.eastmoney.com/a/202608043831339441.html",
+        "source": "东方财富Choice数据",
+        "date": "2026-08-04 19:17:49",
+        "snippet": ""
+      },
+      {
+        "title": "胜通能源：连续3个交易日收盘价涨幅偏离值累超20%",
+        "link": "http://finance.eastmoney.com/a/202608043831328129.html",
+        "source": "南方财经网",
+        "date": "2026-08-04 18:47:00",
+        "snippet": ""
+      },
+      {
+        "title": "胜通能源(001331)龙虎榜数据(08-04)",
+        "link": "http://stock.eastmoney.com/a/202608043831207379.html",
+        "source": "东方财富Choice数据",
+        "date": "2026-08-04 16:28:07",
+        "snippet": ""
+      },
+      {
+        "title": "胜通能源涨停走出2连板",
+        "link": "http://finance.eastmoney.com/a/202608043830844221.html",
+        "source": "第一财经",
+        "date": "2026-08-04 09:54:27",
+        "snippet": ""
+      },
+      {
+        "title": "今日86只个股突破半年线",
+        "link": "http://finance.eastmoney.com/a/202608033829772194.html",
+        "source": "证券时报网",
+        "date": "2026-08-03 15:53:00",
+        "snippet": ""
+      }
+    ],
+    "600150.SS": [
+      {
+        "title": "并购重组助力新旧动能转换 加速上市公司“新陈代谢”",
+        "link": "http://finance.eastmoney.com/a/202608063832953122.html",
+        "source": "证券时报",
+        "date": "2026-08-06 02:45:33",
+        "snippet": ""
+      },
+      {
+        "title": "订单翻倍 业绩走强 船舶行业维持高景气",
+        "link": "http://finance.eastmoney.com/a/202608043830184245.html",
+        "source": "中国证券报",
+        "date": "2026-08-04 07:33:10",
+        "snippet": ""
+      },
+      {
+        "title": "中国船舶：关于公司总会计师辞职的公告",
+        "link": "http://finance.eastmoney.com/a/202608033830046913.html",
+        "source": "证券日报",
+        "date": "2026-08-03 21:26:00",
+        "snippet": ""
+      },
+      {
+        "title": "携手共建粤港澳大湾区·中央企业对接会在京举行",
+        "link": "http://finance.eastmoney.com/a/202607303825649820.html",
+        "source": "中国证券报·中证网",
+        "date": "2026-07-30 07:00:00",
+        "snippet": ""
+      },
+      {
+        "title": "“东方红2”海洋综合科考实习船经大修改造后交付",
+        "link": "http://finance.eastmoney.com/a/202607293825365584.html",
+        "source": "上海证券报·中国证券网",
+        "date": "2026-07-29 21:25:37",
+        "snippet": ""
+      },
+      {
+        "title": "5.63亿主力资金净流入，中船系概念涨2.85%",
+        "link": "http://finance.eastmoney.com/a/202607293825300433.html",
+        "source": "证券时报网",
+        "date": "2026-07-29 20:18:00",
+        "snippet": ""
+      },
+      {
+        "title": "向高端化、智能化、绿色化方向迈进 中国造船业持续领航全球",
+        "link": "http://finance.eastmoney.com/a/202607283823900933.html",
+        "source": "证券日报",
+        "date": "2026-07-28 23:13:00",
+        "snippet": ""
+      },
+      {
+        "title": "中国船舶：公司未对控股股东和实际控制人及其关联人提供担保",
+        "link": "http://finance.eastmoney.com/a/202607283823707781.html",
+        "source": "证券日报",
+        "date": "2026-07-28 19:44:00",
+        "snippet": ""
+      }
+    ],
     "00293.HK": [],
     "03690.HK": [],
     "01138.HK": [],
     "03968.HK": [],
-    "EUV": [],
-    "RKLB": [],
-    "GEV": [],
-    "FUTU": [],
-    "UNH": [],
-    "NVO": [],
-    "NFLX": [],
-    "JNJ": [],
-    "INTU": []
+    "EUV": [
+      {
+        "title": "Corgi ETFs: The Small Dog Disrupting an Entire Industry",
+        "link": "http://www.etf.com/sections/conferences/corgi-etfs-small-dog-disrupting-entire-industry?utm_source=yahoo-finance&utm_medium=rss&utm_campaign=yahoo-finance-rss&.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 29 Jul 2026 03:00:56 +0000",
+        "snippet": "<p>A little orange dog came bursting onto the scene this year, shaking up the multi-trillion dollar ETF industry with its one simple mandate. Why should investors have to pay more? Corgi’s Ed Rumell s"
+      },
+      {
+        "title": "Semiconductor ETFs 101: DRAM, EUV, SMH, SOXX, SOXL — The Complete Guide for 2026",
+        "link": "http://www.etf.com/sections/equity/semiconductor-etfs-101-dram-euv-smh-soxx-soxl-complete-guide-2026?utm_source=yahoo-finance&utm_medium=rss&utm_campaign=yahoo-finance-rss&.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 12 Jun 2026 18:38:49 +0000",
+        "snippet": "<p>Semiconductor ETFs have been the defining investment story of 2026 — SOXX is up 90%, FTXL has doubled, and DRAM, the AI memory ETF, has grown from a niche fund to nearly $17 billion in assets. But "
+      },
+      {
+        "title": "EUV ETF: The Chip-Making Technology Fueling AI",
+        "link": "http://www.etf.com/sections/news/euv-etf-chip-making-technology-fueling-ai?utm_source=yahoo-finance&utm_medium=rss&utm_campaign=yahoo-finance-rss&.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 22 May 2026 20:03:54 +0000",
+        "snippet": "<p>The EUV ETF gives investors targeted exposure to extreme ultraviolet lithography — the chip-making technology that makes AI chips like Nvidia's H100 possible. Here's what you need to know.</p>"
+      },
+      {
+        "title": "Optical stocks are booming. Here’s how to invest in one of the most explosive areas of tech.",
+        "link": "https://www.marketwatch.com/story/optical-stocks-are-booming-heres-how-to-invest-in-one-of-the-most-explosive-areas-of-tech-13374178?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 15 May 2026 20:13:00 +0000",
+        "snippet": "Investors are pouring money quickly into a new ETF that invests in companies involved with photonics and photolithography."
+      },
+      {
+        "title": "I’ve made millions by understanding AI sector moves. \n \nThe secret? \n \nWatch where the sector ETFs a",
+        "link": "https://stocktwits.com/symbol/EUV",
+        "source": "Stocktwits · @FibonacciTrader_",
+        "date": "2026-08-05T16:34:31Z",
+        "snippet": "I’ve made millions by understanding AI sector moves. \n \nThe secret? \n \nWatch where the sector ETFs are flowing, not what the headlines say. \nPhotonics:  \n$EUV \n$LITE \n$COHR \n$AAOI \nSoftware:  \n$IGV \n "
+      }
+    ],
+    "RKLB": [
+      {
+        "title": "Rocket Lab wins $397 million Space Force SB-AMTI contract",
+        "link": "https://qz.com/rocket-lab-space-force-surveillance-satellite-contract-397-million-080526?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:54:12 +0000",
+        "snippet": "The deal covers development, launch, and operation of Rocket Lab's flat satellite design as part of a broader $615 million award to three contractors"
+      },
+      {
+        "title": "Rocket Lab Shares Rise After $397 Million Space Force Contract",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/rocket-lab-shares-rise-397-124516516.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 12:45:16 +0000",
+        "snippet": "Rocket Lab Lands $397 Million Space Force Contract"
+      },
+      {
+        "title": "Rocket Lab (RKLB) Lands $397 Million Space Force Flatellite Contract",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/rocket-lab-rklb-lands-397-011152529.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 01:11:52 +0000",
+        "snippet": "Rocket Lab was awarded a $397 million contract to build, launch, and operate advanced Flatellites for the U.S. Space Force's SB-AMTI program. The award expands Rocket Lab's role in military space appl"
+      },
+      {
+        "title": "RKLB Stock Extends 4-Day Rally Overnight: Rocket Lab Lands $397M Deal To Track Airborne Threats From Space",
+        "link": "https://stocktwits.com/news-articles/markets/equity/rklb-397m-deal-airborne-threats-from-space/cZo4JfRRJ4N?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 01:09:10 +0000",
+        "snippet": "Rocket Lab will develop advanced “Flatellites” equipped with space-based sensors and low-latency, high-bandwidth communications."
+      },
+      {
+        "title": "Rocket Lab, Voyager, and More Go Full Throttle",
+        "link": "https://finance.yahoo.com/m/f4ff0e8e-a325-3494-8d95-b825871ae550/rocket-lab%2C-voyager%2C-and-more.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 19:18:17 +0000",
+        "snippet": "There's no doubt that SpaceX is the 800-pound gorilla in the space market.  It essentially invented the modern space business by pioneering reusable rockets.  SpaceX was up 9.1% at $124.99 in midday t"
+      },
+      {
+        "title": "Rocket Lab Stock's Deepest Falls Have Come From Rates, Not Rockets",
+        "link": "https://www.trefis.com/articles/610040/rocket-lab-stocks-deepest-falls-have-come-from-rates-not-rockets/2026-08-04?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 14:14:09 +0000",
+        "snippet": "Rocket Lab stock is well off its high again, and its shock record says the most serious damage comes from rate moves rather than from anything on the launch pad."
+      },
+      {
+        "title": "These Stocks Are Making Moves Today, Thanks to SpaceX",
+        "link": "https://finance.yahoo.com/m/36ba11a7-9681-365a-a186-122553a1d192/these-stocks-are-making-moves.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 14:18:46 +0000",
+        "snippet": "SpaceX has designs to leverage its dominant position in the space business into a dominant position in AI and communications.  SpaceX stock, for starters, was down about 12% at $110.  Nvidia shares we"
+      },
+      {
+        "title": "SpaceX Craters 12% on Soaring AI Costs; Space-Sector Peers Decline With SPCX Stock",
+        "link": "https://247wallst.com/investing/2026/08/05/spacex-falls-10-on-soaring-ai-costs-as-other-space-stocks-hold-steady/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 13:38:47 +0000",
+        "snippet": "SpaceX delivered a blockbuster revenue beat in its first public earnings report, yet shares are cratering while every other space stock barely flinches. What spooked investors has nothing to do with r"
+      }
+    ],
+    "GEV": [
+      {
+        "title": "GE Vernova to supply 43 wind turbines for Enfinity Global’s Fatehgarh site",
+        "link": "https://www.power-technology.com/news/ge-vernova-supply-wind-turbines/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 08:59:22 +0000",
+        "snippet": "The order, totalling 163.4MW, includes delivery and installation of the company’s 3.8MW-154m wind turbines."
+      },
+      {
+        "title": "AI Infrastructure Backlog: How Dell, HPE, SMCI, and GE Vernova Are Positioned",
+        "link": "https://finance.yahoo.com/technology/ai/articles/ai-infrastructure-backlog-dell-hpe-082249164.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 08:22:49 +0000",
+        "snippet": "Soaring AI infrastructure demand is fueling a major backlog buildup, with billions of dollars of orders accumulating across AI servers, data-center equipment, networking and power infrastructure. The "
+      },
+      {
+        "title": "GE Vernova Set to Be Biggest Winner From AI Data Center’s Massive Power Shortfall",
+        "link": "https://247wallst.com/investing/2026/08/04/ge-vernova-set-to-be-biggest-winner-from-ai-data-centers-massive-power-shortfall/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 15:30:26 +0000",
+        "snippet": "Building faster chips turned out to be the easy part of the AI buildout. The real bottleneck has sent investors hunting for a winner in a completely different industry, and one company already control"
+      },
+      {
+        "title": "GE Vernova receives order from Enfinity Global",
+        "link": "https://finance.yahoo.com/m/987a9f37-9c18-3d4f-925e-e66390a15635/ge-vernova-receives-order.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 15:00:00 +0000",
+        "snippet": "GE Vernova Inc. has signed an agreement with Enfinity Global to supply 43 of its onshore wind turbines for their Fatehgarh wind farm in India."
+      },
+      {
+        "title": "Caterpillar Profit Tops Estimates as AI Boosts Power Sales",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/caterpillar-profit-tops-estimates-ai-104205108.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 10:42:05 +0000",
+        "snippet": "(Bloomberg) -- Caterpillar Inc. posted second-quarter earnings and revenue that beat Wall Street expectations as the company’s power-generation business continued to post strong growth off the back of"
+      },
+      {
+        "title": "Do Wall Street Analysts Like GE Vernova Stock?",
+        "link": "https://www.barchart.com/story/news/3627052/do-wall-street-analysts-like-ge-vernova-stock?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 06:21:50 +0000",
+        "snippet": "GE Vernova’s shares have outperformed the broader market and sector peers, and analysts are bullish on the stock’s growth potential."
+      },
+      {
+        "title": "FLNC Stock Plummets 52% in 6 Months: Should You Buy in the Dip?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/flnc-stock-plummets-52-6-175700991.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 17:57:00 +0000",
+        "snippet": "FLNC has fallen 52% in six months, but record backlog, AI data-center agreements and reaffirmed fiscal 2026 guidance point to potential upside."
+      },
+      {
+        "title": "Why Did AirJoule Stock Pop Today?",
+        "link": "https://www.fool.com/investing/2026/08/03/why-did-airjoule-stock-pop-today/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 16:17:40 +0000",
+        "snippet": "AirJoule stock has potential, but apparently no good reason to be going up today specifically."
+      }
+    ],
+    "FUTU": [
+      {
+        "title": "China Watchdog Monitoring US Lawsuit Over Insider Trading Claims",
+        "link": "https://finance.yahoo.com/markets/options/articles/china-watchdog-monitoring-us-lawsuit-085509888.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 07 Jul 2026 08:55:09 +0000",
+        "snippet": "(Bloomberg) -- China’s securities regulator said it was monitoring developments in a US lawsuit after Susquehanna International Group alleged insider traders made at least $100 million from well-timed"
+      },
+      {
+        "title": "Futu Holdings (NasdaqGM:FUTU) Faces DOJ Probe And Class Actions In The US",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/futu-holdings-nasdaqgm-futu-faces-091229749.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 03 Jul 2026 09:12:29 +0000",
+        "snippet": "U.S. Justice Department and SEC reportedly investigate alleged insider trading tied to Futu Holdings accounts and options trades ahead of Chinese regulatory crackdowns. Class action lawsuits in the U."
+      },
+      {
+        "title": "Futu (FUTU) Stock Looks Undervalued While Its 133% Return Sets A High Bar",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/futu-futu-stock-looks-undervalued-071117686.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 03 Jul 2026 07:11:17 +0000",
+        "snippet": "Futu Holdings stock has fallen sharply this year despite a strong three year return. The key tension for investors is that recent share price weakness sits alongside valuation checks that still lean o"
+      },
+      {
+        "title": "Did RMB 1.85 Billion CSRC Penalty and U.S. Lawsuits Just Shift Futu Holdings' (FUTU) Narrative?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/did-rmb-1-85-billion-031905971.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 03 Jul 2026 03:19:05 +0000",
+        "snippet": "Futu Holdings is facing multiple securities class action lawsuits in the U.S. after Chinese regulators accused the company of running unlicensed securities, public fund sales, and futures businesses i"
+      },
+      {
+        "title": "Moomoo Launches \"Moomoo Engine\" — Unifying the Platform's Full Trading Toolkit Into One Connected System",
+        "link": "https://finance.yahoo.com/markets/options/articles/moomoo-launches-moomoo-engine-unifying-132900339.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Thu, 02 Jul 2026 13:29:00 +0000",
+        "snippet": "Moomoo’s Fundamental Engine, Options Engine, and Technical Engine create a structured path from research to execution inside a single trading platform JERSEY CITY, N.J., July 02, 2026 (GLOBE NEWSWIRE)"
+      },
+      {
+        "title": "Moomoo Canada Expands Greater Toronto Area Presence with New Flagship Store",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/moomoo-canada-expands-greater-toronto-130000315.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Thu, 02 Jul 2026 13:00:00 +0000",
+        "snippet": "New Markham location serves as a hub for investing education, events, and community engagement MARKHAM, Ontario, July 02, 2026 (GLOBE NEWSWIRE) -- Moomoo Financial Canada, the leading U.S. stock and o"
+      },
+      {
+        "title": "Exclusive: Moomoo to launch unified ’Moomoo Engine’ trading toolkit",
+        "link": "https://finance.yahoo.com/markets/options/articles/exclusive-moomoo-launch-unified-moomoo-123028946.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Thu, 02 Jul 2026 12:30:28 +0000",
+        "snippet": "Investing.com -- Moomoo, the investment and trading platform owned by Nasdaq-listed Futu Holdings, is set to announce on Thursday that it is rolling out a new unified trading framework called \"Moomoo "
+      },
+      {
+        "title": "Can Futu Absorb Its CSRC Penalty Without Losing Momentum?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/futu-absorb-csrc-penalty-without-164800268.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 30 Jun 2026 16:48:00 +0000",
+        "snippet": "Futu's core metrics remain firm in Q1, but a RMB1.85 billion regulatory penalty hits profit and raises questions about growth quality."
+      }
+    ],
+    "UNH": [
+      {
+        "title": "The Case For UnitedHealth Stock Is Margin, Not Growth",
+        "link": "https://www.trefis.com/articles/610214/the-case-for-unitedhealth-stock-is-margin-not-growth/2026-08-05?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 15:50:15 +0000",
+        "snippet": "UnitedHealth's revenue held up; the operating margin on it did not, and closing that gap is the whole upside case."
+      },
+      {
+        "title": "Could UnitedHealth Group (UNH) See Substantial Upside as Medicare Profits Recover?",
+        "link": "https://finance.yahoo.com/healthcare/articles/could-unitedhealth-group-unh-see-123222664.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 12:32:22 +0000",
+        "snippet": "Baron Capital, an investment management company, released its Q2 2026 investor letter for the “Baron Health Care Fund”. A copy of the letter is available to download here. The Fund gained 11.99% durin"
+      },
+      {
+        "title": "UnitedHealth Group (UNH) Expands Tennessee Health Hubs With $4 Million Commitment",
+        "link": "https://finance.yahoo.com/healthcare/articles/unitedhealth-group-unh-expands-tennessee-220917084.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 22:09:17 +0000",
+        "snippet": "UnitedHealth Group expanded its Tennessee health hub initiative in partnership with the University of Tennessee Health Sciences. The program is growing from 5 to 13 locations with a new $4 million com"
+      },
+      {
+        "title": "Why UnitedHealth Group (UNH) Is Back on Investors’ Radar",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/why-unitedhealth-group-unh-back-153314421.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 15:33:14 +0000",
+        "snippet": "Janus Henderson Investors, an investment management company, released its “Forty Fund” Q2 2025 investor letter. A copy of the letter can be downloaded here. The Fund returned 19.00% in the second quar"
+      },
+      {
+        "title": "UnitedHealth vs. Centene: Which Managed Care Stock Is the Better Buy?",
+        "link": "https://finance.yahoo.com/healthcare/articles/unitedhealth-vs-centene-managed-care-160400253.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 31 Jul 2026 16:04:00 +0000",
+        "snippet": "UNH's diversified platform, AI expansion and Optum momentum strengthen its long-term outlook, making it the stronger managed care pick over CNC."
+      },
+      {
+        "title": "Medicare Advantage Insurers Are Redrawing the Map for 2027. Members Find Out by Letter This Fall.",
+        "link": "https://247wallst.com/personal-finance/2026/07/31/medicare-advantage-insurers-are-redrawing-the-map-for-2027-members-find-out-by-letter-this-fall/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 31 Jul 2026 15:04:42 +0000",
+        "snippet": "Millions of Medicare Advantage members will open a letter this fall that could quietly close doors they assume will always stay open. What insurers have already decided for 2027 and what enrollees do "
+      },
+      {
+        "title": "CVS Falls After Preliminary 2027 Guidance Disappoints",
+        "link": "https://finance.yahoo.com/healthcare/articles/cvs-falls-preliminary-2027-guidance-134148338.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 13:41:48 +0000",
+        "snippet": "(Bloomberg) -- CVS Health Corp. shares fell after the company gave preliminary 2027 profit guidance that disappointed investors and warned of challenges in its pharmacy benefit manager next year, over"
+      },
+      {
+        "title": "The Zacks Analyst Blog Highlights SpaceX, United Health, The Goldman Sachs and Industrial and Commercial Bank",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/zacks-analyst-blog-highlights-spacex-143400570.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 14:34:00 +0000",
+        "snippet": "South Korea's KOSPI swings highlight mounting AI stock volatility as investors brace for U.S. jobs data, Middle East tensions and India's rate decision."
+      }
+    ],
+    "NVO": [
+      {
+        "title": "Novo Nordisk Stock Falls 4% Despite Stronger GLP-1 Outlook",
+        "link": "https://finance.yahoo.com/healthcare/articles/novo-nordisk-stock-falls-4-183023765.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:30:23 +0000",
+        "snippet": "Novo raised its guidance, but pipeline impairments and slower product development kept investors focused on its competitive position."
+      },
+      {
+        "title": "Novo Nordisk Is Exiting a ‘Rough Patch,’ CFO Says. Earnings Prove It.",
+        "link": "https://finance.yahoo.com/m/6d8e7c89-896b-331b-83c2-d09d3c1cd893/novo-nordisk-is-exiting-a.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:49:00 +0000",
+        "snippet": "The Danish drugmaker continues to rely on the success of semaglutide, branded as Wegovy for weight loss and Ozempic for diabetes."
+      },
+      {
+        "title": "Eli Lilly Stock: The One Question in Otherwise Perfect Earnings and What It Means for Shares",
+        "link": "https://finance.yahoo.com/m/a70c4d56-0be3-3afb-99b9-25f40435a75b/eli-lilly-stock%3A-the-one.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:43:00 +0000",
+        "snippet": "Eli Lilly  posted a blockbuster second quarter fueled by continued demand for its portfolio of GLP-1 medications, though one glaring question hung over the print.  The world’s biggest drugmaker by mar"
+      },
+      {
+        "title": "Sector Update: Healthcare Stocks Advance Wednesday Afternoon",
+        "link": "https://finance.yahoo.com/healthcare/articles/sector-healthcare-stocks-advance-wednesday-174238956.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 17:42:38 +0000",
+        "snippet": "Healthcare stocks were higher Wednesday afternoon, with the NYSE Healthcare Index rising 1.1% and th"
+      },
+      {
+        "title": "Novo Nordisk not currently in a position to pursue large-scale M&A, CEO says",
+        "link": "https://www.pharmaceutical-technology.com/news/novo-nordisk-not-currently-in-a-position-to-pursue-large-scale-ma-ceo-says/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:22:25 +0000",
+        "snippet": "Set against the backdrop of a mixed Q2, Novo is eyeing bolt-ons in favour of transformative acquisitions."
+      },
+      {
+        "title": "LLY Q2 Earnings Top, GLP-1 Drugs Fuel Growth, Sales Guidance Raised",
+        "link": "https://finance.yahoo.com/healthcare/articles/lly-q2-earnings-top-glp-160700551.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:07:00 +0000",
+        "snippet": "LLY crushes Q2 earnings estimates and lifts its 2026 sales outlook as Mounjaro and Zepbound fuel strong revenue growth and newer drugs add momentum."
+      },
+      {
+        "title": "AMGN Beats on Q2 Earnings, Lifts Outlook Despite Legacy Drug Pressure",
+        "link": "https://finance.yahoo.com/healthcare/articles/amgn-beats-q2-earnings-lifts-155500053.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 15:55:00 +0000",
+        "snippet": "Amgen beats Q2 earnings and revenue estimates and lifts its 2026 outlook. Key products witness strong growth despite biosimilar pressure on older drugs."
+      },
+      {
+        "title": "European Equities Traded in the US as American Depositary Receipts Edge Up in Wednesday Trading",
+        "link": "https://finance.yahoo.com/markets/world-indices/articles/european-equities-traded-us-american-151222220.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 15:12:22 +0000",
+        "snippet": "European equities traded in the US as American depositary receipts were edging higher late Wednesday"
+      }
+    ],
+    "NFLX": [
+      {
+        "title": "Just How Wide Is the Range of Outcomes for Netflix Stock?",
+        "link": "https://www.trefis.com/articles/610174/just-how-wide-is-the-range-of-outcomes-for-netflix-stock/2026-08-05?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 18:08:58 +0000",
+        "snippet": "The options market is pricing a sizable swing for the streaming giant, and if you hold the shares, you are already carrying that full two-sided risk."
+      },
+      {
+        "title": "Video Podcasts: Media Buyers Talking Up More Edgy Chat?",
+        "link": "https://www.mediapost.com/publications/article/417011/video-podcasts-media-buyers-talking-up-more-edgy.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 15:40:26 +0000",
+        "snippet": "Where are the budget shifts coming from for video podcasts? Most likely, programs including cable TV news networks, late-night talk shows or even syndication unscripted daytime talk shows."
+      },
+      {
+        "title": "Disney's Quarterly Earnings Top Views, Revenue Falls Short Despite 'Toy Story 5' Boost",
+        "link": "https://finance.yahoo.com/media-advertising/articles/disney-apos-quarterly-earnings-top-144548435.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 14:45:48 +0000",
+        "snippet": "Walt Disney's (DIS) fiscal third-quarter earnings rose above Wall Street's estimates on Wednesday ev"
+      },
+      {
+        "title": "Netflix Calendar Spread: A Smart Play for a Neutral Outlook",
+        "link": "https://www.barchart.com/story/news/3659474/netflix-calendar-spread-a-smart-play-for-a-neutral-outlook?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 11:00:02 +0000",
+        "snippet": "Netflix (NFLX) stock has been pretty flat in the last few months and investors that think that trend could continue, might consider a Calendar Spread."
+      },
+      {
+        "title": "Netflix (NFLX) Faces Tougher Streaming Competition, Is The Stock Still 10% Below Fair Value?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/netflix-nflx-faces-tougher-streaming-221124902.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 22:11:24 +0000",
+        "snippet": "YouTube Premium’s plan to bundle Peacock and NBCUniversal sports puts fresh attention on streaming competition. For you as an investor, it raises new questions about how Netflix (NFLX) is priced after"
+      },
+      {
+        "title": "The Toughest Questions AMZN Faced On Its Latest Call",
+        "link": "https://www.trefis.com/articles/610024/the-toughest-questions-amzn-faced-on-its-latest-call/2026-08-04?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 20:08:31 +0000",
+        "snippet": "Amazon's cloud business is growing at a historic pace, but its plan to spend a fortune on new data centers was the only thing analysts wanted to talk about."
+      },
+      {
+        "title": "Amazon.com Stock Is Cheaper Than The Market On Earnings And Pricier On Cash",
+        "link": "https://www.trefis.com/articles/610042/amazon-com-stock-is-cheaper-than-the-market-on-earnings-and-pricier-on-cash/2026-08-04?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 15:18:26 +0000",
+        "snippet": "Free cash flow is negative while the cloud build runs, and that is the whole question for anyone weighing the stock today."
+      },
+      {
+        "title": "Is YouTube Going After Netflix? This Could Be the Biggest Sign Yet",
+        "link": "https://www.fool.com/investing/2026/08/04/is-youtube-going-after-netflix-this-could-be-the-b/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 14:20:00 +0000",
+        "snippet": "YouTube Premium will soon give consumers access to Peacock's streaming service."
+      }
+    ],
+    "JNJ": [
+      {
+        "title": "Royalty Pharma PLC (RPRX) (Q2 2026) Earnings Call Highlights: Strong Growth and Raised Guidance",
+        "link": "https://finance.yahoo.com/healthcare/articles/royalty-pharma-plc-rprx-q2-190129969.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 19:01:29 +0000",
+        "snippet": "Royalty Pharma PLC (RPRX) reports 14% total receipts growth and raises full-year 2026 guidance for the second consecutive quarter."
+      },
+      {
+        "title": "Compass Pathways PLC (CMPS) (Q2 2026) Earnings Call Highlights: Strong Cash Position and NDA ...",
+        "link": "https://finance.yahoo.com/healthcare/articles/compass-pathways-plc-cmps-q2-190123153.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 19:01:23 +0000",
+        "snippet": "Compass Pathways PLC (CMPS) reports $433 million in cash and advances rolling NDA submission for COMP360 in treatment-resistant depression, targeting a first-half 2027 launch."
+      },
+      {
+        "title": "LLY Q2 Earnings Top, GLP-1 Drugs Fuel Growth, Sales Guidance Raised",
+        "link": "https://finance.yahoo.com/healthcare/articles/lly-q2-earnings-top-glp-160700551.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 16:07:00 +0000",
+        "snippet": "LLY crushes Q2 earnings estimates and lifts its 2026 sales outlook as Mounjaro and Zepbound fuel strong revenue growth and newer drugs add momentum."
+      },
+      {
+        "title": "Should Investors Buy Boston Scientific Stock Despite Near-Term Risks?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/investors-buy-boston-scientific-stock-155100262.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 15:51:00 +0000",
+        "snippet": "Boston Scientific's cheaper valuation offers upside, but weaker guidance, share losses, higher debt and delayed catalysts favor patience."
+      },
+      {
+        "title": "Dividends vs. an Annuity: Which Turns $675,000 Into More Monthly Income for Life?",
+        "link": "https://247wallst.com/personal-finance/2026/08/05/dividends-vs-an-annuity-which-turns-675000-into-more-monthly-income-for-life/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 09:10:04 +0000",
+        "snippet": "Annuity payouts are the most competitive they have been in years, which makes the timing of this comparison unusually consequential for anyone sitting on a $675,000 nest egg and trying to decide which"
+      },
+      {
+        "title": "Johnson & Johnson (JNJ) Could Be 10% Overvalued Following Leadership Change",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/johnson-johnson-jnj-could-10-061022775.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Wed, 05 Aug 2026 06:10:22 +0000",
+        "snippet": "Johnson & Johnson (JNJ) is back in focus after longtime executive Jennifer Taubert retired as Executive Vice President, Worldwide Chairman, Innovative Medicine, with experienced biopharmaceutical lead"
+      },
+      {
+        "title": "How Much Do You Really Need Invested to Replace a $100,000 Salary With Dividends?",
+        "link": "https://247wallst.com/personal-finance/2026/08/04/how-much-do-you-really-need-invested-to-replace-a-100000-salary-with-dividends/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 23:43:28 +0000",
+        "snippet": "Replacing a six-figure salary with dividends is a math problem first, and the capital requirement swings by more than a million dollars depending on one variable most investors treat as an afterthough"
+      },
+      {
+        "title": "The $85 Billion Consolation Prize For JNJ Shareholders",
+        "link": "https://www.trefis.com/articles/609996/the-85-billion-consolation-prize-for-jnj-shareholders/2026-08-04?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 19:23:10 +0000",
+        "snippet": "The healthcare giant showered its owners with cash, yet the stock fell behind. Here is the accounting of what investors actually got and what the trade-off cost them."
+      }
+    ],
+    "INTU": [
+      {
+        "title": "Intuit (INTU) Advances But Underperforms Market: Key Facts",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/intuit-intu-advances-underperforms-market-214502293.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 21:45:02 +0000",
+        "snippet": "In the closing of the recent trading day, Intuit (INTU) stood at $323.6, denoting a +1.64% move from the preceding trading day."
+      },
+      {
+        "title": "Intuit, BILL, Workiva, Elastic, and Autodesk Stocks Trade Up, What You Need To Know",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/intuit-bill-workiva-elastic-autodesk-150122929.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 15:01:22 +0000",
+        "snippet": "A number of stocks jumped in the afternoon session after the software sector caught a massive tailwind, fueled by easing geopolitical tensions and a fresh wave of AI-driven M&amp;A."
+      },
+      {
+        "title": "Intuit cut to Hold at Truist on softening growth outlook; shares dip",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/intuit-cut-hold-truist-softening-132526441.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 13:25:26 +0000",
+        "snippet": "Investing.com -- Truist Securities downgraded Intuit to Hold from Buy on Monday and lowered its price target to $350 from $410, flagging a softening growth outlook and a lack of near-term catalysts fo"
+      },
+      {
+        "title": "Here Are Tuesday’s Top Wall Street Analyst Research Calls: Apple, CoreWeave, eBay, Exxon Mobil, Intuit, Nebius Group, Palantir Technologies, SK hynix, and More",
+        "link": "https://247wallst.com/investing/2026/08/04/here-are-tuesdays-top-wall-street-analyst-research-calls-apple-coreweave-ebay-exxon-mobil-intuit-nebius-group-palantir-technologies-sk-hynix-and-more/?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Tue, 04 Aug 2026 12:11:22 +0000",
+        "snippet": "Wall Street wasted no time Monday, sending the Nasdaq surging past 25,900 while analysts took aim at some of the market's biggest names with fresh upgrades, downgrades, and new coverage that could res"
+      },
+      {
+        "title": "Why Intuit (INTU) is Poised to Beat Earnings Estimates Again",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/why-intuit-intu-poised-beat-161002430.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 16:10:02 +0000",
+        "snippet": "Intuit (INTU) has an impressive earnings surprise history and currently possesses the right combination of the two key ingredients for a likely beat in its next quarterly report."
+      },
+      {
+        "title": "Here’s Why Fundsmith Equity Fund Sold Intuit (INTU) in Q2",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/why-fundsmith-equity-fund-sold-122323918.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 12:23:23 +0000",
+        "snippet": "Fundsmith, an investment management firm based in London, has released its second-quarter 2026 investor letter for its “Fundsmith Equity Fund.” A copy of the letter can be downloaded here. The Fund re"
+      },
+      {
+        "title": "WDAY, ADBE, INTU, ADSK, CRM: Software Stocks Stage Sharp Rebound In July",
+        "link": "https://stocktwits.com/news-articles/markets/equity/wday-adbe-intu-adsk-crm-software-stocks-stage-sharp-rebound-in-july/cZoT3QfRJ5C?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Mon, 03 Aug 2026 08:13:02 +0000",
+        "snippet": "Investors took profits in high-flying chip stocks and rotated into beaten-down software names, while also seeking the relative safety of defensive sectors such as energy and financials."
+      },
+      {
+        "title": "Is Intuit (INTU) Undervalued Following Strong Q3 Results And Its AI Restructuring?",
+        "link": "https://finance.yahoo.com/markets/stocks/articles/intuit-intu-undervalued-following-strong-160819728.html?.tsrc=rss",
+        "source": "Yahoo Finance",
+        "date": "Fri, 31 Jul 2026 16:08:19 +0000",
+        "snippet": "Why Intuit Stock Is Back in Focus After Q3 Results Intuit (INTU) is in the spotlight after strong fiscal third quarter results, a 15% year over year revenue gain in Global Business Solutions, and a re"
+      }
+    ]
   },
-  "generated_at": "2026-08-05 02:09"
+  "sources_used": [
+    "Yahoo RSS",
+    "巨潮资讯网(官方公告)",
+    "SerpApi",
+    "Google News RSS(政策)",
+    "RSS(CNBC/MarketWatch/AAStocks/HKET...)"
+  ],
+  "errors": [],
+  "generated_at": "2026-08-05 19:06"
 }
