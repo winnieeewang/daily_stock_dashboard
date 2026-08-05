@@ -11,4 +11,5 @@ akshare>=1.13.0
 serpapi>=0.1.0
 feedparser>=6.0.10
 PyYAML>=6.0
-futu-api>=8.0.0  # 可选：仅在本地/有 FutuOpenD 网关的环境用；云端无 OpenD 会自动降级到免费源
+# 富途 futu-api 不加入部署依赖（native 包，云端无 OpenD 网关即无效）；
+# 本地有 OpenD 时手动 `pip install futu-api` 后 SET USE_FUTU=true 即可启用。

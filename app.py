@@ -2577,6 +2577,8 @@ def page_diagnostics():
         ("SERPAPI", SERPAPI_KEY, "新闻增强源（100/月免费，超限自动降级 RSS）"),
         ("FINNHUB_API", FINNHUB_KEY, "美股个股新闻（60/min 免费）"),
         ("NEWSAPI_KEY", NEWSAPI_KEY, "宏观新闻（100/day 免费）"),
+        ("HITHINK_FINANCE_API_KEY", _get_secret("HITHINK_FINANCE_API_KEY"),
+         "同花顺 Financial-API 实时行情 / K线（未配置时个股深度页 watch 走 yfinance fallback）"),
     ]
     for name, v, desc in rows:
         ok = "✅" if v else "❌"
