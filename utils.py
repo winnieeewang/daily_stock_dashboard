@@ -128,6 +128,14 @@ def _serpapi_search(
             params["gl"] = gl
             params["hl"] = hl
         result = GoogleSearch(params).get_dict()
+        # SerpApi 免费额度耗尽/被限流时返回 error 字段而非 news_results：
+        #   {"error": "Google News API is not available for this query..."} 或
+        #   {"search_metadata": ..., "error": "403 Forbidden: rate limit"}
+        if result.get("error"):
+            logger.warning("SerpApi[%s] '%s' 返回错误: %s", engine, query, str(result.get("error"))[:200])
+            return []
+        if result.get("search_information", {}).get("organic_results_state") == "Fully empty":
+            return []
         news = result.get("news_results") or []
         out: List[Dict[str, Any]] = []
         for n in news:
@@ -947,13 +955,17 @@ def hash_for_cache(obj: Any) -> str:
 def fetch_2y_scorecard() -> Dict[str, Any]:
     """
     2-Year Real-Time Scorecard:
-      - 2Y 当前收益率 (^IRX 不可用，2Y 用 ^FVX 错的；正确 ticker 是 ^FVX 5Y)
-        → 2Y 没有完美 yfinance ticker，用 DGS2 from FRED
+      - 2Y 当前收益率 (FRED DGS2)
+      - 2Y 实际利率 ≈ DGS2 − T5YIE（5 年期盈亏平衡通胀，近似替代 2Y 通胀预期，
+        因 FRED 无长期 T2YIE 序列；界面须标注"近似"）
       - 10Y 收益率
       - 2s10s 利差
       - 利差走势（5 日变化）
     """
-    out: Dict[str, Any] = {"y2": None, "y10": None, "spread_bps": None, "spread_5d_chg": None, "signal": "—", "asof": ""}
+    out: Dict[str, Any] = {
+        "y2": None, "y10": None, "real_y2": None, "real_y2_note": "近似（DGS2−T5YIE）",
+        "spread_bps": None, "spread_5d_chg": None, "signal": "—", "asof": "",
+    }
     try:
         # 10Y 用 ^TNX（百分比 → /100 转成收益率）
         tnx_df = yf.download("^TNX", period="6mo", progress=False)
@@ -979,8 +991,13 @@ def fetch_2y_scorecard() -> Dict[str, Any]:
                     if len(dgs2) >= 5:
                         out["spread_5d_chg"] = round((float(dgs2.iloc[-1]) - float(dgs2.iloc[-5])) * 100, 1)
                     out["asof"] = str(dgs2.index[-1].date())
+                # 2Y 实际利率 ≈ DGS2 − T5YIE（5Y 盈亏平衡通胀）
+                t5yie = fred.get_series("T5YIE", observation_start=(datetime.now() - timedelta(days=30)))
+                if t5yie is not None and len(t5yie) > 0:
+                    t5yie = t5yie.dropna()
+                    out["real_y2"] = round(float(dgs2.iloc[-1]) - float(t5yie.iloc[-1]), 3)
         except Exception as e:  # noqa: BLE001
-            logger.debug("FRED DGS2 失败: %s", e)
+            logger.debug("FRED DGS2/T5YIE 失败: %s", e)
             out["y2"] = None
 
         # 信号判断
@@ -1036,17 +1053,71 @@ def fetch_us_debt() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # 12. FINRA Retail Margin Debt（融资余额）
 # ---------------------------------------------------------------------------
-# FRED: MDEBT (Margin Debt, All Customers, FINRA)
-# 单位百万美元
+# 主源：FRED MDEBT (Margin Debt, All Customers, FINRA) — 结构化、历史长
+# 校验源：FINRA 官网 margin-statistics 页面 HTML 表格直抓（官网无公开 API feed，
+#         页面表格每月第三个星期更新；两源交叉，取最新）
+
+_FINRA_MARGIN_URL = "https://www.finra.org/investors/learn-to-invest/advanced-investing/margin-statistics"
+
+
+def fetch_finra_margin_web() -> Dict[str, Any]:
+    """
+    直接抓取 FINRA 官网 margin-statistics 页面 HTML 表格。
+    返回 {value_billion, month_label, asof}，失败返回 {"error": ...}。
+    """
+    out: Dict[str, Any] = {"value_billion": None, "month_label": "", "asof": "", "error": None}
+    try:
+        import pandas as pd  # noqa: F811
+
+        tables = pd.read_html(_FINRA_MARGIN_URL, flavor="bs4")
+        for tbl in tables:
+            # 找含月份与 Debit Balances 的表
+            cols = [str(c).lower() for c in tbl.columns]
+            if not any("month" in c or "debit" in c for c in cols):
+                continue
+            flat = tbl.dropna(how="all")
+            if flat.empty:
+                continue
+            # 第一列 = 月份标签（如 "Jun-26"），取第一行为最新
+            row0 = flat.iloc[0]
+            month_label = str(row0.iloc[0])
+            # 定位 debit 列：含 "debit" 或列名含 "margin account"
+            debit_col = None
+            for i, c in enumerate(flat.columns):
+                cs = str(c).lower()
+                if "debit" in cs:
+                    debit_col = i
+                    break
+            if debit_col is None:
+                continue
+            try:
+                val = float(str(row0.iloc[debit_col]).replace(",", "").replace("$", ""))
+            except (TypeError, ValueError):
+                continue
+            out["value_billion"] = round(val / 1000.0, 2)  # $ millions → $ billions
+            out["month_label"] = month_label
+            out["asof"] = month_label
+            return out
+        out["error"] = "未找到匹配的 margin 表格"
+    except Exception as e:  # noqa: BLE001
+        out["error"] = f"FINRA 页面抓取失败: {e}"
+        logger.warning("FINRA margin 页面抓取失败: %s", e)
+    return out
+
 
 def fetch_margin_debt() -> Dict[str, Any]:
-    """FINRA 融资余额 = FRED MDEBT。"""
-    out: Dict[str, Any] = {"value_billion": None, "mom_chg_pct": None, "yoy_chg_pct": None, "signal": "—", "asof": ""}
+    """FINRA 融资余额：FRED MDEBT 主源 + FINRA 官网页面交叉校验。"""
+    out: Dict[str, Any] = {"value_billion": None, "mom_chg_pct": None, "yoy_chg_pct": None, "signal": "—", "asof": "", "source": "FRED MDEBT"}
     try:
         from fredapi import Fred
         fred_key = _get_secret("FRED_API")
         if not fred_key:
-            return {**out, "error": "未配置 FRED_API"}
+            # 无 FRED key 时降级用 FINRA 官网直抓
+            web = fetch_finra_margin_web()
+            if web.get("value_billion") is not None:
+                out.update(value_billion=web["value_billion"], asof=web["asof"], source="FINRA官网")
+                return out
+            return {**out, "error": "未配置 FRED_API 且 FINRA 官网抓取失败"}
         fred = Fred(api_key=fred_key)
         s = fred.get_series("MDEBT", observation_start=(datetime.now() - timedelta(days=400)))
         if s is None or len(s) < 2:
@@ -1073,6 +1144,14 @@ def fetch_margin_debt() -> Dict[str, Any]:
                 out["signal"] = "🟢 融资去杠杆"
             else:
                 out["signal"] = "🟡 平稳"
+        # 交叉校验：FRED 有值时，再抓 FINRA 官网核对新鲜度（官方页面往往比 FRED 早几天）
+        try:
+            web = fetch_finra_margin_web()
+            if web.get("value_billion") is not None and web.get("asof"):
+                out["finra_web_value"] = web["value_billion"]
+                out["finra_web_month"] = web["asof"]
+        except Exception:  # noqa: BLE001
+            pass
     except Exception as e:  # noqa: BLE001
         logger.warning("Margin Debt 拉取失败: %s", e)
         out["error"] = str(e)
@@ -1174,10 +1253,15 @@ def fetch_options_pcr(symbol: str, max_exp_days: int = 60) -> Dict[str, Any]:
         "error": None,
     }
     try:
+        # 数据源能力边界：yfinance 不覆盖港股/A股个股期权链（HKEX/沪深个股期权），
+        # 提前短路并返回结构化错误码，避免每次白跑网络请求且让前端能区分"源不支持"。
+        if symbol.endswith((".HK", ".SS", ".SZ")):
+            out["error"] = "market_not_supported"
+            return out
         t = yf.Ticker(symbol)
         expirations = t.options or []
         if not expirations:
-            out["error"] = "无可用期权到期日"
+            out["error"] = "no_expiry"
             return out
         # 选最近一期（且在 60 天内）
         today = datetime.now().date()
@@ -1196,7 +1280,7 @@ def fetch_options_pcr(symbol: str, max_exp_days: int = 60) -> Dict[str, Any]:
         calls = chain.calls
         puts = chain.puts
         if calls is None or puts is None or calls.empty or puts.empty:
-            out["error"] = "期权链为空"
+            out["error"] = "empty_chain"
             return out
         out["expiry"] = chosen
         out["call_volume"] = int(calls["volume"].fillna(0).sum())
@@ -1681,13 +1765,15 @@ def interpret_news(
     result["positives"] = pos[:3]
     result["negatives"] = neg[:3]
 
-    # 焦点句
+    # 焦点句（pos/neg 都可能为空：标题存在但无多空关键词命中时二者皆空，不能假设必有 neg）
     if pos and neg:
         focus = f"多空交织：偏多线索聚焦「{pos[0][:18]}…」，偏空线索聚焦「{neg[0][:18]}…」。"
     elif pos:
         focus = f"消息面整体偏暖，正面催化集中于「{pos[0][:20]}…」。"
-    else:
+    elif neg:
         focus = f"消息面承压，负面风险集中于「{neg[0][:20]}…」。"
+    else:
+        focus = "近 2 日暂无重大利空消息，消息面中性偏平静，未见明确方向性催化。"
 
     window_txt = (
         f"近 {within_days} 日窗口内抓取 {result['near_total']} 条"
@@ -1709,17 +1795,114 @@ def interpret_news(
 # （akshare qfq 对港股杠杆ETF 等会产生错乱，已实测 7709.HK / 00981.HK 严重偏差）。
 # 技术指标（RSI/MA/ATR）仍用日线历史计算。
 # ---------------------------------------------------------------------------
+def _futu_secret(name: str, default: str = "") -> str:
+    """读取 Futu 配置：优先 os.environ，其次 Streamlit Secrets。"""
+    v = os.environ.get(name, "")
+    if v:
+        return v
+    try:
+        import streamlit as st  # 懒导入，避免无 streamlit 环境报错
+
+        if hasattr(st, "secrets"):
+            v = st.secrets.get(name, "")
+            if v:
+                return str(v)
+    except Exception:  # noqa: BLE001
+        pass
+    return default
+
+
+def fetch_realtime_via_futu(symbol: str) -> Dict[str, Any]:
+    """通过本地/可达的 FutuOpenD 网关获取实时报价（最高优先级）。
+
+    开启条件：USE_FUTU=true 且 OpenD 在运行。
+    配置项（os.environ 或 Streamlit Secrets 二选一即可）：
+      USE_FUTU        true / false
+      FUTU_OPEND_HOST 默认 127.0.0.1
+      FUTU_OPEND_PORT 默认 11111
+    仅支持 .HK / .SS / .SZ；其余返回 ok=False 由上层免费源兜底。
+    任何失败（未安装 / 网关不可达 / 空数据）均返回 ok=False，绝不抛异常。
+    """
+    out: Dict[str, Any] = {"ok": False, "symbol": symbol, "source": "富途OpenD"}
+    if _futu_secret("USE_FUTU", "false").lower() != "true":
+        out["error"] = "disabled"
+        return out
+    is_hk = symbol.endswith(".HK")
+    is_cn = symbol.endswith((".SS", ".SZ"))
+    if not (is_hk or is_cn):
+        out["error"] = "market_not_supported"
+        return out
+    try:
+        from futu import OpenQuoteContext, RET_ERROR
+    except Exception:  # noqa: BLE001
+        out["error"] = "futu_api_not_installed"
+        return out
+    # 富途内部代码格式：HK.00700 / SH.600519 / SZ.000001
+    if is_hk:
+        code = "HK." + symbol.replace(".HK", "").zfill(5)
+    elif symbol.endswith(".SS"):
+        code = "SH." + symbol.replace(".SS", "")
+    else:
+        code = "SZ." + symbol.replace(".SZ", "")
+    host = _futu_secret("FUTU_OPEND_HOST", "127.0.0.1")
+    try:
+        port = int(_futu_secret("FUTU_OPEND_PORT", "11111") or "11111")
+    except ValueError:
+        port = 11111
+    ctx = None
+    try:
+        ctx = OpenQuoteContext(host=host, port=port)
+        ret, data = ctx.get_stock_quote([code])
+        if ret == RET_ERROR or data is None or data.empty:
+            out["error"] = "quote_error"
+            return out
+        row = data.iloc[0]
+        last = float(row.get("last_price") or 0)
+        prev = float(row.get("prev_close_price") or 0)
+        if last <= 0 or prev <= 0:
+            out["error"] = "empty_quote"
+            return out
+        pct = (last - prev) / prev * 100.0
+        out.update(
+            ok=True,
+            name=str(row.get("stock_name", "")),
+            last=round(last, 4),
+            prev_close=round(prev, 4),
+            pct=round(pct, 2),
+            source="富途OpenD",
+        )
+    except Exception as e:  # noqa: BLE001
+        out["error"] = f"opend_unreachable: {e}"
+    finally:
+        try:
+            if ctx is not None:
+                ctx.close()
+        except Exception:  # noqa: BLE001
+            pass
+    return out
+
+
 def fetch_realtime_quote(symbol: str) -> Dict[str, Any]:
     """返回 {ok, symbol, name, last, prev_close, pct, source}。
 
     仅处理港股(.HK)与A股(.SS/.SZ)；美股沿用 Yahoo（CI 上可靠），返回 ok=False。
-    任一源失败自动降级；最终 ok=False 表示无法取得可信实时价。
+    优先级：富途OpenD → 东方财富 → 腾讯 → 新浪；任一源成功即返回。
+    最终 ok=False 表示所有源都无法取得可信实时价。
     """
     out: Dict[str, Any] = {"ok": False, "symbol": symbol}
     is_hk = symbol.endswith(".HK")
     is_cn = symbol.endswith((".SS", ".SZ"))
     if not (is_hk or is_cn):
         return out
+
+    # 0) 富途 OpenD（若已开启 USE_FUTU 且网关可达）：优先级最高
+    try:
+        futu_q = fetch_realtime_via_futu(symbol)
+        if futu_q.get("ok"):
+            return futu_q
+    except Exception:  # noqa: BLE001
+        pass
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
         "Referer": "https://finance.sina.com.cn",
@@ -2176,22 +2359,46 @@ def fetch_a_share_overview() -> Dict[str, Any]:
       - 上证综指 / 深证成指 / 创业板 / 沪深 300 / 中证 500 / 科创 50 实时行情
       - 涨/平/跌家数
       - 北向资金净流入
+    优先：东方财富单只指数接口（快、稳）；降级：akshare 全市场快照。
     """
-    if not _AKSHARE_AVAILABLE:
-        return {"error": "akshare 未安装（pip install akshare）"}
     out: Dict[str, Any] = {"indices": [], "advance": None, "decline": None, "north_flow": None, "asof": ""}
+    # 1) 东财单只指数（首选）
     try:
-        # 1. 主指数实时行情
-        df = ak.stock_zh_index_spot_em(symbol="沪深重要指数")
-        if df is not None and not df.empty:
-            keep = ["最新价", "涨跌幅", "涨跌额", "代码", "名称"]
-            df = df[[c for c in keep if c in df.columns]]
-            out["indices"] = df.head(8).to_dict(orient="records")
-        # 2. 涨跌家数（实时）
+        index_map = [
+            ("1.000001", "上证指数"), ("0.399001", "深证成指"), ("0.399006", "创业板指"),
+            ("1.000300", "沪深300"), ("1.000905", "中证500"), ("1.000688", "科创50"),
+        ]
+        rows = []
+        for secid, name in index_map:
+            url = f"https://push2.eastmoney.com/api/qt/stock/get?secid={secid}&fields=f43,f58,f60,f170"
+            d = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=6).json().get("data") or {}
+            last, prev = d.get("f43"), d.get("f60")
+            if last and prev:
+                rows.append({"名称": name, "最新价": round(float(last) / 100.0, 2),
+                             "涨跌幅": round((float(last) - float(prev)) / float(prev) * 100, 2)})
+        if rows:
+            out["indices"] = rows[:8]
+    except Exception as e:  # noqa: BLE001
+        logger.debug("东财 A股指数失败: %s", e)
+    # 2) akshare 降级（仅当东财无结果时）
+    if not out["indices"]:
+        if not _AKSHARE_AVAILABLE:
+            out["error"] = "akshare 未安装（pip install akshare）"
+            return out
+        try:
+            df = ak.stock_zh_index_spot_em(symbol="沪深重要指数")
+            if df is not None and not df.empty:
+                keep = ["最新价", "涨跌幅", "涨跌额", "代码", "名称"]
+                df = df[[c for c in keep if c in df.columns]]
+                out["indices"] = df.head(8).to_dict(orient="records")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("akshare 指数失败: %s", e)
+            out["error"] = str(e)
+    # 3) 涨跌家数（仅 akshare 有，尽力而为）
+    if _AKSHARE_AVAILABLE:
         try:
             ad = ak.stock_market_activity_legu()
             if ad is not None and not ad.empty:
-                # stock_market_activity_legu 返回一行，包含 '上涨', '下跌', '平盘' 等列
                 cols = ad.columns.tolist()
                 for kw in ["上涨", "下降", "平盘", "涨停", "跌停"]:
                     for c in cols:
@@ -2201,17 +2408,13 @@ def fetch_a_share_overview() -> Dict[str, Any]:
                 out["decline"] = out.get("下降")
         except Exception as e:  # noqa: BLE001
             logger.debug("akshare 涨跌家数失败: %s", e)
-        # 3. 北向资金
         try:
             nb = ak.stock_hsgt_north_net_flow_in_em(symbol="北向")
             if nb is not None and not nb.empty:
                 out["north_flow"] = float(nb.iloc[-1, 1]) if nb.shape[1] >= 2 else None
         except Exception as e:  # noqa: BLE001
             logger.debug("akshare 北向资金失败: %s", e)
-        out["asof"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-    except Exception as e:  # noqa: BLE001
-        logger.warning("akshare A股全景失败: %s", e)
-        out["error"] = str(e)
+    out["asof"] = datetime.now().strftime("%Y-%m-%d %H:%M")
     return out
 
 
@@ -2244,9 +2447,37 @@ def fetch_a_share_heatmap_data(max_n: int = 30) -> List[Dict[str, Any]]:
 
 def fetch_a_share_kline(symbol: str, days: int = 120) -> pd.DataFrame:
     """
-    A股个股 K线（akshare 后复权）。
+    A股个股 K线。
     symbol 格式：'600519' / '000001' / '300750'（不带后缀）
+    优先：东方财富 push2 单只 K线（不受 akshare 限流影响）
+    降级：akshare stock_zh_a_hist（后复权）
     """
+    # 1) 东方财富单只 K线（首选）
+    try:
+        mkt = "1" if symbol.startswith(("6", "9", "5")) else "0"
+        url = (f"https://push2his.eastmoney.com/api/qt/stock/kline/get?secid={mkt}.{symbol}"
+               f"&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57"
+               f"&klt=101&fqt=1&end=20500101&lmt={days}")
+        d = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8).json().get("data") or {}
+        klines = d.get("klines") or []
+        if len(klines) >= 30:
+            rows = []
+            for kl in klines:
+                # 格式: 日期,开,收,高,低,成交量,成交额
+                parts = kl.split(",")
+                if len(parts) < 6:
+                    continue
+                rows.append({
+                    "Date": pd.to_datetime(parts[0]),
+                    "Open": float(parts[1]), "Close": float(parts[2]),
+                    "High": float(parts[3]), "Low": float(parts[4]),
+                    "Volume": float(parts[5]),
+                })
+            df = pd.DataFrame(rows).set_index("Date").tail(days)
+            return df if not df.empty else pd.DataFrame()
+    except Exception as e:  # noqa: BLE001
+        logger.debug("东财 A股 %s K线失败: %s", symbol, e)
+    # 2) akshare 后复权（降级）
     if not _AKSHARE_AVAILABLE:
         return pd.DataFrame()
     try:
@@ -2268,7 +2499,40 @@ def fetch_a_share_kline(symbol: str, days: int = 120) -> pd.DataFrame:
 
 
 def fetch_a_share_quote(symbol: str) -> Dict[str, Any]:
-    """A股个股实时行情（最新价 / 涨跌幅 / 换手率 / 市盈率）。"""
+    """
+    A股个股实时行情（最新价 / 涨跌幅 / 换手率 / 市盈率）。
+    优先：东方财富 push2 单只接口（快、稳、不受 akshare 全市场快照限流影响）
+    降级：akshare stock_zh_a_spot_em 全市场快照
+    symbol 格式：'600519' / '000001' / '300750'（不带后缀）
+    """
+    # 1) 东方财富单只接口（首选）
+    try:
+        mkt = "1" if symbol.startswith(("6", "9", "5")) else "0"
+        url = (f"https://push2.eastmoney.com/api/qt/stock/get?secid={mkt}.{symbol}"
+               f"&fields=f43,f44,f45,f46,f47,f57,f58,f60,f168,f169,f170")
+        d = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=6).json().get("data") or {}
+        if d.get("f43") and d.get("f60"):
+            last = float(d["f43"]) / 100.0
+            prev = float(d["f60"]) / 100.0
+            chg = (last - prev) / prev * 100.0 if prev else 0.0
+            out = {
+                "代码": str(d.get("f57", symbol)),
+                "名称": d.get("f58", ""),
+                "最新价": round(last, 3),
+                "涨跌幅": round(chg, 2),
+                "涨跌额": round(last - prev, 3),
+                "成交量": int(float(d.get("f47") or 0)),
+                "换手率": round(float(d.get("f168") or 0) / 100.0, 2),
+            }
+            try:
+                pe = float(d.get("f169") or 0) / 100.0
+                out["市盈率-动态"] = round(pe, 2) if pe > 0 else None
+            except (TypeError, ValueError):
+                out["市盈率-动态"] = None
+            return out
+    except Exception as e:  # noqa: BLE001
+        logger.debug("东财 A股 %s 实时行情失败: %s", symbol, e)
+    # 2) akshare 全市场快照（降级）
     if not _AKSHARE_AVAILABLE:
         return {}
     try:
@@ -2862,13 +3126,17 @@ def fetch_all_metrics(symbols) -> List[Dict[str, Any]]:
                 hist_map[s] = []
     except Exception:
         hist_map = {s: [] for s in syms}
-    # 2) PE（best-effort，逐只 .info）
+    # 2) PE + Sector（best-effort，逐只 .info，一次调用同时取两个字段）
     pe_map: Dict[str, Optional[float]] = {}
+    sector_map: Dict[str, str] = {}
     for s in syms:
         pe_map[s] = None
+        sector_map[s] = ""
         try:
-            pe = yf.Ticker(_yf_sym(s)).info.get("trailingPE")
+            info = yf.Ticker(_yf_sym(s)).info or {}
+            pe = info.get("trailingPE")
             pe_map[s] = float(pe) if isinstance(pe, (int, float)) else None
+            sector_map[s] = str(info.get("sector") or info.get("industry") or "")
         except Exception:
             pass
     # 3) 组装
@@ -2886,7 +3154,8 @@ def fetch_all_metrics(symbols) -> List[Dict[str, Any]]:
             ret20 = (last / ma20 - 1) * 100 if ma20 else None
         out.append({
             "symbol": s, "name": get_stock_name(s), "last": last, "chgPct": round(chgPct, 2),
-            "pe": pe_map.get(s), "ma20": ma20, "ma60": ma60,
+            "pe": pe_map.get(s), "sector": sector_map.get(s, ""),
+            "ma20": ma20, "ma60": ma60,
             "atrPct": round(atrPct, 2) if atrPct is not None else None,
             "ret20": round(ret20, 2) if ret20 is not None else None,
         })
@@ -2894,44 +3163,82 @@ def fetch_all_metrics(symbols) -> List[Dict[str, Any]]:
 
 
 def recommend_stocks(metrics) -> Dict[str, Any]:
-    """统一荐股评分（与 PWA 同算法）。返回 intraday_t / midterm_hold / buy / details。"""
+    """
+    统一荐股评分（v3.0 升级）：
+      - 相对强度 RS（个股 20 日收益 vs 板块/大盘均值）维度
+      - PE 行业归一化（按 self.pe_group 分组内分位打分）
+      - 建议买入价位 = MA20 与 POC 区间（保守/积极两档）
+    返回 intraday_t / midterm_hold / buy / details / strategy_meta。
+    """
+    # 行业 PE 分组（用于归一化；未分组标的用全样本中位数作基准）
+    PE_GROUPS: Dict[str, Tuple[float, float]] = {
+        # 行业: (合理PE下限, 合理PE上限)
+        "半导体": (15, 35), "科技": (18, 40), "消费": (15, 30),
+        "能源": (8, 18), "金融": (6, 15), "医药": (15, 35),
+        "航运": (5, 12), "军工": (20, 45), "有色": (10, 25),
+        "工业": (12, 25), "互联网": (20, 45),
+    }
+
     rows = []
+    # 全样本中位数 PE 作为归一化基准
+    pes = [e.get("pe") for e in metrics if isinstance(e.get("pe"), (int, float)) and e["pe"] > 0]
+    med_pe = float(pd.Series(pes).median()) if pes else 20.0
+
     for e in metrics:
         last = e.get("last")
         chg = e.get("chgPct") or 0
         pe = e.get("pe")
         ma20 = e.get("ma20"); ma60 = e.get("ma60"); atr = e.get("atrPct"); ret20 = e.get("ret20")
+        sector = e.get("sector", "")
         tech = 50.0
         if ma20 is not None:
             tech = 50 + (ret20 or 0) * 1.5 + (10 if (last and last > ma20) else 0) \
                    + (10 if (ma60 is not None and ma20 > ma60) else 0) - (8 if (last and last < ma20) else 0)
             tech = min(100.0, max(0.0, tech))
+        # PE 行业归一化：按行业合理区间线性映射，未分组用中位数基准
         val = 50.0
         if pe is not None:
-            if 0 < pe < 15:
-                val = 85
-            elif pe < 25:
-                val = 70
-            elif pe < 35:
-                val = 58
-            elif pe < 50:
-                val = 48
-            else:
-                val = 38
+            lo, hi = PE_GROUPS.get(sector, (med_pe * 0.5, med_pe * 1.8))
             if pe <= 0:
-                val = 45
+                val = 45.0
+            elif pe >= hi:
+                val = 30.0
+            elif pe <= lo:
+                val = 88.0
+            else:
+                val = 88.0 - (pe - lo) / max(hi - lo, 0.01) * 55.0
+            val = min(100.0, max(0.0, val))
         mom = min(100.0, max(0.0, 50 + chg * 3))
-        comp = min(100.0, max(0.0, 0.5 * tech + 0.25 * val + 0.25 * mom))
+        # 相对强度 RS：个股 ret20 相对全样本中位数的超额（无 ret20 则中性）
+        ret20s = [x.get("ret20") for x in metrics if isinstance(x.get("ret20"), (int, float))]
+        med_ret20 = float(pd.Series(ret20s).median()) if ret20s else 0.0
+        rs_val = 50.0
+        if isinstance(ret20, (int, float)):
+            rs_val = min(100.0, max(0.0, 50 + (ret20 - med_ret20) * 3))
+        comp = min(100.0, max(0.0, 0.35 * tech + 0.20 * val + 0.20 * mom + 0.25 * rs_val))
         bias = "看多" if comp >= 60 else ("看空" if comp <= 40 else "震荡")
         stop = None
+        buy_zone = None
         if last is not None and atr is not None:
             sp = max(atr * 2.2, 7) / 100.0
             stop = round(last * (1 - sp), 2)
+            # 建议买入价位：MA20 附近（保守 = MA20，积极 = 当前价回调 1/2 风险距离）
+            if ma20 is not None:
+                buy_zone = {
+                    "conservative": round(min(last, ma20), 2),
+                    "aggressive": round(last - (last - stop) * 0.5, 2),
+                    "stop": stop,
+                }
         rows.append({**e, "tech": round(tech), "val": round(val), "mom": round(mom),
-                     "comp": round(comp), "bias": bias, "stop": stop})
+                     "rs": round(rs_val), "comp": round(comp), "bias": bias,
+                     "stop": stop, "buy_zone": buy_zone})
     intraday_t = sorted([r for r in rows if r.get("atrPct") and r["atrPct"] >= 2.5],
                         key=lambda r: -r["atrPct"])[:8]
     midterm = sorted([r for r in rows if r["comp"] >= 55 or r["bias"] == "看多"],
                      key=lambda r: -r["comp"])[:8]
     buy = sorted([r for r in rows if r["comp"] >= 60], key=lambda r: -r["comp"])
-    return {"details": rows, "intraday_t": intraday_t, "midterm_hold": midterm, "buy": buy}
+    return {
+        "details": rows, "intraday_t": intraday_t, "midterm_hold": midterm, "buy": buy,
+        "strategy_meta": {"threshold": 60, "med_pe": round(med_pe, 1), "med_ret20": round(med_ret20, 2),
+                          "weights": {"tech": 0.35, "val": 0.20, "mom": 0.20, "rs": 0.25}},
+    }

@@ -38,6 +38,7 @@ import yfinance as yf
 from plotly.subplots import make_subplots
 
 import utils as U  # 本地工具模块
+import screener  # v3.0 选股三层架构：维科夫事件序列 + 多因子评分
 from stock_dashboard import Config  # 自选股列表
 
 # ---------------------------------------------------------------------------
@@ -112,6 +113,60 @@ GLOBAL_CSS = """
     }
     .section-title .accent { color: var(--accent); }
 
+    /* v3.0 Bloomberg/DSA 风格：分组小标题 */
+    .section-sub {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        color: var(--text-dim);
+        margin: 20px 0 8px 0;
+        padding-bottom: 4px;
+        border-bottom: 1px solid var(--border);
+        text-transform: uppercase;
+    }
+    .section-sub .accent { color: var(--accent); }
+
+    /* v3.0 圆环评分（DSA donut） */
+    .donut {
+        width: 74px;
+        height: 74px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        background: conic-gradient(var(--donut-color, #2563eb) calc(var(--donut-pct, 0) * 1%), #eef2f7 0);
+    }
+    .donut::before {
+        content: "";
+        position: absolute;
+        inset: 9px;
+        background: var(--card, #fff);
+        border-radius: 50%;
+    }
+    .donut .val {
+        position: relative;
+        font-size: 17px;
+        font-weight: 800;
+        color: var(--text);
+    }
+
+    /* v3.0 左侧历史列表 / 右侧详情卡（Bloomberg 双栏） */
+    .list-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 8px;
+        margin-bottom: 4px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    .list-card:hover { border-color: var(--accent); }
+    .list-card.active { border-color: var(--accent); background: #eff6ff; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 12px; }
+    .detail-grid .k { color: var(--text-dim); }
+    .detail-grid .v { font-weight: 700; text-align: right; }
+
     .stock-row {
         background: var(--card);
         border: 1px solid var(--border);
@@ -174,11 +229,6 @@ st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 # ---------------------------------------------------------------------------
 # 环境变量
 # ---------------------------------------------------------------------------
-SERPAPI_KEY = os.environ.get("SERPAPI", "") or st.secrets.get("SERPAPI", "") if hasattr(st, "secrets") else os.environ.get("SERPAPI", "")
-DEEPSEEK_KEY = os.environ.get("DEEPSEEK_API_KEY", "") or (st.secrets.get("DEEPSEEK_API_KEY", "") if hasattr(st, "secrets") else "")
-FRED_KEY = os.environ.get("FRED_API", "") or (st.secrets.get("FRED_API", "") if hasattr(st, "secrets") else "")
-
-
 def _get_secret(name: str, default: str = "") -> str:
     """双路读 secret（os.environ + st.secrets）。"""
     val = os.environ.get(name, "")
@@ -192,6 +242,11 @@ def _get_secret(name: str, default: str = "") -> str:
         except Exception:
             pass
     return default
+
+
+SERPAPI_KEY = _get_secret("SERPAPI")
+DEEPSEEK_KEY = _get_secret("DEEPSEEK_API_KEY")
+FRED_KEY = _get_secret("FRED_API")
 
 
 def _check_lib(name: str) -> bool:
@@ -263,8 +318,8 @@ LEV_MAP = (DATA.get("leverage") or {}).get("stocks", {}) if isinstance(DATA.get(
 # ---------------------------------------------------------------------------
 # API key 集合（v2.1：多源支持）
 # ---------------------------------------------------------------------------
-FINNHUB_KEY = os.environ.get("FINNHUB_API", "") or (st.secrets.get("FINNHUB_API", "") if hasattr(st, "secrets") else "")
-NEWSAPI_KEY = os.environ.get("NEWSAPI_KEY", "") or (st.secrets.get("NEWSAPI_KEY", "") if hasattr(st, "secrets") else "")
+FINNHUB_KEY = _get_secret("FINNHUB_API")
+NEWSAPI_KEY = _get_secret("NEWSAPI_KEY")
 
 
 # ---------------------------------------------------------------------------
@@ -305,7 +360,7 @@ with st.sidebar:
     st.divider()
     page = st.radio(
         "导航",
-        ["🏠 Dashboard", "🔍 个股深度分析", "📊 跨资产对比", "📰 新闻中心"],
+        ["🏠 Dashboard", "🔍 个股深度分析", "📊 跨资产对比"],
         label_visibility="collapsed",
         key="nav_radio",
     )
@@ -375,6 +430,21 @@ def _rec_md(r, sub):
             f'<b>{r["symbol"]}</b> <span style="color:var(--text-dim);font-size:10px;">{nm}</span><br>'
             f'<span style="color:{c};font-weight:600;">{chg:+.2f}%</span> '
             f'<span style="color:var(--text-dim);font-size:10px;">{sub}</span></div>')
+
+
+def _donut(score: float, size: int = 74, label: str = "评分") -> str:
+    """DSA 圆环评分：score 0-100。返回内联 HTML（用于 st.markdown）。"""
+    try:
+        s = float(score)
+    except (TypeError, ValueError):
+        s = 0.0
+    s = min(100.0, max(0.0, s))
+    color = "#dc2626" if s >= 60 else ("#f59e0b" if s >= 40 else "#16a34a")
+    return (
+        f'<div class="donut" style="--donut-pct:{s:.1f};--donut-color:{color};width:{size}px;height:{size}px;">'
+        f'<span class="val" style="font-size:{max(12, size//4)}px;">{s:.0f}</span></div>'
+        f'<div style="font-size:10px;color:var(--text-dim);text-align:center;margin-top:4px;">{label}</div>'
+    )
 
 
 def page_dashboard():
@@ -472,7 +542,8 @@ def page_dashboard():
     else:
         st.warning(f"组合策略卡数据缺失: {err}（请先运行 `python stock_dashboard.py` 生成 data/stocks.csv）")
 
-    # ===== 第一行：F&G / 情绪 / VIX / VXN / SOX / 10Y =====
+    # ===== 第一组：市场情绪与波动率（F&G / 自建情绪 / VIX / VXN / SOX / 10Y） =====
+    st.markdown('<div class="section-sub"><span class="accent">▍</span>市场情绪与波动率</div>', unsafe_allow_html=True)
     fg = U.calculate_fear_greed()
     macro_row = MACRO_DF.iloc[0] if MACRO_DF is not None and not MACRO_DF.empty else None
     sox_row = SOX_DF.iloc[0] if SOX_DF is not None and not SOX_DF.empty else None
@@ -521,7 +592,7 @@ def page_dashboard():
         vix_color = "var(--up)" if vix > 25 else "var(--text)"
         vix_warn = "⚠️ 警戒" if vix > 25 else ("正常" if vix > 0 else "—")
         st.markdown(
-            f'<div class="card" style="text-align:center;"><h4>{U.emoji_for_panic(vix)} VIX</h4><div class="big" style="color:{vix_color};">{vix:.2f}</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">{vix_warn}</div></div>',
+            f'<div class="card" style="text-align:center;"><h4>{U.emoji_for_panic(vix)} VIX <span style="font-size:9px;color:var(--text-dim);">隐含波动率</span></h4><div class="big" style="color:{vix_color};">{vix:.2f}</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">{vix_warn}</div></div>',
             unsafe_allow_html=True,
         )
     with c4:
@@ -531,7 +602,7 @@ def page_dashboard():
         vxn_color = "#dc2626" if vxn > 30 else ("#f97316" if vxn > 22 else "#16a34a")
         vxn_warn = "😱 警戒" if vxn > 30 else ("⚠️ 偏高" if vxn > 22 else ("正常" if vxn > 0 else "—"))
         st.markdown(
-            f'<div class="card" style="text-align:center;"><h4>{U.emoji_for_panic(vxn)} VXN 纳指</h4><div class="big" style="color:{vxn_color};">{vxn:.2f}</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">{vxn_warn}</div></div>',
+            f'<div class="card" style="text-align:center;"><h4>{U.emoji_for_panic(vxn)} VXN <span style="font-size:9px;color:var(--text-dim);">纳指IV</span></h4><div class="big" style="color:{vxn_color};">{vxn:.2f}</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">{vxn_warn}</div></div>',
             unsafe_allow_html=True,
         )
     with c5:
@@ -549,7 +620,8 @@ def page_dashboard():
             unsafe_allow_html=True,
         )
 
-    # ===== v2.4 新增：全球主指数（上证 / 恒指 / 标普 / 纳指 / 道指） =====
+    # ===== 第二组：全球主指数（上证 / 恒指 / 标普 / 纳指 / 道指） =====
+    st.markdown('<div class="section-sub"><span class="accent">▍</span>全球主要指数</div>', unsafe_allow_html=True)
     world_idx = [
         ("000001.SS", "上证指数", "🇨🇳"),
         ("^HSI", "恒生指数", "🇭🇰"),
@@ -594,8 +666,8 @@ def page_dashboard():
                     unsafe_allow_html=True,
                 )
 
-    # ===== v2.3 新增：第二行 4 张指标卡（实时兜底）=====
-    # 顺序：先读 JSON 缓存（GitHub Actions 写入），缺失则实时调 fetch_*()
+    # ===== 第三组：利率与杠杆（2Y / US Debt / Margin Debt / NFCI） =====
+    st.markdown('<div class="section-sub"><span class="accent">▍</span>利率与杠杆（FRED）</div>', unsafe_allow_html=True)
     y2c = EXTRA_DATA.get("2y_scorecard") or {}
     debt = EXTRA_DATA.get("us_debt") or {}
     margin = EXTRA_DATA.get("margin_debt") or {}
@@ -621,12 +693,20 @@ def page_dashboard():
         signal = y2c.get("signal", "—")
         if y2 is not None and spread is not None:
             spread_color = "#dc2626" if spread < 0 else ("#16a34a" if spread > 75 else "#f59e0b")
+            real_y2 = y2c.get("real_y2")
+            real_y2_html = (
+                f'<div style="font-size:12px;margin-top:4px;">实际利率(2Y): <b>{real_y2:.2f}%</b> '
+                f'<span style="font-size:9px;color:var(--text-dim);">≈DGS2−T5YIE</span></div>'
+                if real_y2 is not None else
+                '<div style="font-size:9px;color:var(--text-dim);margin-top:4px;">实际利率不可用（需 FRED DGS2+T5YIE）</div>'
+            )
             st.markdown(
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>📊 2-Year Scorecard</h4>'
                 f'<div style="font-size:13px;color:var(--text-dim);">2Y: <b style="font-size:18px;color:var(--text);">{y2:.2f}%</b> · 10Y: <b style="font-size:18px;color:var(--text);">{y2c.get("y10", 0):.2f}%</b></div>'
                 f'<div style="font-size:22px;font-weight:800;color:{spread_color};margin-top:6px;">{spread:.0f} bps</div>'
                 f'<div style="font-size:11px;margin-top:4px;">{signal}</div>'
+                f'{real_y2_html}'
                 f'<div style="font-size:9px;color:var(--text-dim);margin-top:2px;">5d 变化: {y2c.get("spread_5d_chg", "—")} bps · {y2c.get("asof","—")}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
@@ -663,12 +743,20 @@ def page_dashboard():
     with c3:
         mb_val = margin.get("value_billion")
         if mb_val is not None:
+            web_cross = ""
+            if margin.get("finra_web_value"):
+                web_cross = (
+                    f'<div style="font-size:9px;color:var(--text-dim);margin-top:2px;">'
+                    f'官网直抓 {margin.get("finra_web_month","")}: ${margin.get("finra_web_value",0):.0f}B（交叉校验）</div>'
+                )
             st.markdown(
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>💳 FINRA Margin Debt</h4>'
                 f'<div class="big">${mb_val:.0f}B</div>'
                 f'<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">环比 {safe_float(margin.get("mom_chg_pct", 0), 0):+.1f}% · 同比 {safe_float(margin.get("yoy_chg_pct", 0), 0):+.1f}%</div>'
                 f'<div style="font-size:11px;margin-top:4px;">{margin.get("signal", "—")}</div>'
+                f'{web_cross}'
+                f'<div style="font-size:9px;color:var(--text-dim);margin-top:2px;">源: {margin.get("source","FRED MDEBT")} · {margin.get("asof","—")}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -1105,6 +1193,47 @@ def page_dashboard():
             a_hm = U.build_heatmap_data(U.A_SHARE_HEATMAP_TICKERS)
         _draw_heatmap(a_hm, "sector", "symbol", "change_pct", "weight")
 
+    # ===== v3.0 新增：维科夫吸筹扫描（选股三层架构 · 第一层）=====
+    st.markdown('<div class="section-title"><span class="accent">🧬</span>维科夫吸筹扫描 <span style="font-size:11px;color:var(--text-dim);">纯计算 · 无 LLM</span></div>', unsafe_allow_html=True)
+    wyc_syms = [s for s in (STOCKS_DF["symbol"].tolist() if STOCKS_DF is not None and not STOCKS_DF.empty else []) if not s.endswith((".HK", ".SS", ".SZ"))][:8]
+    if wyc_syms:
+        wyc_rows = []
+        for wsym in wyc_syms:
+            try:
+                wh = _fetch_price_history(wsym, period="6mo", interval="1d")
+                if wh is None or wh.empty or len(wh) < 120:
+                    continue
+                w = screener.detect_wyckoff_events(wh)
+                if w.get("ok"):
+                    wyc_rows.append((wsym, w))
+            except Exception:  # noqa: BLE001
+                continue
+        wyc_rows.sort(key=lambda x: -x[1]["confidence"])
+        if wyc_rows:
+            cols = st.columns(len(wyc_rows))
+            for col, (wsym, w) in zip(cols, wyc_rows):
+                conf = w["confidence"]
+                conf_color = "#16a34a" if conf >= 0.71 else ("#f59e0b" if conf >= 0.43 else ("#3b82f6" if conf >= 0.14 else "#9ca3af"))
+                with col:
+                    st.markdown(
+                        f'<div class="card" style="text-align:center;border-top:3px solid {conf_color};">'
+                        f'<h4>{wsym}</h4>'
+                        f'<div style="display:flex;justify-content:center;margin:6px 0;">{_donut(conf * 100, size=62, label="吸筹置信度")}</div>'
+                        f'<div style="font-size:11px;color:var(--text-dim);">{w["stage"]}</div>'
+                        f'<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">{w["event_count"]}/7 事件 · {w["phase"]}</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+            with st.expander("📋 事件明细"):
+                for wsym, w in wyc_rows:
+                    evs = " → ".join(e["event"] for e in w["events"]) or "无"
+                    st.markdown(f"**{wsym}** ({w['stage']}) 置信度 {w['confidence']} · 事件序列: {evs}")
+                    st.caption(w["summary"])
+        else:
+            st.caption("K线数据不足，无法扫描（需要至少 120 根日K）")
+    else:
+        st.caption("暂无美股标的可扫描")
+
     # ===== 第四行：经济日历 + FedWatch =====
     st.markdown('<div class="section-title"><span class="accent">📅</span>经济日程 & FedWatch</div>', unsafe_allow_html=True)
     c1, c2 = st.columns([1.4, 1])
@@ -1259,17 +1388,15 @@ def page_stock_deepdive():
         else:
             market_syms = a_syms
 
-        # 第二层：在所选市场内搜索 / 选择
+        # 第二层：在所选市场内搜索 / 选择（自选列表直点，替代下拉）
         q = st.text_input("🔍 搜索代码/名称", "")
         if q:
             market_syms = [s for s in market_syms if q.upper() in s.upper()]
         st.caption(f"共 {len(market_syms)} 只")
         if "selected_sym" not in st.session_state or st.session_state.selected_sym not in market_syms:
             st.session_state.selected_sym = market_syms[0] if market_syms else None
-        sel = st.selectbox("主标的", market_syms, index=market_syms.index(st.session_state.selected_sym) if st.session_state.selected_sym in market_syms else 0)
-        st.session_state.selected_sym = sel
 
-        # 自选列表（卡片式）
+        # 自选列表（卡片式，点击即查看 —— Bloomberg 左侧列表风格）
         st.markdown("##### 📋 自选列表")
         for sym in market_syms[:15]:
             r = work_df[work_df["symbol"] == sym].iloc[0] if not work_df[work_df["symbol"] == sym].empty else None
@@ -1278,14 +1405,19 @@ def page_stock_deepdive():
             chg = safe_float(r.get("涨跌幅"))
             rsi = safe_float(r.get("RSI_14"), 50)
             rsi_color = "#dc2626" if rsi > 70 else ("#16a34a" if rsi < 30 else "#6b7280")
-            cls = "active" if sym == sel else ""
-            st.markdown(
-                f"<div class='stock-row {cls}' style='display:flex;justify-content:space-between;align-items:center;font-size:12px;'>"
-                f"<span><b>{sym}</b> <span style='color:var(--text-dim);font-size:10px;'>{U.STOCK_NAMES.get(sym, '')}</span> <span style='color:{rsi_color};font-size:10px;'>R{rsi:.0f}</span></span>"
-                f"<span style='color:{color_for_change(chg)};font-weight:600;'>{fmt_pct(chg, with_sign=False)}</span>"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
+            cls = "active" if sym == st.session_state.selected_sym else ""
+            if st.button(
+                f"{sym}  {U.STOCK_NAMES.get(sym, '')}  R{rsi:.0f}  {fmt_pct(chg, with_sign=False)}",
+                key=f"pick_{sym}",
+                use_container_width=True,
+                type="secondary",
+            ):
+                st.session_state.selected_sym = sym
+                st.rerun()
+            # 高亮当前选中（用 CSS 类在按钮下方不可行，改为在按钮前输出标记）
+            if cls == "active":
+                st.markdown(f"<div style='font-size:9px;color:var(--accent);margin:-4px 0 2px 2px;'>▼ {sym} 正在分析</div>", unsafe_allow_html=True)
+        sel = st.session_state.selected_sym
 
         st.divider()
         st.markdown("##### 📜 历史分析存档")
@@ -1309,7 +1441,11 @@ def page_stock_deepdive():
         if not sel:
             st.info("请选择一只股票")
             return
-        r = work_df[work_df["symbol"] == sel].iloc[0]
+        _sub = work_df[work_df["symbol"] == sel]
+        if _sub.empty:
+            st.warning("⚠️ 未找到该标的的行情记录（数据可能未生成），请刷新数据后重试。")
+            return
+        r = _sub.iloc[0]
         sym = sel
         is_hk = sym.endswith(".HK")
         market_label = "港股" if is_hk else ("A股" if sym.endswith((".SS", ".SZ")) else "美股")
@@ -1387,7 +1523,7 @@ def page_stock_deepdive():
         c3.metric("成交量", f"{int(vol):,}" if pd.notna(vol) else "N/A")
         c4.metric("Vol/OI PCR", f"{vol_pcr:.2f} / {oi_pcr:.2f}" if pd.notna(vol_pcr) and pd.notna(oi_pcr) else "N/A")
 
-        # 5) 策略 (sniper + 杠杆)
+        # 5) 策略 (sniper + R 倍数分批减仓 + 杠杆)
         st.markdown('<div class="section-title">🎯 交易策略</div>', unsafe_allow_html=True)
         sniper = card.get("sniper", {}) or r.get("sniper", {})
         if sniper:
@@ -1396,10 +1532,41 @@ def page_stock_deepdive():
                 ("理想买入", sniper.get("ideal_buy", "—"), "#2563eb"),
                 ("二次加仓", sniper.get("second_buy", "—"), "#16a34a"),
                 ("止损位", sniper.get("stop_loss", "—"), "#dc2626"),
-                ("止盈目标", sniper.get("target", "—"), "#f59e0b"),
+                ("止盈逻辑", "分批减仓", "#f59e0b"),
             ]):
                 with col:
                     st.markdown(f"<div class='card' style='text-align:center;border-top:3px solid {color};padding:10px;'><h4>{label}</h4><div style='font-size:14px;font-weight:700;color:{color};'>{val}</div></div>", unsafe_allow_html=True)
+
+            # R 倍数分批止盈计划（垫厚利润）：+1R 减1/3 → +2R 再减1/3 → 剩余移动止损
+            try:
+                import risk as _risk
+                _buy = _risk._num(sniper.get("ideal_buy") or r.get("收盘价"))
+                _stop = _risk._num(sniper.get("stop_loss"))
+                if _buy is not None and _stop is not None and _stop < _buy:
+                    _atr_v = safe_float(r.get("ATR"))
+                    plan = _risk.r_multiple_plan(_buy, _stop, current_price=safe_float(r.get("收盘价")), atr=_atr_v or None)
+                    if plan.get("ok"):
+                        st.markdown("##### 📐 R 倍数分批止盈（垫厚利润）")
+                        st.caption("原逻辑：单一止盈目标一次性了结，容易卖飞或回吐。新逻辑：以入场风险 R 为单位，分三批兑现，边涨边垫高止损。")
+                        _s1, _s2, _s3 = plan["stages"]
+                        _row = (
+                            f"<div class='card' style='padding:10px 12px;font-size:12px;'>"
+                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
+                            f"<span>入场风险 R</span><b>{plan['risk_pct']:.1f}% <span style='color:var(--text-dim);font-size:10px;'>(${plan['risk_r']:.2f})</span></b></div>"
+                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;color:var(--text-dim);'>"
+                            f"<span>当前盈亏</span><b style='color:{color_for_change(plan.get('current_pnl_pct', 0))};'>{plan.get('current_pnl_pct', 0):+.2f}% ({plan.get('current_pnl_R', 0):+.2f}R)</b></div>"
+                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
+                            f"<span>+1R ({_s1['price_pct']:+.1f}%)</span><b style='color:#2563eb;'>{_s1['price']:.2f} · {_s1['action']}</b></div>"
+                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
+                            f"<span>+2R ({_s2['price_pct']:+.1f}%)</span><b style='color:#16a34a;'>{_s2['price']:.2f} · {_s2['action']}</b></div>"
+                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
+                            f"<span>剩余 1/3</span><b style='color:#f59e0b;'>{_s3['action']}</b></div>"
+                            f"<div style='font-size:11px;color:var(--accent);font-weight:600;margin-top:4px;'>▶ {plan.get('current_stage','')}</div>"
+                            f"</div>"
+                        )
+                        st.markdown(_row, unsafe_allow_html=True)
+            except Exception as e:  # noqa: BLE001
+                logger.debug("R 倍数计划生成失败: %s", e)
 
         lev = LEV_MAP.get(sym, {})
         if lev and lev.get("details"):
@@ -1438,23 +1605,84 @@ def page_stock_deepdive():
         if not sel:
             return
         sym = sel
-        r = work_df[work_df["symbol"] == sym].iloc[0]
+        _sub = work_df[work_df["symbol"] == sym]
+        if _sub.empty:
+            return
+        r = _sub.iloc[0]
         card = CARDS_MAP.get(sym, {})
 
-        # 评分
+        # 评分（DSA 圆环）
         st.markdown("#### 🎯 AI 评分")
-        score = card.get("score") or 0
+        try:
+            score = float(card.get("score") or 0)
+        except (TypeError, ValueError):
+            score = 0.0
         op = card.get("operation", "—")
         tr = card.get("trend", "—")
-        score_color = "#16a34a" if score >= 70 else ("#f59e0b" if score >= 50 else "#dc2626")
         st.markdown(
             f"<div class='card' style='text-align:center;'>"
-            f"<div style='font-size:42px;font-weight:800;color:{score_color};'>{score}</div>"
-            f"<div style='font-size:13px;color:var(--text-dim);margin-top:4px;'>操作: <b>{op}</b> · 趋势: <b>{tr}</b></div>"
-            f"<div class='gauge-bg' style='margin-top:8px;'><div class='gauge-thumb' style='left:{min(score,100)}%;border-color:{score_color};'></div></div>"
+            f"<div style='display:flex;justify-content:center;'>{_donut(score, size=86, label='综合评分')}</div>"
+            f"<div style='font-size:13px;color:var(--text-dim);margin-top:8px;'>操作: <b>{op}</b> · 趋势: <b>{tr}</b></div>"
             f"</div>",
             unsafe_allow_html=True,
         )
+
+        # v3.0 多因子评分（选股三层架构 · 第二层，纯计算）
+        st.markdown("#### 📐 多因子评分")
+        try:
+            wh = _fetch_price_history(sym, period="6mo", interval="1d")
+            if wh is not None and not wh.empty and len(wh) >= 30:
+                mf = screener.score_multi_factor(wh)
+                if mf.get("ok"):
+                    f = mf["factors"]
+                    pass_ = mf["threshold_pass"]
+                    _mf_rows = (
+                        f'<div class="card" style="padding:10px 12px;font-size:12px;">'
+                        f'<div style="display:flex;justify-content:space-between;margin-bottom:6px;">'
+                        f'<span>综合分（60 阈值）</span><b style="color:{"#16a34a" if pass_ else "#dc2626"};">{mf["score"]} · {"通过" if pass_ else "未过"}</b></div>'
+                        f'<div class="detail-grid">'
+                        f'<span class="k">均线 tech</span><span class="v">{f["tech"]}</span>'
+                        f'<span class="k">POC 偏离</span><span class="v">{f["poc_dev_pct"]:+.1f}% ({f["poc"]})</span>'
+                        f'<span class="k">量能 vol</span><span class="v">{f["vol"]}</span>'
+                        f'<span class="k">相对强度 rs</span><span class="v">{f["rs"]}</span>'
+                        f'<span class="k">板块联动</span><span class="v">{f["sector"]}</span>'
+                        f'<span class="k">龙头强度</span><span class="v">{f["leader"]}</span>'
+                        f'</div></div>'
+                    )
+                    st.markdown(_mf_rows, unsafe_allow_html=True)
+                else:
+                    st.caption(f"多因子评分不可用：{mf.get('error','')}")
+            else:
+                st.caption("K线数据不足 30 根，无法评分")
+        except Exception as e:  # noqa: BLE001
+            st.caption(f"多因子评分失败: {e}")
+
+        # v3.0 维科夫吸筹结构（选股三层架构 · 第一层）
+        st.markdown("#### 🧬 维科夫吸筹")
+        try:
+            wh2 = _fetch_price_history(sym, period="6mo", interval="1d")
+            if wh2 is not None and not wh2.empty and len(wh2) >= 120:
+                w = screener.detect_wyckoff_events(wh2)
+                if w.get("ok"):
+                    conf = w["confidence"]
+                    conf_color = "#16a34a" if conf >= 0.71 else ("#f59e0b" if conf >= 0.43 else ("#3b82f6" if conf >= 0.14 else "#9ca3af"))
+                    st.markdown(
+                        f'<div class="card" style="text-align:center;border-top:3px solid {conf_color};">'
+                        f'<div style="display:flex;justify-content:center;">{_donut(conf * 100, size=62, label="置信度")}</div>'
+                        f'<div style="font-size:13px;font-weight:700;margin-top:4px;">{w["stage"]}</div>'
+                        f'<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">{w["event_count"]}/7 事件 · {w["phase"]}</div>'
+                        f'<div style="font-size:11px;margin-top:6px;text-align:left;color:var(--text);">{w["summary"]}</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                    if w["events"]:
+                        st.caption("事件序列: " + " → ".join(e["event"] for e in w["events"]))
+                else:
+                    st.caption(f"维科夫检测不可用：{w.get('error','')}")
+            else:
+                st.caption("K线数据不足 120 根，无法检测吸筹结构")
+        except Exception as e:  # noqa: BLE001
+            st.caption(f"维科夫检测失败: {e}")
         # 抄底/反弹
         bf = safe_float(r.get("抄底评分"), 0)
         rev = r.get("反弹反转信号", "无")
@@ -1531,7 +1759,16 @@ def page_stock_deepdive():
             else:
                 st.caption("📈 Vol PCR < 0.8：Call 主导，市场偏多")
         else:
-            st.caption("暂无期权数据（运行 `python stock_dashboard.py --extras` 刷新）")
+            # 按错误类型区分提示：数据源不支持 / 无到期日 / 链为空 / 临时失败 / 数据未生成
+            pcr_err = (pcr or {}).get("error", "")
+            if pcr_err == "market_not_supported":
+                st.caption("ℹ️ 该标的市场暂无期权链数据（当前数据源不覆盖港股/A股个股期权），Vol/OI PCR 仅美股标的有。")
+            elif pcr_err in ("no_expiry", "empty_chain"):
+                st.caption("ℹ️ 该标的近期无可用期权数据（无到期日或期权链为空）。")
+            elif pcr_err:
+                st.caption(f"⚠️ 期权数据获取失败：{pcr_err}（可稍后重试）")
+            else:
+                st.caption("暂无期权数据（由每日数据管线生成 data/options_pcr.json）")
 
         # 下周走势预测已移至三栏下方的全宽区（见本函数末尾）
 
@@ -1540,16 +1777,50 @@ def page_stock_deepdive():
         sectors = card.get("sectors", [])
         if sectors:
             st.markdown("**板块**: " + " · ".join(sectors))
-        st.caption(f"VIX {safe_float(MACRO_DF.iloc[0].get('VIX'), 0) if MACRO_DF is not None else 0:.2f} · 10Y {safe_float(MACRO_DF.iloc[0].get('10年期美债收益率'), 0) if MACRO_DF is not None else 0:.2f}%")
+        st.caption(f"VIX {safe_float(MACRO_DF.iloc[0].get('VIX'), 0) if MACRO_DF is not None and not MACRO_DF.empty else 0:.2f} · 10Y {safe_float(MACRO_DF.iloc[0].get('10年期美债收益率'), 0) if MACRO_DF is not None and not MACRO_DF.empty else 0:.2f}%")
 
     # ============== 全宽区：新闻列表 + 近2日解读 + 下周走势（华尔街分析师排版） ==============
     if sel:
         st.divider()
         st.markdown(
             '<div class="section-title"><span class="accent">📰</span>'
-            '标的新闻 · 近2日解读 · 下周走势</div>',
+            '标的新闻 · 近2日解读 · 下周走势 · 宏观/政策</div>',
             unsafe_allow_html=True,
         )
+
+        # 0) 宏观 + 政策新闻（原新闻中心并入个股页）
+        macro_news_items = (NEWS_DATA.get("macro", []) if isinstance(NEWS_DATA, dict) else []) or []
+        policy_news_items = (NEWS_DATA.get("policy", []) if isinstance(NEWS_DATA, dict) else []) or []
+        if not macro_news_items and not policy_news_items:
+            with st.spinner("实时拉取宏观/政策新闻…"):
+                try:
+                    macro_news_items = U.fetch_yahoo_rss(query="Federal Reserve")
+                    policy_news_items = U.fetch_policy_news_free(top_n=6)
+                except Exception:  # noqa: BLE001
+                    pass
+        if macro_news_items or policy_news_items:
+            m1, m2 = st.columns(2)
+            with m1:
+                st.markdown("##### 🌍 宏观新闻")
+                for n in (macro_news_items or [])[:5]:
+                    st.markdown(
+                        f"<div class='news-card' style='padding:6px 10px;'>"
+                        f"<a href='{n.get('link','#')}' target='_blank' class='title' style='font-size:12px;'>{n.get('title','')}</a>"
+                        f"<div class='meta' style='font-size:10px;'>{n.get('source','')} · {n.get('date','')}</div>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+            with m2:
+                st.markdown("##### 🏛️ 政策新闻")
+                for n in (policy_news_items or [])[:5]:
+                    st.markdown(
+                        f"<div class='news-card' style='padding:6px 10px;'>"
+                        f"<a href='{n.get('link','#')}' target='_blank' class='title' style='font-size:12px;'>{n.get('title','')}</a>"
+                        f"<div class='meta' style='font-size:10px;'>{n.get('source','')} · {n.get('date','')}</div>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+        st.divider()
 
         # 1) 拉取新闻（NEWS_DATA 缓存优先，否则实时免费源）
         sym_news = []
@@ -1624,7 +1895,6 @@ def page_stock_deepdive():
 # ---------------------------------------------------------------------------
 def page_cross_asset():
     st.markdown('<div class="section-title"><span class="accent">📊</span>历史跨资产对比（标普500 / SOX / 10Y美债 / Mag 7）</div>', unsafe_allow_html=True)
-    st.caption("✅ 修复：auto_adjust=True 解决 NVDA 拆股异常；10Y 用副轴显示量纲统一；三档视图切换。")
 
     c1, c2 = st.columns([1, 2])
     with c1:
@@ -1925,10 +2195,10 @@ def page_diagnostics():
     st.markdown('<div class="section-title"><span class="accent">⚙️</span>数据诊断 & Secret 检查</div>', unsafe_allow_html=True)
 
     rows = [
-        ("FRED_API", FRED_KEY, "4 张新指标卡 (2Y / Debt / Margin / NFCI)"),
+        ("FRED_API", FRED_KEY, "利率/债务/杠杆卡 (2Y·实际利率·Debt·Margin·NFCI)"),
         ("DEEPSEEK_API_KEY", DEEPSEEK_KEY, "AI 报告 / 下周预测 (DeepSeek)"),
         ("OPENROUTER_API_KEY", _get_secret("OPENROUTER_API_KEY"), "AI 报告 OpenRouter 兜底 (Claude 3.5 Sonnet)"),
-        ("SERPAPI", SERPAPI_KEY, "主力新闻源（100/月免费）"),
+        ("SERPAPI", SERPAPI_KEY, "新闻增强源（100/月免费，超限自动降级 RSS）"),
         ("FINNHUB_API", FINNHUB_KEY, "美股个股新闻（60/min 免费）"),
         ("NEWSAPI_KEY", NEWSAPI_KEY, "宏观新闻（100/day 免费）"),
     ]
@@ -1952,7 +2222,7 @@ def page_diagnostics():
         "macro.csv", "stocks.csv", "sox.csv", "sp500.csv",
         "cards.json", "leverage_risk.json", "news.json",
         "report.md", "weekly_report.md", "morning_brief.md", "evening_recap.md",
-        "extra_indicators.json (新增)", "options_pcr.json (新增)", "predictions.json (新增)",
+        "extra_indicators.json (CI --extras)", "options_pcr.json (CI --extras)", "predictions.json (CI --predictions)",
     ]
     for f in files:
         p = DATA_DIR / f
@@ -1961,7 +2231,8 @@ def page_diagnostics():
             mtime = datetime.fromtimestamp(p.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
             st.markdown(f"- ✅ **{f}** — {sz} bytes · updated {mtime}")
         else:
-            st.markdown(f"- ❌ **{f}** — 缺失（运行 `python stock_dashboard.py` 生成）")
+            tag = "(CI --extras)" if "extras" in f else ("(CI --predictions)" if "predictions" in f else "")
+            st.markdown(f"- ❌ **{f}** — 缺失（CI 需执行 `python stock_dashboard.py --extras` / `--predictions` 子命令生成；主流程 run() 不生成这三个文件）")
 
     st.divider()
     st.markdown("#### 🛠️ 一键测试各项数据源")
@@ -1995,15 +2266,21 @@ def page_diagnostics():
                 st.error("未拉到")
 
     st.divider()
-    st.markdown("#### 💡 推荐免费 API 注册（按优先级）")
+    st.markdown("#### 💡 专业免费数据源（已调研 · 按优先级）")
     st.markdown("""
-| API | 免费额度 | 用途 | 注册 |
+| 数据源 | 免费额度 | 用途 | 说明 |
 |---|---|---|---|
-| **FRED** | 120 req/min | 4 张新指标卡 + 利率 | https://fred.stlouisfed.org/docs/api/api_key.html |
-| **Finnhub** | 60 req/min | 美股个股新闻 | https://finnhub.io/register |
-| **NewsAPI** | 100 req/day | 宏观新闻 | https://newsapi.org/register |
-| SerpApi | 100/月 | 主力宏观/政策 | https://serpapi.com/ |
+| **FRED** | 120 req/min | 利率 / 债务 / 杠杆 / 通胀 | 已接入，最稳定 |
+| **东方财富 push2** | 无限制 | A股/港股实时价 + 日K + 全球新闻 | 已接入（A股降级主源） |
+| **Finnhub** | 60 req/min | 美股个股新闻 / 财报 | 注册即用：finnhub.io/register |
+| **Tiingo** | 无硬限（低频） | 美股/ETF 历史 + 基本面 | 免费 token：tiingo.com |
+| **Alpha Vantage** | 25 req/day | 个股期权链 PCR / 技术指标 | 已用 HISTORICAL_OPTIONS |
+| **Twelve Data** | 800 req/day | 实时行情 + K线 + 技术指标 | 免费注册即用 |
+| **Polygon.io** | 5 req/min | 美股历史 / 聚合行情 | 免费 tier 含历史数据 |
+| **NewsAPI** | 100/day | 宏观新闻 | newsapi.org/register |
+| **SerpApi** | 100/月 | 泛搜索新闻（易超限） | 超限后自动降级到 RSS 免费源 |
 """)
+    st.caption("SerpApi 免费额度(100/月)极易耗尽：代码已加错误检测 + Google News RSS / Yahoo RSS / 东财 / 同花顺 / 雪球多级免费兜底，未配置或超限时新闻板块不空。")
 
 
 # ---------------------------------------------------------------------------

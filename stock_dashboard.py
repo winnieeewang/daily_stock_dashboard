@@ -587,7 +587,13 @@ class RiskEngine:
 
 
 def get_stock_put_call_ratio(symbol: str, api_key: str) -> Tuple[Optional[float], Optional[float]]:
-    if not api_key or symbol.endswith(".HK"):
+    """
+    个股级 PCR（HISTORICAL_OPTIONS）。
+    注意：Alpha Vantage HISTORICAL_OPTIONS 仅覆盖美股个股期权；
+    港股/A股个股期权无免费数据源（HKEX 期权数据不公开免费分发），
+    因此对 .HK/.SS/.SZ 直接短路返回 None，由上层标注"无免费源"。
+    """
+    if not api_key or symbol.endswith((".HK", ".SS", ".SZ")):
         return None, None
     url = f"https://www.alphavantage.co/query?function=HISTORICAL_OPTIONS&symbol={symbol}&apikey={api_key}"
     try:
@@ -651,30 +657,80 @@ class MacroCollector:
         return result
 
     def _fetch_finra_margin(self) -> Dict[str, Any]:
-        csv_path = self.cfg.output_dir / "finra_margin.csv"
-        if not csv_path.exists():
-            return {"FINRA保证金债务": "需手动下载: https://www.finra.org/rules-guidance/key-topics/margin-accounts"}
+        """
+        FINRA 保证金债务（融资余额）自动获取：
+          1. 优先 FRED MDEBT（结构化、历史长，单位百万美元 → 十亿）
+          2. 无 FRED key 时自动抓 FINRA 官网 margin-statistics 页面表格
+          3. 本地 finra_margin.csv 作为历史补充（可选，不再强制要求手动下载）
+        返回 YoY%、杠杆区间、增速是否回落等衍生信号。
+        """
+        # ---- 获取最新值与历史 ----
+        values: List[Tuple[str, float]] = []  # (asof, value_billion)
+        source_label = "FRED MDEBT"
         try:
-            df = pd.read_csv(csv_path)
-            df["date"] = pd.to_datetime(df["date"])
-            df = df.sort_values("date").set_index("date")
-            series = df["margin_debt"].astype(float)
-            if len(series) < 13:
-                return {"FINRA保证金债务": "数据不足12个月，无法计算YoY"}
-            yoy = series.pct_change(periods=12) * 100
-            latest_yoy = yoy.iloc[-1]
-            prev_yoy = yoy.iloc[-2]
-            rolled_over = latest_yoy < prev_yoy
-            if latest_yoy > 60:
-                zone = "极度危险（历史顶部区间）"
-            elif latest_yoy > 40:
-                zone = f"警戒区（历史前兆区间）{'，且已开始回落⚠️' if rolled_over else '，仍在加速'}"
-            else:
-                zone = "正常"
-            return {"FINRA保证金债务YoY%": round(latest_yoy, 1), "FINRA杠杆区间": zone, "FINRA增速回落": rolled_over}
+            fred_key = self.cfg.fred_api_key
+            if fred_key:
+                fred = Fred(api_key=fred_key)
+                s = fred.get_series("MDEBT", observation_start=(datetime.now() - timedelta(days=1000)))
+                if s is not None and len(s.dropna()) > 0:
+                    s = s.dropna()
+                    values = [(str(d.date()), float(v) / 1000.0) for d, v in s.items()]  # 百万 → 十亿
+            if not values:
+                web = U.fetch_finra_margin_web()
+                if web.get("value_billion") is not None:
+                    values = [(web["asof"], float(web["value_billion"]))]
+                    source_label = "FINRA官网直抓"
         except Exception as e:  # noqa: BLE001
-            logger.warning(f"读取 FINRA 数据失败: {e}")
-            return {"FINRA保证金债务": "CSV解析失败"}
+            logger.warning("FINRA margin 获取失败: %s", e)
+
+        # 本地 CSV 历史补充（如存在）
+        csv_path = self.cfg.output_dir / "finra_margin.csv"
+        if csv_path.exists():
+            try:
+                df = pd.read_csv(csv_path)
+                df["date"] = pd.to_datetime(df["date"])
+                for _, r in df.sort_values("date").iterrows():
+                    values.append((str(pd.to_datetime(r["date"]).date()), float(r["margin_debt"])))
+            except Exception as e:  # noqa: BLE001
+                logger.warning("读取 finra_margin.csv 失败: %s", e)
+
+        if not values:
+            return {"FINRA保证金债务": "数据源不可用（无 FRED key 且 FINRA 官网抓取失败）"}
+
+        # 去重 + 排序
+        seen: set = set()
+        dedup: List[Tuple[str, float]] = []
+        for d, v in values:
+            if d not in seen and v > 0:
+                seen.add(d)
+                dedup.append((d, v))
+        dedup.sort(key=lambda x: x[0])
+        if len(dedup) < 13:
+            return {
+                "FINRA保证金债务": f"{dedup[-1][1]:.0f}亿美元（{dedup[-1][0]}，{source_label}）",
+                "FINRA数据点": len(dedup),
+                "FINRA杠杆区间": "数据不足13个月，无法计算YoY",
+            }
+        series = pd.Series([v for _, v in dedup], index=pd.to_datetime([d for d, _ in dedup]))
+        yoy = series.pct_change(periods=12) * 100
+        latest_yoy = float(yoy.iloc[-1])
+        prev_yoy = float(yoy.iloc[-2])
+        rolled_over = latest_yoy < prev_yoy
+        if latest_yoy > 60:
+            zone = "极度危险（历史顶部区间）"
+        elif latest_yoy > 40:
+            zone = f"警戒区（历史前兆区间）{'，且已开始回落⚠️' if rolled_over else '，仍在加速'}"
+        elif latest_yoy > 25:
+            zone = "偏高（需关注）"
+        else:
+            zone = "正常"
+        return {
+            "FINRA保证金债务": f"{series.iloc[-1]:.0f}亿美元（{dedup[-1][0]}，{source_label}）",
+            "FINRA保证金债务YoY%": round(latest_yoy, 1),
+            "FINRA杠杆区间": zone,
+            "FINRA增速回落": rolled_over,
+            "FINRA数据源": source_label,
+        }
 
     def get_sox(self) -> SOXSignals:
         df = self.fetcher.fetch_yf("^SOX", period="3mo")
@@ -1361,21 +1417,20 @@ class ReportOrchestrator:
         sentiment = SentimentEngine.calculate(macro.get("VIX", 0), None, sox.get("RSI", 50))
         logger.info(f"情绪: {sentiment['情绪指数']} ({sentiment['标签']})")
 
-        # ===== 升级点 3: 用新的 fetch_all_news 替代旧的百度新闻 =====
-        if self.cfg.serpapi_key:
-            try:
-                U.fetch_all_news(
-                    self.cfg.serpapi_key,
-                    list(self.cfg.stocks),
-                    self.cfg.output_dir / "news.json",
-                )
-                with open(self.cfg.output_dir / "news.json", encoding="utf-8") as f:
-                    news = json.load(f)
-                logger.info("新闻完成 (宏观/政策/个股)")
-            except Exception as e:  # noqa: BLE001
-                logger.error(f"新闻抓取失败: {e}")
-                news = {}
-        else:
+        # ===== 升级点 3: 新闻多源聚合（SerpAPI 可选，免费源始终兜底）=====
+        try:
+            U.fetch_all_news_multi_source(
+                list(self.cfg.stocks),
+                serpapi_key=self.cfg.serpapi_key,
+                finnhub_key=U._get_secret("FINNHUB_API"),
+                newsapi_key=U._get_secret("NEWSAPI_KEY"),
+                out_path=self.cfg.output_dir / "news.json",
+            )
+            with open(self.cfg.output_dir / "news.json", encoding="utf-8") as f:
+                news = json.load(f)
+            logger.info("新闻完成 (多源聚合，含免费兜底)")
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"新闻抓取失败: {e}")
             news = {}
 
         alerts = self.alert_svc.check_and_send(macro, stock_dict, sox)
