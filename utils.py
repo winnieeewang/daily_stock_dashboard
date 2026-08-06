@@ -1975,6 +1975,7 @@ def fetch_realtime_quote(symbol: str) -> Dict[str, Any]:
     最终 ok=False 表示所有源都无法取得可信实时价。
     """
     out: Dict[str, Any] = {"ok": False, "symbol": symbol}
+    _nm = STOCK_NAMES.get(symbol)  # 中文名映射优先，防止新浪英文名/腾讯简称污染 name 字段
     is_hk = symbol.endswith(".HK")
     is_cn = symbol.endswith((".SS", ".SZ"))
     if not (is_hk or is_cn):
@@ -2028,7 +2029,7 @@ def fetch_realtime_quote(symbol: str) -> Dict[str, Any]:
             p = _pct(float(f43), float(f60))
             if p is not None:
                 out.update(
-                    ok=True, name=d.get("f58", ""), last=round(float(f43) / div, 4),
+                    ok=True, name=_nm or d.get("f58", ""), last=round(float(f43) / div, 4),
                     prev_close=round(float(f60) / div, 4), pct=round(p, 2), source="东方财富",
                 )
                 return out
@@ -2044,7 +2045,7 @@ def fetch_realtime_quote(symbol: str) -> Dict[str, Any]:
         last, prev = float(parts[3]), float(parts[4])
         p = _pct(last, prev)
         if p is not None:
-            out.update(ok=True, name=parts[1] if len(parts) > 1 else "", last=last,
+            out.update(ok=True, name=_nm or (parts[1] if len(parts) > 1 else ""), last=last,
                        prev_close=prev, pct=round(p, 2), source="腾讯")
             return out
     except Exception:  # noqa: BLE001
@@ -2062,13 +2063,325 @@ def fetch_realtime_quote(symbol: str) -> Dict[str, Any]:
             prev, last = float(parts[2]), float(parts[3])
         p = _pct(last, prev)
         if p is not None:
-            out.update(ok=True, name=parts[1] if len(parts) > 1 else "", last=last,
+            out.update(ok=True, name=_nm or (parts[1] if len(parts) > 1 else ""), last=last,
                        prev_close=prev, pct=round(p, 2), source="新浪")
             return out
     except Exception:  # noqa: BLE001
         pass
 
     return out
+
+
+# ---------------------------------------------------------------------------
+# 实时行情监控页（v3.3）：全字段快照 + 当日分时，多源降级、逐只容错
+# 数据源优先级：
+#   A股/港股：腾讯 gtimg（三市场字段结构统一，含 PE）→ 东财 push2 → 新浪
+#   美股：腾讯 us → yfinance 兜底
+# 分时：东财 trends2 → 腾讯分钟线 → 新浪 5 分钟 K（A股）
+# ---------------------------------------------------------------------------
+_RT_UA = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "Referer": "https://gu.qq.com/",
+}
+
+
+def _rt_f(v):
+    """安全转 float（容忍千分位/空串/None）。"""
+    try:
+        x = float(str(v).replace(",", "").strip())
+        return x
+    except (TypeError, ValueError):
+        return None
+
+
+def _rt_gt(symbol: str) -> str:
+    """腾讯 gtimg 代码：sh600519 / sz000001 / hk00700 / usAAPL。"""
+    if symbol.endswith(".HK"):
+        return "hk" + symbol.replace(".HK", "").zfill(5)
+    if symbol.endswith(".SS"):
+        return "sh" + symbol.replace(".SS", "")
+    if symbol.endswith(".SZ"):
+        return "sz" + symbol.replace(".SZ", "")
+    return "us" + symbol.split(".")[0].upper()
+
+
+def _rt_sina_gt(symbol: str) -> str:
+    """新浪代码：sh600519 / sz000001 / hk00700。"""
+    if symbol.endswith(".HK"):
+        return "hk" + symbol.replace(".HK", "").zfill(5)
+    if symbol.endswith(".SS"):
+        return "sh" + symbol.replace(".SS", "")
+    return "sz" + symbol.replace(".SZ", "")
+
+
+def fetch_realtime_snapshot(symbol: str) -> Dict[str, Any]:
+    """
+    全字段实时行情快照（监控页用）：
+      {ok, symbol, name, last, prev_close, open, high, low, volume, amount,
+       pct, chg, turnover, amplitude, pe, source, ts}
+    多源降级（任一成功即返回）：
+      1) 腾讯 gtimg —— A/港/美 字段结构统一（PE 只有腾讯可靠，东财 f169 实测返回负值不可用）
+      2) 东财 push2 —— A股(×100)/港股(×1000)
+      3) 新浪 hq —— A股/港股
+      4) yfinance —— 美股兜底
+    任何失败返回 ok=False，绝不抛异常。
+    """
+    out: Dict[str, Any] = {"ok": False, "symbol": symbol}
+    _nm = STOCK_NAMES.get(symbol)  # 中文名映射优先
+
+    # 1) 腾讯（主源）
+    try:
+        r = requests.get(f"https://qt.gtimg.cn/q={_rt_gt(symbol)}", headers=_RT_UA, timeout=6)
+        r.encoding = "gbk"
+        parts = r.text.split('="', 1)[1].rstrip('";\n ').split("~")
+        last, prev = _rt_f(parts[3]), _rt_f(parts[4])
+        if last and prev and last > 0:
+            amount = _rt_f(parts[37])
+            if amount is not None and symbol.endswith((".SS", ".SZ")):
+                amount = amount * 1e4  # 腾讯 A股成交额单位是万元
+            pct = _rt_f(parts[32])
+            if pct is None:
+                pct = (last - prev) / prev * 100.0
+            out.update(
+                ok=True, name=_nm or (parts[1] if len(parts) > 1 else ""),
+                last=round(last, 4), prev_close=round(prev, 4),
+                open=_rt_f(parts[5]), high=_rt_f(parts[33]), low=_rt_f(parts[34]),
+                volume=_rt_f(parts[36]), amount=amount,
+                pct=round(pct, 2), chg=_rt_f(parts[31]),
+                turnover=_rt_f(parts[38]), amplitude=_rt_f(parts[43]),
+                pe=_rt_f(parts[39]), source="腾讯", ts=parts[30] if len(parts) > 30 else "",
+            )
+            return out
+    except Exception:  # noqa: BLE001
+        pass
+
+    # 2) 东财（A股/港股）
+    if symbol.endswith((".SS", ".SZ", ".HK")):
+        try:
+            code = symbol.split(".")[0]
+            if symbol.endswith(".HK"):
+                secid = "116." + code.zfill(5)
+            else:
+                secid = ("1." if symbol.endswith(".SS") else "0.") + code
+            div = 1000.0 if symbol.endswith(".HK") else 100.0
+            d = requests.get(
+                f"https://push2.eastmoney.com/api/qt/stock/get?secid={secid}"
+                f"&fields=f43,f44,f45,f46,f47,f48,f57,f58,f60,f86,f168,f170,f171",
+                headers=_RT_UA, timeout=6,
+            ).json().get("data") or {}
+            f43, f60 = d.get("f43"), d.get("f60")
+            if f43 and f60:
+                last, prev = float(f43) / div, float(f60) / div
+                pct = (float(d.get("f170") or 0) / 100.0) if d.get("f170") is not None else ((last - prev) / prev * 100.0)
+                out.update(
+                    ok=True, name=_nm or d.get("f58", ""),
+                    last=round(last, 4), prev_close=round(prev, 4),
+                    open=round(float(d.get("f46") or f43) / div, 4),
+                    high=round(float(d.get("f44") or f43) / div, 4),
+                    low=round(float(d.get("f45") or f43) / div, 4),
+                    volume=float(d.get("f47") or 0), amount=float(d.get("f48") or 0),
+                    pct=round(pct, 2), chg=round(last - prev, 3),
+                    turnover=round(float(d.get("f168") or 0) / 100.0, 2),
+                    amplitude=round(float(d.get("f171") or 0) / 100.0, 2),
+                    pe=None, source="东方财富", ts=d.get("f86"),
+                )
+                return out
+        except Exception:  # noqa: BLE001
+            pass
+
+    # 3) 新浪（A股/港股）
+    if symbol.endswith((".SS", ".SZ", ".HK")):
+        try:
+            r = requests.get(f"https://hq.sinajs.cn/list={_rt_sina_gt(symbol)}", headers=_RT_UA, timeout=6)
+            r.encoding = "gbk"
+            parts = r.text.split('="', 1)[1].rstrip('";\n ').split(",")
+            if len(parts) >= 10:
+                if symbol.endswith(".HK"):
+                    last, prev = _rt_f(parts[6]), _rt_f(parts[3])
+                    pct = _rt_f(parts[8])
+                    chg = _rt_f(parts[7])
+                    volume, amount = _rt_f(parts[12]), _rt_f(parts[11])
+                    name = _nm or (parts[1] if len(parts) > 1 else "")
+                    ts = (parts[17] if len(parts) > 17 else "") + " " + (parts[18] if len(parts) > 18 else "")
+                else:
+                    last, prev = _rt_f(parts[3]), _rt_f(parts[2])
+                    pct = (last - prev) / prev * 100.0 if prev else None
+                    chg = (last - prev) if last is not None and prev is not None else None
+                    volume, amount = _rt_f(parts[8]), _rt_f(parts[9])
+                    name = _nm or parts[0]
+                    ts = (parts[30] if len(parts) > 30 else "") + " " + (parts[31] if len(parts) > 31 else "")
+                if last and prev and last > 0:
+                    out.update(
+                        ok=True, name=name, last=round(last, 4), prev_close=round(prev, 4),
+                        open=_rt_f(parts[1]), high=_rt_f(parts[4]), low=_rt_f(parts[5]),
+                        volume=volume, amount=amount,
+                        pct=round(pct, 2) if pct is not None else None,
+                        chg=round(chg, 3) if chg is not None else None,
+                        turnover=None, amplitude=None, pe=None, source="新浪", ts=ts,
+                    )
+                    return out
+        except Exception:  # noqa: BLE001
+            pass
+
+    # 4) 美股 yfinance 兜底
+    if not symbol.endswith((".HK", ".SS", ".SZ")):
+        try:
+            t = yf.Ticker(_yf_sym(symbol))
+            info = t.info or {}
+            last = _rt_f(info.get("regularMarketPrice") or info.get("currentPrice"))
+            prev = _rt_f(info.get("regularMarketPreviousClose") or info.get("previousClose"))
+            if last and prev:
+                pct = (last - prev) / prev * 100.0
+                h = t.history(period="2d")
+                high = low = None
+                if h is not None and not h.empty:
+                    high = round(float(h["High"].iloc[-1]), 4)
+                    low = round(float(h["Low"].iloc[-1]), 4)
+                out.update(
+                    ok=True, name=_nm or info.get("shortName") or info.get("longName") or symbol,
+                    last=round(last, 4), prev_close=round(prev, 4),
+                    open=round(_rt_f(info.get("regularMarketOpen")), 4) if _rt_f(info.get("regularMarketOpen")) else None,
+                    high=high, low=low,
+                    volume=info.get("volume"), amount=None,
+                    pct=round(pct, 2), chg=round(last - prev, 3),
+                    turnover=None, amplitude=None,
+                    pe=_rt_f(info.get("trailingPE")), source="yfinance", ts="",
+                )
+                return out
+        except Exception:  # noqa: BLE001
+            pass
+
+    return out
+
+
+def fetch_realtime_snapshots(symbols, max_workers: int = 6) -> Dict[str, Dict[str, Any]]:
+    """批量实时快照：并行拉取，每只独立容错（失败返回 ok=False，不影响其他）。"""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    syms = list(dict.fromkeys(symbols))
+    results: Dict[str, Dict[str, Any]] = {}
+    if not syms:
+        return results
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futs = {ex.submit(fetch_realtime_snapshot, s): s for s in syms}
+        for fut in as_completed(futs):
+            s = futs[fut]
+            try:
+                results[s] = fut.result()
+            except Exception:  # noqa: BLE001
+                results[s] = {"ok": False, "symbol": s}
+    return results
+
+
+def fetch_intraday_trend(symbol: str, days: int = 1) -> pd.DataFrame:
+    """
+    当日分时（分钟级）。返回 DataFrame[time, price, avg, volume, amount]。
+    数据源：东财 trends2（A股/港股）→ 腾讯分钟线（A股/港股）→ 新浪 5 分钟 K（A股）。
+    美股无免费分时 → 返回空 DataFrame。失败返回空 DataFrame，绝不抛异常。
+    """
+    # 1) 东财 trends2（A股/港股，字段：时间,开,收,高,低,成交量,成交额,均价）
+    if symbol.endswith((".SS", ".SZ", ".HK")):
+        try:
+            code = symbol.split(".")[0]
+            if symbol.endswith(".HK"):
+                secid = "116." + code.zfill(5)
+            else:
+                secid = ("1." if symbol.endswith(".SS") else "0.") + code
+            url = (
+                f"https://push2his.eastmoney.com/api/qt/stock/trends2/get?secid={secid}"
+                f"&fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13"
+                f"&fields2=f51,f52,f53,f54,f55,f56,f57,f58&ndays=1&iscr=0"
+            )
+            d = requests.get(url, headers=_RT_UA, timeout=8).json().get("data") or {}
+            trends = d.get("trends") or []
+            if trends:
+                rows = []
+                for line in trends:
+                    p = line.split(",")
+                    if len(p) >= 8:
+                        rows.append({
+                            "time": pd.to_datetime(p[0]),
+                            "price": float(p[2]),
+                            "avg": float(p[7]),
+                            "volume": float(p[5]),
+                            "amount": float(p[6]),
+                        })
+                if rows:
+                    return pd.DataFrame(rows)
+        except Exception:  # noqa: BLE001
+            pass
+
+    # 2) 腾讯分钟线（A股/港股）
+    if symbol.endswith((".SS", ".SZ", ".HK")):
+        try:
+            gt = _rt_gt(symbol)
+            j = requests.get(
+                f"https://web.ifzq.gtimg.cn/appstock/app/minute/query?code={gt}",
+                headers=_RT_UA, timeout=8,
+            ).json()
+            node = (j.get("data") or {}).get(gt) or {}
+            rows_raw = (node.get("data") or {}).get("data") or []
+            if rows_raw:
+                today = datetime.now().strftime("%Y-%m-%d")
+                rows = []
+                for row in rows_raw:
+                    if len(row) >= 2:
+                        t, price = row[0], _rt_f(row[1])
+                        if price is None:
+                            continue
+                        hh, mm = (t[:2], t[2:4]) if len(t) >= 4 else (t[:2], "00")
+                        rows.append({
+                            "time": pd.to_datetime(f"{today} {hh}:{mm}"),
+                            "price": price,
+                            "avg": None,
+                            "volume": _rt_f(row[2]) or 0,
+                            "amount": 0,
+                        })
+                if rows:
+                    return pd.DataFrame(rows)
+        except Exception:  # noqa: BLE001
+            pass
+
+    # 3) 新浪 5 分钟 K（A股）
+    if symbol.endswith((".SS", ".SZ")):
+        try:
+            gt = ("sh" if symbol.endswith(".SS") else "sz") + symbol.split(".")[0]
+            j = requests.get(
+                f"https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData"
+                f"?symbol={gt}&scale=5&ma=no&datalen=96",
+                headers=_RT_UA, timeout=8,
+            ).json()
+            if isinstance(j, list) and j:
+                rows = [{
+                    "time": pd.to_datetime(x.get("day")),
+                    "price": float(x["close"]),
+                    "avg": None,
+                    "volume": float(x.get("volume") or 0),
+                    "amount": 0,
+                } for x in j if x.get("close")]
+                if rows:
+                    return pd.DataFrame(rows)
+        except Exception:  # noqa: BLE001
+            pass
+
+    return pd.DataFrame()
+
+
+def fetch_intraday_trends(symbols, max_workers: int = 6) -> Dict[str, pd.DataFrame]:
+    """批量分时：并行拉取，每只独立容错（失败返回空 DataFrame）。"""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    syms = list(dict.fromkeys(symbols))
+    results: Dict[str, pd.DataFrame] = {}
+    if not syms:
+        return results
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futs = {ex.submit(fetch_intraday_trend, s): s for s in syms}
+        for fut in as_completed(futs):
+            s = futs[fut]
+            try:
+                results[s] = fut.result()
+            except Exception:  # noqa: BLE001
+                results[s] = pd.DataFrame()
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -3224,8 +3537,8 @@ STOCK_NAMES = {
     "MRVL": "迈威尔", "LITE": "Lumentum", "SNDK": "闪迪", "NVDA": "英伟达", "ORCL": "甲骨文",
     "SPCX": "标普500ETF", "SKHY": "SK海力士", "TSLA": "特斯拉",
     "0700.HK": "腾讯控股", "0883.HK": "中国海洋石油", "3750.HK": "宁德时代",
-    "07709.HK": "南方两倍做多海力士", "00981.HK": "中芯国际",
-    "688809.SS": "豪威股份", "300408.SZ": "三环集团", "300679.SZ": "电连技术",
+    "07709.HK": "南方两倍做多海力士", "7709.HK": "南方两倍做多海力士", "00981.HK": "中芯国际",
+    "688809.SS": "强一股份", "300408.SZ": "三环集团", "300679.SZ": "电连技术",
     "000426.SZ": "兴业银锡", "002624.SZ": "完美世界", "601872.SS": "招商轮船",
     "601975.SS": "招商南油", "002258.SZ": "利尔化学", "001331.SZ": "胜通能源",
     "600150.SS": "中国船舶",
@@ -3233,8 +3546,13 @@ STOCK_NAMES = {
     "EUV": "Corgi Lithography", "RKLB": "Rocket Lab", "GEV": "GE Vernova", "FUTU": "富途",
     "UNH": "联合健康", "NVO": "诺和诺德", "NFLX": "Netflix", "JNJ": "强生", "INTU": "Intuit",
 }
-# yfinance 个别代码归一化（美团在 Yahoo 不带前导零）
-YF_NORMALIZE = {"03690.HK": "3690.HK"}
+# yfinance 港股代码归一化：Yahoo 将 HKEX 5 位代码去掉 1 个前导零转成 4 位
+# （00981.HK→0981.HK、00293.HK→0293.HK、03690.HK→3690.HK、07709.HK→7709.HK…）；
+# 已是 4 位的代码（0700.HK / 0883.HK / 3750.HK）保持原样。
+YF_NORMALIZE = {
+    "03690.HK": "3690.HK", "07709.HK": "7709.HK", "00981.HK": "0981.HK",
+    "00293.HK": "0293.HK", "01138.HK": "1138.HK", "03968.HK": "3968.HK",
+}
 
 
 def get_stock_name(symbol: str) -> str:
@@ -3250,7 +3568,13 @@ def get_stock_name(symbol: str) -> str:
 
 
 def _yf_sym(symbol: str) -> str:
-    return YF_NORMALIZE.get(symbol, symbol)
+    """yfinance 代码归一化：显式映射优先，通用规则兜底（5 位港股去 1 个前导零）。"""
+    if symbol in YF_NORMALIZE:
+        return YF_NORMALIZE[symbol]
+    m = re.fullmatch(r"0(\d{4})\.HK", symbol)
+    if m:
+        return m.group(1) + ".HK"
+    return symbol
 
 
 def fetch_all_metrics(symbols) -> List[Dict[str, Any]]:
@@ -3265,7 +3589,9 @@ def fetch_all_metrics(symbols) -> List[Dict[str, Any]]:
                             progress=False, threads=False)
         for s in syms:
             try:
-                sub = data[s] if s in data.columns.get_level_values(0) else data.xs(s, level=0, axis=1)
+                # 批量下载的列名是归一化后的代码（07709.HK→7709.HK），必须用 _yf_sym 回查
+                _k = _yf_sym(s)
+                sub = data[_k] if _k in data.columns.get_level_values(0) else data.xs(_k, level=0, axis=1)
                 closes = sub["Close"].dropna().astype(float).tolist()
                 hist_map[s] = closes
             except Exception:
@@ -3305,6 +3631,17 @@ def fetch_all_metrics(symbols) -> List[Dict[str, Any]]:
             "atrPct": round(atrPct, 2) if atrPct is not None else None,
             "ret20": round(ret20, 2) if ret20 is not None else None,
         })
+    # 4) 港股/A股 实时价校正：yfinance 收盘可能滞后或批量下载失配，用多源实时报价覆盖
+    for m in out:
+        s = m["symbol"]
+        if s.endswith((".HK", ".SS", ".SZ")):
+            try:
+                _q = fetch_realtime_quote(s)
+                if _q.get("ok") and _q.get("last"):
+                    m["last"] = float(_q["last"])
+                    m["chgPct"] = round(float(_q.get("pct") or m.get("chgPct") or 0.0), 2)
+            except Exception:  # noqa: BLE001
+                pass
     return out
 
 
@@ -3491,6 +3828,24 @@ def compute_tomorrow_watch(
             "action": "观察", "status": "neutral", "score": 50, "summary": "样本不足，建议先观察。"
         }}
 
+    # 实时价校正（港股/A股）：yfinance 最后一根 K 线可能停在昨收，
+    # 用东财→腾讯→新浪多源实时价覆盖最后一根，避免「当前价=昨收」误导。
+    _rt_prev: Optional[float] = None
+    if symbol.endswith((".HK", ".SS", ".SZ")):
+        try:
+            _rq = fetch_realtime_quote(symbol)
+            if _rq.get("ok") and _rq.get("last"):
+                _df = df.copy()
+                _df.loc[_df.index[-1], "close"] = float(_rq["last"])
+                if "high" in _df.columns:
+                    _df.loc[_df.index[-1], "high"] = max(float(_rq["last"]), float(_df["high"].iloc[-1]))
+                if "low" in _df.columns:
+                    _df.loc[_df.index[-1], "low"] = min(float(_rq["last"]), float(_df["low"].iloc[-1]))
+                df = _df
+                _rt_prev = _rq.get("prev_close")
+        except Exception:  # noqa: BLE001
+            pass
+
     df = df.tail(max(support_lookback + 10, 60)).reset_index(drop=True)
     close = df["close"]
     high = df["high"]
@@ -3499,6 +3854,9 @@ def compute_tomorrow_watch(
     cur = float(close.iloc[-1])
     prev = float(close.iloc[-2]) if len(close) >= 2 else cur
     chg_pct = (cur / prev - 1.0) * 100 if prev > 0 else 0.0
+    # 实时源提供了官方昨收 → 用它重算当日涨跌幅（yfinance bar 差值可能失真）
+    if _rt_prev and _rt_prev > 0:
+        chg_pct = (cur / float(_rt_prev) - 1.0) * 100
 
     ma5 = float(_tw_ma(close, 5).iloc[-1])
     ma20 = float(_tw_ma(close, 20).iloc[-1])
@@ -3670,7 +4028,7 @@ def _safe_yf_ohlcv(symbol: str, days: int = 120) -> Optional[pd.DataFrame]:
     """
     try:
         import yfinance as yf
-        ticker = yf.Ticker(symbol)
+        ticker = yf.Ticker(_yf_sym(symbol))
         df = ticker.history(period=f"{max(60, days)}d", auto_adjust=False)
         if df is None or df.empty:
             return None

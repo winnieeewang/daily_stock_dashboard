@@ -200,7 +200,7 @@ class DataFetcher:
 
     @retry_on_error(max_retries=2, exceptions=(Exception,))
     def fetch_yf(self, ticker: str, period: str = "3mo") -> pd.DataFrame:
-        df = yf.download(ticker, period=period, progress=False, auto_adjust=True)
+        df = yf.download(U._yf_sym(ticker), period=period, progress=False, auto_adjust=True)
         if df.empty:
             raise ValueError(f"{ticker} 返回空数据")
         if isinstance(df.columns, pd.MultiIndex):

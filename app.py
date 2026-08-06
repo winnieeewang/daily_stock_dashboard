@@ -462,7 +462,7 @@ with st.sidebar:
     st.divider()
     page = st.radio(
         "导航",
-        ["🏠 Dashboard", "🔍 个股深度分析", "📊 跨资产对比"],
+        ["🏠 Dashboard", "🔍 个股深度分析", "📡 实时行情监控", "📊 跨资产对比"],
         label_visibility="collapsed",
         key="nav_radio",
     )
@@ -1782,15 +1782,23 @@ def page_stock_deepdive():
         chg = safe_float(r.get("涨跌幅"))
         price = safe_float(r.get("收盘价"))
         _price_src = "data/stocks.csv"
-        # 需求10：A股实时价校正（东方财富 push2），避免展示过期/错误股价
-        if sym.endswith((".SS", ".SZ")):
+        # 需求10：实时价校正（A股优先东财 push2；港股/A股均有多源兜底），
+        # 避免展示过期/错误股价（如 688809 曾因 stocks.csv 旧值 + 东财断连显示错误价格）
+        if sym.endswith((".SS", ".SZ", ".HK")):
             try:
-                _acode = sym.split(".")[0]
-                _aq = U.fetch_a_share_quote(_acode)
-                if _aq and _aq.get("最新价"):
-                    price = float(_aq["最新价"])
-                    chg = float(_aq.get("涨跌幅", chg))
-                    _price_src = "东方财富实时"
+                if sym.endswith((".SS", ".SZ")):
+                    _acode = sym.split(".")[0]
+                    _aq = U.fetch_a_share_quote(_acode)
+                    if _aq and _aq.get("最新价"):
+                        price = float(_aq["最新价"])
+                        chg = float(_aq.get("涨跌幅", chg))
+                        _price_src = "东方财富实时"
+                if _price_src == "data/stocks.csv":
+                    _rq = U.fetch_realtime_quote(sym)
+                    if _rq.get("ok") and _rq.get("last"):
+                        price = float(_rq["last"])
+                        chg = float(_rq.get("pct", chg))
+                        _price_src = f"{_rq.get('source', '行情')}实时"
             except Exception:  # noqa: BLE001
                 pass
         st.markdown(
@@ -2723,12 +2731,247 @@ def _draw_kline(hist: pd.DataFrame, sym: str, with_volume: bool = True):
 
 
 # ---------------------------------------------------------------------------
+# 页面：实时行情监控（v3.3）
+# 特性：访客可增删股票（自动识别市场）、刷新频率可配置、fragment 局部自动刷新、
+#       多源降级 + 逐只容错、红涨绿跌、醒目最近更新时间。
+# ---------------------------------------------------------------------------
+_RT_DEFAULT_WATCHLIST = ["688809.SS", "300408.SZ", "0700.HK", "07709.HK", "NVDA", "TSLA"]
+
+
+def _rt_normalize_input(raw: str) -> Optional[str]:
+    """访客输入 → 内部代码：
+      600519→600519.SS、688809→688809.SS、000001→000001.SZ、300750→300750.SZ、
+      0700→0700.HK、00700→00700.HK、7709→07709.HK、NVDA→NVDA；.SH→.SS；原样透传带后缀代码。"""
+    s = (raw or "").strip().upper().replace(" ", "")
+    if not s:
+        return None
+    if s.endswith(".SH"):
+        s = s[:-3] + ".SS"
+    if s.endswith((".SS", ".SZ", ".HK")):
+        return s
+    if s.isdigit():
+        if len(s) == 6:
+            return s + (".SS" if s[0] in "69" else ".SZ")
+        if len(s) == 5:
+            return s.zfill(5) + ".HK"  # 7709 → 07709.HK
+        if len(s) == 4:
+            return s + ".HK"           # 0700 → 0700.HK
+        return None
+    return s  # 美股
+
+
+def _rt_fmt_volume(v) -> str:
+    """成交量/成交额 → 万/亿 中文缩写。"""
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return "—"
+    if x is None or x != x:
+        return "—"
+    ax = abs(x)
+    if ax >= 1e8:
+        return f"{x / 1e8:.2f}亿"
+    if ax >= 1e4:
+        return f"{x / 1e4:.2f}万"
+    return f"{x:.0f}"
+
+
+def _rt_market_label(sym: str) -> str:
+    if sym.endswith(".HK"):
+        return "🇭🇰"
+    if sym.endswith((".SS", ".SZ")):
+        return "🇨🇳"
+    return "🇺🇸"
+
+
+def _rt_live_area() -> None:
+    """实时区域：自动刷新只重跑本 fragment，页面控件不闪烁。
+    由页面底部 st.fragment(_rt_live_area, run_every=...) 注册（支持动态频率）。"""
+    from datetime import datetime, timezone, timedelta
+    syms = list(st.session_state.get("rt_watchlist", []))
+    if not syms:
+        st.info("👆 在上方输入框添加股票代码后，这里会自动开始实时监控。")
+        return
+    freq = st.session_state.get("rt_freq", 30)
+    with st.spinner("⏳ 拉取实时行情…"):
+        snaps = U.fetch_realtime_snapshots(syms)
+        trends = U.fetch_intraday_trends(syms)
+
+    now = datetime.now(timezone(timedelta(hours=8)))
+    ok_n = sum(1 for v in snaps.values() if v.get("ok"))
+    freq_txt = f"每 {freq} 秒" if freq else "手动刷新"
+    st.markdown(
+        f"<div style='display:flex;align-items:center;gap:10px;flex-wrap:wrap;"
+        f"background:rgba(103,232,249,.08);border:1px solid rgba(103,232,249,.25);"
+        f"border-radius:10px;padding:10px 14px;margin-bottom:12px;'>"
+        f"<span style='font-size:13px;'>⏱️ <b>最近更新 {now:%H:%M:%S}</b>（北京时间）</span>"
+        f"<span style='font-size:12px;color:var(--text-dim);'>数据源：腾讯 → 东财 → 新浪（自动降级）</span>"
+        f"<span style='font-size:12px;color:var(--text-dim);'>自动刷新：{freq_txt}</span>"
+        f"<span style='font-size:12px;color:{'#dc2626' if ok_n == len(syms) else '#f59e0b'};'>成功 {ok_n}/{len(syms)}</span>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ---- 概览卡片（每只：代码+名称 / 最新价 / 涨跌幅）----
+    cards = []
+    for s in syms:
+        q = snaps.get(s, {})
+        if not q.get("ok"):
+            cards.append(
+                f"<div style='background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);"
+                f"border-radius:12px;padding:10px;text-align:center;'>"
+                f"<div style='font-size:11px;color:var(--text-dim);'>{_rt_market_label(s)} {s}</div>"
+                f"<div style='font-size:20px;font-weight:800;margin:4px 0;color:var(--text-dim);'>⚠️</div>"
+                f"<div style='font-size:10px;color:var(--text-dim);'>数据暂不可用</div></div>"
+            )
+            continue
+        c = color_for_change(safe_float(q.get("pct")))
+        cards.append(
+            f"<div style='background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);"
+            f"border-radius:12px;padding:10px;text-align:center;'>"
+            f"<div style='font-size:11px;color:var(--text-dim);'>{_rt_market_label(s)} {s} · {q.get('name','')}</div>"
+            f"<div style='font-size:20px;font-weight:800;margin:4px 0;color:{c};'>{safe_float(q.get('last')):.2f}</div>"
+            f"<div style='font-size:12px;font-weight:700;color:{c};'>{fmt_pct(safe_float(q.get('pct')))}</div>"
+            f"<div style='font-size:9px;color:var(--text-dim);margin-top:3px;'>{q.get('source','')} · {q.get('ts','')}</div>"
+            f"</div>"
+        )
+    st.markdown(
+        "<div style='display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;'>"
+        + "".join(cards) + "</div>",
+        unsafe_allow_html=True,
+    )
+    st.divider()
+
+    # ---- 明细表格 ----
+    rows = []
+    for s in syms:
+        q = snaps.get(s, {})
+        if not q.get("ok"):
+            rows.append({"代码": s, "名称": "⚠️ 数据暂不可用", "最新价": None, "涨跌额": None,
+                         "涨跌幅%": None, "今开": None, "最高": None, "最低": None, "昨收": None,
+                         "成交量": None, "成交额": None, "换手率%": None, "振幅%": None,
+                         "PE": None, "数据源": "—", "更新时间": "—"})
+            continue
+        rows.append({
+            "代码": s, "名称": q.get("name", ""), "最新价": q.get("last"),
+            "涨跌额": q.get("chg"), "涨跌幅%": q.get("pct"),
+            "今开": q.get("open"), "最高": q.get("high"), "最低": q.get("low"), "昨收": q.get("prev_close"),
+            "成交量": q.get("volume"), "成交额": q.get("amount"),
+            "换手率%": q.get("turnover"), "振幅%": q.get("amplitude"), "PE": q.get("pe"),
+            "数据源": q.get("source", ""), "更新时间": str(q.get("ts", ""))[:19],
+        })
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        try:
+            styled = (
+                df.style
+                .format({"最新价": "{:.2f}", "涨跌额": "{:+.2f}", "涨跌幅%": "{:+.2f}",
+                         "今开": "{:.2f}", "最高": "{:.2f}", "最低": "{:.2f}", "昨收": "{:.2f}",
+                         "换手率%": "{:.2f}", "振幅%": "{:.2f}", "PE": "{:.1f}",
+                         "成交量": _rt_fmt_volume, "成交额": _rt_fmt_volume})
+                .map(lambda v: "color:#dc2626;font-weight:700;" if isinstance(v, (int, float)) and v > 0 else (
+                     "color:#16a34a;font-weight:700;" if isinstance(v, (int, float)) and v < 0 else ""),
+                     subset=["涨跌额", "涨跌幅%"])
+            )
+            st.dataframe(styled, use_container_width=True, height=min(420, 60 + 34 * len(df)))
+        except Exception:  # noqa: BLE001
+            st.dataframe(df, use_container_width=True)
+
+    # ---- 当日分时图（相对昨收 %，多只叠加）----
+    st.markdown('<div class="section-title">📈 当日分时走势（相对昨收 %）</div>', unsafe_allow_html=True)
+    has_trend = False
+    fig = go.Figure()
+    for s in syms:
+        tdf = trends.get(s)
+        if tdf is None or tdf.empty:
+            continue
+        q = snaps.get(s, {})
+        prev = q.get("prev_close")
+        if not prev:
+            continue
+        has_trend = True
+        series = (tdf["price"] / float(prev) - 1.0) * 100.0
+        color = "#dc2626" if safe_float(q.get("pct")) >= 0 else "#16a34a"
+        fig.add_trace(go.Scatter(x=tdf["time"], y=series, mode="lines", name=s,
+                                 line=dict(color=color, width=1.6)))
+    if has_trend:
+        fig.update_layout(
+            height=380, margin=dict(l=0, r=0, t=10, b=0),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#9ca3af", size=11),
+            xaxis=dict(gridcolor="rgba(255,255,255,.06)", title=""),
+            yaxis=dict(gridcolor="rgba(255,255,255,.06)", title="涨跌幅 %", ticksuffix="%"),
+            hovermode="x unified", legend=dict(orientation="h", y=-0.22),
+        )
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    else:
+        st.caption("🕐 暂无分时数据（非交易时段，或该市场无免费分时源）")
+
+
+def page_realtime_monitor() -> None:
+    st.markdown('<div class="section-title"><span class="accent">📡</span>实时行情监控 · 多市场多标的 · 自动刷新</div>',
+                unsafe_allow_html=True)
+    st.caption("支持 A股 / 港股 / 美股，访客可自行添加或删除代码；数据来自腾讯/东财/新浪免费接口，多源自动降级。")
+
+    # ---- 状态（fragment 外，避免自动刷新打断交互）----
+    if "rt_watchlist" not in st.session_state:
+        st.session_state.rt_watchlist = list(_RT_DEFAULT_WATCHLIST)
+    if "rt_freq" not in st.session_state:
+        st.session_state.rt_freq = 30
+
+    c1, c2, c3 = st.columns([2.0, 1.3, 1.0])
+    with c1:
+        new_raw = st.text_input(
+            "➕ 添加股票", placeholder="如 600519 / 688809 / 0700.HK / 7709 / NVDA，回车添加",
+            key="rt_add_input",
+        )
+        if new_raw.strip():
+            sym = _rt_normalize_input(new_raw)
+            if sym is None:
+                st.warning("⚠️ 无法识别该代码（A股 6 位数字、港股 4/5 位数字、美股字母代码）")
+            elif sym in st.session_state.rt_watchlist:
+                st.info(f"`{sym}` 已在监控列表")
+            else:
+                st.session_state.rt_watchlist.append(sym)
+                st.rerun()
+    with c2:
+        freq_map = {"15 秒": 15, "30 秒": 30, "1 分钟": 60, "2 分钟": 120, "关闭": None}
+        freq_label = st.selectbox("⏱️ 自动刷新", list(freq_map), index=1, key="rt_freq_sel")
+        st.session_state.rt_freq = freq_map[freq_label]
+    with c3:
+        if st.button("🔄 重置默认列表", use_container_width=True):
+            st.session_state.rt_watchlist = list(_RT_DEFAULT_WATCHLIST)
+            st.rerun()
+        st.caption(f"当前 {len(st.session_state.rt_watchlist)} 只 · 每访客独立")
+
+    # 删除区
+    if st.session_state.rt_watchlist:
+        with st.expander(f"🗑️ 删除股票（当前 {len(st.session_state.rt_watchlist)} 只）", expanded=False):
+            del_col, btn_col = st.columns([4, 1])
+            with del_col:
+                del_syms = st.multiselect("勾选要删除的标的", st.session_state.rt_watchlist, key="rt_del_sel")
+            with btn_col:
+                st.write("")
+                st.write("")
+                if st.button("确认删除", use_container_width=True, type="primary", key="rt_del_btn"):
+                    st.session_state.rt_watchlist = [s for s in st.session_state.rt_watchlist if s not in del_syms]
+                    st.rerun()
+
+    st.divider()
+
+    # ---- 实时区（fragment：自动刷新仅重跑此区域，频率可动态配置）----
+    st.fragment(_rt_live_area, run_every=st.session_state.rt_freq)()
+
+
+# ---------------------------------------------------------------------------
 # 路由
 # ---------------------------------------------------------------------------
 if page == "🏠 Dashboard":
     page_dashboard()
 elif page == "🔍 个股深度分析":
     page_stock_deepdive()
+elif page == "📡 实时行情监控":
+    page_realtime_monitor()
 elif page == "📊 跨资产对比":
     page_cross_asset()
 elif page == "📰 新闻中心":
