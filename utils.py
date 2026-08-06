@@ -1081,9 +1081,11 @@ def fetch_us_debt() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # 12. FINRA Retail Margin Debt（融资余额）
 # ---------------------------------------------------------------------------
-# 主源：FRED MDEBT (Margin Debt, All Customers, FINRA) — 结构化、历史长
-# 校验源：FINRA 官网 margin-statistics 页面 HTML 表格直抓（官网无公开 API feed，
-#         页面表格每月第三个星期更新；两源交叉，取最新）
+# 主源：FRED MDEBT (Margin Debt, All Customers, FINRA)。
+# ⚠️ 重要：FRED 已于 2024 年前后停用 MDEBT 序列（访问 series/MDEBT 返回 404），
+#   因此主源不可用时必须降级到 FINRA 官网 margin-statistics 页面 HTML 表格直抓
+#   （官网无公开 API feed，页面表格每月第三个星期更新，与 FRED 同源、官方直出）。
+#   两源交叉校验，取最新。
 
 _FINRA_MARGIN_URL = "https://www.finra.org/investors/learn-to-invest/advanced-investing/margin-statistics"
 
@@ -1091,41 +1093,43 @@ _FINRA_MARGIN_URL = "https://www.finra.org/investors/learn-to-invest/advanced-in
 def fetch_finra_margin_web() -> Dict[str, Any]:
     """
     直接抓取 FINRA 官网 margin-statistics 页面 HTML 表格。
-    返回 {value_billion, month_label, asof}，失败返回 {"error": ...}。
+    返回 {ok, rows:[("Jun-26", 1502072.0), ...], value_billion, month_label, asof}，
+    失败返回 {"error": ...}。rows 中数值单位为 $ millions，按时间倒序（最新在前）。
     """
-    out: Dict[str, Any] = {"value_billion": None, "month_label": "", "asof": "", "error": None}
+    out: Dict[str, Any] = {"ok": False, "rows": [], "value_billion": None, "month_label": "", "asof": "", "error": None}
     try:
         import pandas as pd  # noqa: F811
 
         tables = pd.read_html(_FINRA_MARGIN_URL, flavor="bs4")
         for tbl in tables:
-            # 找含月份与 Debit Balances 的表
-            cols = [str(c).lower() for c in tbl.columns]
-            if not any("month" in c or "debit" in c for c in cols):
+            cols = [str(c) for c in tbl.columns]
+            lower = [c.lower() for c in cols]
+            # 定位 Debit Balances 列（排除 Free Credit Balances 干扰列）
+            debit_idx = None
+            for i, c in enumerate(lower):
+                if "debit" in c and "credit" not in c:
+                    debit_idx = i
+                    break
+            if debit_idx is None:
                 continue
-            flat = tbl.dropna(how="all")
+            flat = tbl.dropna(subset=[tbl.columns[0]]).copy()
             if flat.empty:
                 continue
-            # 第一列 = 月份标签（如 "Jun-26"），取第一行为最新
-            row0 = flat.iloc[0]
-            month_label = str(row0.iloc[0])
-            # 定位 debit 列：含 "debit" 或列名含 "margin account"
-            debit_col = None
-            for i, c in enumerate(flat.columns):
-                cs = str(c).lower()
-                if "debit" in cs:
-                    debit_col = i
-                    break
-            if debit_col is None:
-                continue
-            try:
-                val = float(str(row0.iloc[debit_col]).replace(",", "").replace("$", ""))
-            except (TypeError, ValueError):
-                continue
-            out["value_billion"] = round(val / 1000.0, 2)  # $ millions → $ billions
-            out["month_label"] = month_label
-            out["asof"] = month_label
-            return out
+            rows = []
+            for _, row in flat.iterrows():
+                m = str(row.iloc[0]).strip()
+                try:
+                    v = float(str(row.iloc[debit_idx]).replace(",", "").replace("$", "").strip())
+                except (TypeError, ValueError):
+                    continue
+                rows.append((m, v))
+            if rows:
+                out["rows"] = rows
+                out["ok"] = True
+                out["value_billion"] = round(rows[0][1] / 1000.0, 2)  # $ millions → $ billions
+                out["month_label"] = rows[0][0]
+                out["asof"] = rows[0][0]
+                return out
         out["error"] = "未找到匹配的 margin 表格"
     except Exception as e:  # noqa: BLE001
         out["error"] = f"FINRA 页面抓取失败: {e}"
@@ -1134,36 +1138,67 @@ def fetch_finra_margin_web() -> Dict[str, Any]:
 
 
 def fetch_margin_debt() -> Dict[str, Any]:
-    """FINRA 融资余额：FRED MDEBT 主源 + FINRA 官网页面交叉校验。"""
-    out: Dict[str, Any] = {"value_billion": None, "mom_chg_pct": None, "yoy_chg_pct": None, "signal": "—", "asof": "", "source": "FRED MDEBT"}
+    """
+    FINRA 融资余额（散户保证金债务）。
+    主源：FRED MDEBT（注意：FRED 已停用 MDEBT 序列，调用会抛 404）。
+    降级：MDEBT 不可用时直接抓取 FINRA 官网 margin-statistics 表格（与 FRED 同源、官方直出），
+         并从表格近 13 个月数据计算环比/同比。
+    返回 {value_billion, mom_chg_pct, yoy_chg_pct, signal, asof, source}。
+    """
+    out: Dict[str, Any] = {
+        "value_billion": None, "mom_chg_pct": None, "yoy_chg_pct": None,
+        "signal": "—", "asof": "", "source": "FRED MDEBT",
+    }
     try:
-        from fredapi import Fred
         fred_key = _get_secret("FRED_API")
-        if not fred_key:
-            # 无 FRED key 时降级用 FINRA 官网直抓
+        fred_series = None
+        if fred_key:
+            try:
+                from fredapi import Fred
+                fred = Fred(api_key=fred_key)
+                s = fred.get_series("MDEBT", observation_start=(datetime.now() - timedelta(days=400)))
+                if s is not None and len(s.dropna()) >= 2:
+                    fred_series = s.dropna()
+            except Exception as e:  # noqa: BLE001
+                logger.warning("FRED MDEBT 不可用(或已停更): %s", e)
+
+        if fred_series is not None:
+            out["value_billion"] = round(float(fred_series.iloc[-1]) / 1000.0, 2)  # 百万 → 十亿
+            out["asof"] = str(fred_series.index[-1].date())
+            out["source"] = "FRED MDEBT"
+            if len(fred_series) >= 2:
+                mom = (float(fred_series.iloc[-1]) / float(fred_series.iloc[-2]) - 1.0) * 100
+                out["mom_chg_pct"] = round(mom, 2)
+            if len(fred_series) >= 12:
+                yoy = (float(fred_series.iloc[-1]) / float(fred_series.iloc[-12]) - 1.0) * 100
+                out["yoy_chg_pct"] = round(yoy, 2)
+            # 交叉校验：FINRA 官网（官方页面往往比 FRED 早几天）
+            try:
+                web = fetch_finra_margin_web()
+                if web.get("ok") and web.get("value_billion") is not None:
+                    out["finra_web_value"] = web["value_billion"]
+                    out["finra_web_month"] = web["asof"]
+            except Exception:  # noqa: BLE001
+                pass
+        else:
+            # 降级：FINRA 官网直抓（MDEBT 停用后的唯一官方源）
             web = fetch_finra_margin_web()
-            if web.get("value_billion") is not None:
-                out.update(value_billion=web["value_billion"], asof=web["asof"], source="FINRA官网")
-                return out
-            return {**out, "error": "未配置 FRED_API 且 FINRA 官网抓取失败"}
-        fred = Fred(api_key=fred_key)
-        s = fred.get_series("MDEBT", observation_start=(datetime.now() - timedelta(days=400)))
-        if s is None or len(s) < 2:
-            return {**out, "error": "FRED MDEBT 数据为空"}
-        s = s.dropna()
-        out["value_billion"] = round(float(s.iloc[-1]) / 1000.0, 2)  # 百万 → 十亿
-        out["asof"] = str(s.index[-1].date())
-        # 环比（一般 1-2 个月频率）
-        if len(s) >= 2:
-            mom = (float(s.iloc[-1]) / float(s.iloc[-2]) - 1.0) * 100
-            out["mom_chg_pct"] = round(mom, 2)
-        # 同比
-        if len(s) >= 12:
-            yoy = (float(s.iloc[-1]) / float(s.iloc[-12]) - 1.0) * 100
-            out["yoy_chg_pct"] = round(yoy, 2)
+            if web.get("ok") and web.get("value_billion") is not None:
+                out["value_billion"] = web["value_billion"]
+                out["asof"] = web["asof"]
+                out["source"] = "FINRA官网直抓"
+                rows = web.get("rows") or []
+                vals = [r[1] for r in rows]  # $ millions，倒序（最新在前）
+                if len(vals) >= 2:
+                    out["mom_chg_pct"] = round((vals[0] / vals[1] - 1.0) * 100, 2)
+                if len(vals) >= 13:
+                    out["yoy_chg_pct"] = round((vals[0] / vals[12] - 1.0) * 100, 2)
+            else:
+                return {**out, "error": web.get("error") or "FINRA 官网抓取失败"}
+
         # 信号：融资余额快速上升 = 散户加杠杆（牛市后期）；快速下降 = 强平/恐慌
-        if out["yoy_chg_pct"] is not None:
-            yoy = out["yoy_chg_pct"]
+        yoy = out.get("yoy_chg_pct")
+        if yoy is not None:
             if yoy > 30:
                 out["signal"] = "🔴 融资激增 (杠杆高)"
             elif yoy > 10:
@@ -1172,14 +1207,6 @@ def fetch_margin_debt() -> Dict[str, Any]:
                 out["signal"] = "🟢 融资去杠杆"
             else:
                 out["signal"] = "🟡 平稳"
-        # 交叉校验：FRED 有值时，再抓 FINRA 官网核对新鲜度（官方页面往往比 FRED 早几天）
-        try:
-            web = fetch_finra_margin_web()
-            if web.get("value_billion") is not None and web.get("asof"):
-                out["finra_web_value"] = web["value_billion"]
-                out["finra_web_month"] = web["asof"]
-        except Exception:  # noqa: BLE001
-            pass
     except Exception as e:  # noqa: BLE001
         logger.warning("Margin Debt 拉取失败: %s", e)
         out["error"] = str(e)
@@ -1906,6 +1933,8 @@ def fetch_realtime_via_futu(symbol: str) -> Dict[str, Any]:
       FUTU_OPEND_HOST 默认 127.0.0.1
       FUTU_OPEND_PORT 默认 11111
     仅支持 .HK / .SS / .SZ；其余返回 ok=False 由上层免费源兜底。
+    返回全字段快照（last/prev_close/open/high/low/volume/amount/turnover/
+    amplitude/pe/pb），可同时服务于「收盘价校正」与「实时快照」两条链路。
     任何失败（未安装 / 网关不可达 / 空数据）均返回 ok=False，绝不抛异常。
     """
     out: Dict[str, Any] = {"ok": False, "symbol": symbol, "source": "富途OpenD"}
@@ -1942,18 +1971,27 @@ def fetch_realtime_via_futu(symbol: str) -> Dict[str, Any]:
             out["error"] = "quote_error"
             return out
         row = data.iloc[0]
-        last = float(row.get("last_price") or 0)
-        prev = float(row.get("prev_close_price") or 0)
-        if last <= 0 or prev <= 0:
+        last = _rt_f(row.get("last_price"))
+        prev = _rt_f(row.get("prev_close_price"))
+        if last is None or prev is None or last <= 0 or prev <= 0:
             out["error"] = "empty_quote"
             return out
         pct = (last - prev) / prev * 100.0
         out.update(
             ok=True,
-            name=str(row.get("stock_name", "")),
+            name=str(row.get("stock_name", "") or STOCK_NAMES.get(symbol, "")),
             last=round(last, 4),
             prev_close=round(prev, 4),
             pct=round(pct, 2),
+            open=_rt_f(row.get("open_price")),
+            high=_rt_f(row.get("high_price")),
+            low=_rt_f(row.get("low_price")),
+            volume=_rt_f(row.get("volume")),
+            amount=_rt_f(row.get("turnover")),
+            turnover=_rt_f(row.get("turnover_rate")),
+            amplitude=_rt_f(row.get("amplitude")),
+            pe=_rt_f(row.get("pe_ratio")),
+            pb=_rt_f(row.get("pb_ratio")),
             source="富途OpenD",
         )
     except Exception as e:  # noqa: BLE001
@@ -1964,6 +2002,54 @@ def fetch_realtime_via_futu(symbol: str) -> Dict[str, Any]:
                 ctx.close()
         except Exception:  # noqa: BLE001
             pass
+    return out
+
+
+def fetch_realtime_via_ths(symbol: str) -> Dict[str, Any]:
+    """同花顺 Financial-API 实时行情（A股最高优先级之一，需 HITHINK_FINANCE_API_KEY）。
+
+    仅支持 A股(.SS/.SZ)；港股/美股返回 ok=False 由上层兜底。
+    复用 utils_ths.fetch_ths_quote 单标的调用，返回与 fetch_realtime_snapshot
+    同构的全字段字典。无 key / 空数据 / 异常均返回 ok=False，绝不抛异常。
+    """
+    out: Dict[str, Any] = {"ok": False, "symbol": symbol, "source": "同花顺"}
+    if not symbol.endswith((".SS", ".SZ")):
+        out["error"] = "market_not_supported"
+        return out
+    try:
+        import utils_ths as THS
+        if not THS.ths_available:
+            out["error"] = "no_key"
+            return out
+        res = THS.fetch_ths_quote([symbol])
+        d = res.get(symbol) if isinstance(res, dict) else None
+        if not d or d.get("price") is None:
+            out["error"] = "empty"
+            return out
+        last = _rt_f(d.get("price"))
+        prev = _rt_f(d.get("prev_close"))
+        if last is None or prev is None or last <= 0:
+            out["error"] = "empty"
+            return out
+        pct = _rt_f(d.get("chg_pct"))
+        if pct is None and prev:
+            pct = (last - prev) / prev * 100.0
+        out.update(
+            ok=True,
+            name=STOCK_NAMES.get(symbol) or symbol,
+            last=round(last, 4),
+            prev_close=round(prev, 4),
+            pct=round(pct, 2) if pct is not None else None,
+            open=_rt_f(d.get("open")),
+            high=_rt_f(d.get("high")),
+            low=_rt_f(d.get("low")),
+            volume=_rt_f(d.get("volume")),
+            amount=_rt_f(d.get("turnover")),
+            chg=_rt_f(d.get("chg")),
+            source="同花顺",
+        )
+    except Exception as e:  # noqa: BLE001
+        out["error"] = f"ths_error: {e}"
     return out
 
 
@@ -1988,6 +2074,15 @@ def fetch_realtime_quote(symbol: str) -> Dict[str, Any]:
             return futu_q
     except Exception:  # noqa: BLE001
         pass
+
+    # 0.5) 同花顺 Financial-API（A股；需 HITHINK_FINANCE_API_KEY）：次高优先级
+    if is_cn:
+        try:
+            ths_q = fetch_realtime_via_ths(symbol)
+            if ths_q.get("ok"):
+                return ths_q
+        except Exception:  # noqa: BLE001
+            pass
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
@@ -2073,10 +2168,13 @@ def fetch_realtime_quote(symbol: str) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# 实时行情监控页（v3.3）：全字段快照 + 当日分时，多源降级、逐只容错
-# 数据源优先级：
-#   A股/港股：腾讯 gtimg（三市场字段结构统一，含 PE）→ 东财 push2 → 新浪
+# 实时行情：全字段快照 + 当日分时，多源降级、逐只容错
+# 数据源优先级（行情）：
+#   A股：富途OpenD → 同花顺 Financial-API → 腾讯 gtimg → 东财 push2 → 新浪
+#   港股：富途OpenD → 东财 push2 → 腾讯 gtimg → 新浪
 #   美股：腾讯 us → yfinance 兜底
+# 任何源成功即返回；失败自动降级到下一源（服务端无本地依赖时 富途/同花顺
+# 自动跳过，由免费源兜底，保证公网部署稳定可用）。
 # 分时：东财 trends2 → 腾讯分钟线 → 新浪 5 分钟 K（A股）
 # ---------------------------------------------------------------------------
 _RT_UA = {
@@ -2129,7 +2227,24 @@ def fetch_realtime_snapshot(symbol: str) -> Dict[str, Any]:
     out: Dict[str, Any] = {"ok": False, "symbol": symbol}
     _nm = STOCK_NAMES.get(symbol)  # 中文名映射优先
 
-    # 1) 腾讯（主源）
+    # 0) 富途 OpenD（若已开启 USE_FUTU 且网关可达）：最高优先级（全字段）
+    try:
+        futu_q = fetch_realtime_via_futu(symbol)
+        if futu_q.get("ok"):
+            return futu_q
+    except Exception:  # noqa: BLE001
+        pass
+
+    # 0.5) 同花顺 Financial-API（A股；需 HITHINK_FINANCE_API_KEY）：次高优先级
+    if symbol.endswith((".SS", ".SZ")):
+        try:
+            ths_q = fetch_realtime_via_ths(symbol)
+            if ths_q.get("ok"):
+                return ths_q
+        except Exception:  # noqa: BLE001
+            pass
+
+    # 1) 腾讯（主源，免费源中字段最全、含 PE）
     try:
         r = requests.get(f"https://qt.gtimg.cn/q={_rt_gt(symbol)}", headers=_RT_UA, timeout=6)
         r.encoding = "gbk"
@@ -2382,6 +2497,347 @@ def fetch_intraday_trends(symbols, max_workers: int = 6) -> Dict[str, pd.DataFra
             except Exception:  # noqa: BLE001
                 results[s] = pd.DataFrame()
     return results
+
+
+# ---------------------------------------------------------------------------
+# 扩展数据维度：盘口 / 成交明细 / 公告 / 龙虎榜
+# 设计：
+#   · 盘口与成交明细以 富途 OpenD 为权威源（本地运行 OpenD 时最准、含 L2 逐笔）；
+#     公网无 OpenD 时降级到 东财（字段映射以公开文档为准，并做合理性校验，
+#     校验不通过则 ok=False，绝不展示可疑数据）。
+#   · 公告以巨潮 cninfo 为权威源（官方）；龙虎榜以 东财 datacenter 为源。
+#   · 所有函数单只独立容错，失败返回 ok=False / 空列表，绝不抛异常。
+# ---------------------------------------------------------------------------
+
+def _em_secid(symbol: str) -> Optional[str]:
+    """yfinance 代码 → 东财 secid（"1.600519" / "0.000001" / "116.00700"）。"""
+    if symbol.endswith(".HK"):
+        return "116." + symbol.replace(".HK", "").zfill(5)
+    if symbol.endswith(".SS"):
+        return "1." + symbol.replace(".SS", "")
+    if symbol.endswith(".SZ"):
+        return "0." + symbol.replace(".SZ", "")
+    return None
+
+
+def fetch_order_book(symbol: str) -> Dict[str, Any]:
+    """5 档盘口（买卖各五档）。
+
+    优先级：富途 OpenD(get_order_book) → 东财 push2(ff)。
+    返回 {ok, symbol, bids:[(price, vol), ...5], asks:[(price, vol), ...5],
+          source, ts}；校验失败返回 ok=False。
+    """
+    out: Dict[str, Any] = {"ok": False, "symbol": symbol, "bids": [], "asks": [], "source": ""}
+
+    # 0) 富途 OpenD（权威，含 L2）
+    if _futu_secret("USE_FUTU", "false").lower() == "true" and symbol.endswith((".HK", ".SS", ".SZ")):
+        try:
+            from futu import OpenQuoteContext, RET_ERROR
+            if symbol.endswith(".HK"):
+                code = "HK." + symbol.replace(".HK", "").zfill(5)
+            elif symbol.endswith(".SS"):
+                code = "SH." + symbol.replace(".SS", "")
+            else:
+                code = "SZ." + symbol.replace(".SZ", "")
+            host = _futu_secret("FUTU_OPEND_HOST", "127.0.0.1")
+            try:
+                port = int(_futu_secret("FUTU_OPEND_PORT", "11111") or "11111")
+            except ValueError:
+                port = 11111
+            ctx = None
+            try:
+                ctx = OpenQuoteContext(host=host, port=port)
+                ret, data = ctx.get_order_book(code)
+                if ret == RET_ERROR or data is None or data.empty:
+                    pass
+                else:
+                    row = data.iloc[0]
+                    bids = _futu_lvls(row.get("bid_price"), row.get("bid_volume"))
+                    asks = _futu_lvls(row.get("ask_price"), row.get("ask_volume"))
+                    if bids and asks and _validate_book(bids, asks):
+                        out.update(ok=True, bids=bids, asks=asks, source="富途OpenD",
+                                   ts=str(row.get("ts", "")))
+                        return out
+            finally:
+                if ctx is not None:
+                    try:
+                        ctx.close()
+                    except Exception:  # noqa: BLE001
+                        pass
+        except Exception as e:  # noqa: BLE001
+            logger.debug("富途盘口失败 %s: %s", symbol, e)
+
+    # 1) 东财 push2 盘口（云降级，需校验）
+    secid = _em_secid(symbol)
+    if secid:
+        try:
+            url = (
+                f"https://push2.eastmoney.com/api/qt/stock/ff?secid={secid}"
+                f"&fields=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,"
+                f"f61,f62,f63,f64,f65,f66,f67,f68,f69,f70&fltt=2&invt=2"
+            )
+            d = requests.get(url, headers=_RT_UA, timeout=8).json().get("data") or {}
+            # 东财 ff：f51-f55=买1~5价, f56-f60=买1~5量, f61-f65=卖1~5价, f66-f70=卖1~5量
+            bids = [( _rt_f(d.get(f"f5{i}")), _rt_f(d.get(f"f6{i}")) ) for i in range(1, 6)]
+            asks = [( _rt_f(d.get(f"f7{i}")), _rt_f(d.get(f"f8{i}")) ) for i in range(1, 6)]
+            bids = [(p, v) for p, v in bids if p and v]
+            asks = [(p, v) for p, v in asks if p and v]
+            if len(bids) == 5 and len(asks) == 5 and _validate_book(bids, asks):
+                out.update(ok=True, bids=bids, asks=asks, source="东方财富", ts=d.get("f31", ""))
+                return out
+        except Exception as e:  # noqa: BLE001
+            logger.debug("东财盘口失败 %s: %s", symbol, e)
+    return out
+
+
+def _futu_lvls(prices, vols) -> List[Tuple[float, float]]:
+    """富途盘口价格/量（可能是 list 或标量）→ [(price, vol), ...]。"""
+    out = []
+    try:
+        pl = prices if isinstance(prices, (list, tuple)) else [prices]
+        vl = vols if isinstance(vols, (list, tuple)) else [vols]
+        for p, v in zip(pl, vl):
+            pf, vf = _rt_f(p), _rt_f(v)
+            if pf and vf:
+                out.append((pf, vf))
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
+def _validate_book(bids: List, asks: List) -> bool:
+    """盘口合理性校验：买价递减、卖价递增、买1<卖1、量>0、价格为正。"""
+    try:
+        if not bids or not asks:
+            return False
+        bp = [p for p, _ in bids]
+        ap = [p for p, _ in asks]
+        if any(p <= 0 for p in bp + ap):
+            return False
+        if any(v <= 0 for _, v in bids + asks):
+            return False
+        if bp != sorted(bp, reverse=True):
+            return False
+        if ap != sorted(ap):
+            return False
+        if bp[0] >= ap[0]:
+            return False
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def fetch_tick_detail(symbol: str, count: int = 20) -> Dict[str, Any]:
+    """当日成交明细（逐笔）。
+
+    优先级：富途 OpenD(get_rt_ticker) → 东财逐笔(push2 stock/query)。
+    返回 {ok, symbol, ticks:[{time, price, volume, direction}], source}；
+    direction ∈ BUY/SELL/NEUTRAL。校验失败返回 ok=False。
+    """
+    out: Dict[str, Any] = {"ok": False, "symbol": symbol, "ticks": [], "source": ""}
+
+    # 0) 富途 OpenD（权威逐笔）
+    if _futu_secret("USE_FUTU", "false").lower() == "true" and symbol.endswith((".HK", ".SS", ".SZ")):
+        try:
+            from futu import OpenQuoteContext, RET_ERROR
+            if symbol.endswith(".HK"):
+                code = "HK." + symbol.replace(".HK", "").zfill(5)
+            elif symbol.endswith(".SS"):
+                code = "SH." + symbol.replace(".SS", "")
+            else:
+                code = "SZ." + symbol.replace(".SZ", "")
+            host = _futu_secret("FUTU_OPEND_HOST", "127.0.0.1")
+            try:
+                port = int(_futu_secret("FUTU_OPEND_PORT", "11111") or "11111")
+            except ValueError:
+                port = 11111
+            ctx = None
+            try:
+                ctx = OpenQuoteContext(host=host, port=port)
+                ret, data = ctx.get_rt_ticker(code, num=count)
+                if ret != RET_ERROR and data is not None and not data.empty:
+                    ticks = []
+                    for _, r in data.iterrows():
+                        p = _rt_f(r.get("price"))
+                        v = _rt_f(r.get("volume"))
+                        if p is None or v is None:
+                            continue
+                        ticks.append({
+                            "time": str(r.get("time", "")),
+                            "price": round(p, 4),
+                            "volume": v,
+                            "direction": str(r.get("ticker_direction", "NEUTRAL") or "NEUTRAL"),
+                        })
+                    if ticks:
+                        out.update(ok=True, ticks=ticks, source="富途OpenD")
+                        return out
+            finally:
+                if ctx is not None:
+                    try:
+                        ctx.close()
+                    except Exception:  # noqa: BLE001
+                        pass
+        except Exception as e:  # noqa: BLE001
+            logger.debug("富途逐笔失败 %s: %s", symbol, e)
+
+    # 1) 东财逐笔（云降级，需校验）
+    secid = _em_secid(symbol)
+    if secid:
+        try:
+            url = (
+                f"https://push2.eastmoney.com/api/qt/stock/query?secid={secid}"
+                f"&fields=f51,f52,f53,f54,f55&fltt=2&invt=2&pn=1&pz={count}"
+            )
+            j = requests.get(url, headers=_RT_UA, timeout=8).json()
+            data = (j.get("data") or {}).get("details") or []
+            if isinstance(data, list) and data:
+                ticks = []
+                for item in data:
+                    parts = item.split(",") if isinstance(item, str) else []
+                    if len(parts) < 5:
+                        continue
+                    t = parts[0]
+                    p = _rt_f(parts[1])
+                    v = _rt_f(parts[2])
+                    dirc = parts[4] if len(parts) > 4 else ""
+                    if p is None or v is None:
+                        continue
+                    ticks.append({
+                        "time": t,
+                        "price": round(p, 4),
+                        "volume": v,
+                        "direction": "BUY" if dirc in ("1", "B", "买") else ("SELL" if dirc in ("2", "S", "卖") else "NEUTRAL"),
+                    })
+                if ticks:
+                    out.update(ok=True, ticks=ticks, source="东方财富")
+                    return out
+        except Exception as e:  # noqa: BLE001
+            logger.debug("东财逐笔失败 %s: %s", symbol, e)
+    return out
+
+
+def fetch_cninfo_stock_announcements(symbol: str, top_n: int = 8) -> List[Dict[str, Any]]:
+    """巨潮资讯网（官方）个股公告。
+
+    symbol: yfinance 代码（"600519.SS"）。优先按股过滤；若返回为空（cninfo
+    按股过滤不稳定）则降级返回全市场最新公告（保证有内容）。
+    任何失败返回空列表。
+    """
+    out: List[Dict[str, Any]] = []
+    code = symbol.split(".")[0] if symbol else ""
+    if not code:
+        return out
+    try:
+        # 先尝试按股精准过滤
+        url = "https://www.cninfo.com.cn/new/hisAnnouncement/query"
+        payload = {"pageNum": 1, "pageSize": top_n, "tabName": "latest", "stockCode": code}
+        data = _safe_post_json(url, payload)
+        anns = (data or {}).get("announcements") or [] if isinstance(data, dict) else []
+        for a in anns[:top_n]:
+            title = a.get("announcementTitle") or ""
+            if not title:
+                continue
+            sec_name = a.get("secName") or ""
+            aid = a.get("announcementId") or ""
+            out.append({
+                "title": (f"{sec_name}：" if sec_name else "") + title,
+                "link": f"https://www.cninfo.com.cn/new/disclosure/detail?announcementId={aid}" if aid else "",
+                "source": "巨潮资讯网(官方)",
+                "date": _cninfo_ts(a.get("announcementTime")),
+                "snippet": "",
+            })
+        if out:
+            return out
+    except Exception as e:  # noqa: BLE001
+        logger.debug("cninfo 个股公告失败 %s: %s", symbol, e)
+    # 降级：全市场公告（标出与该股无关的噪声）
+    return fetch_cninfo_market_announcements(top_n=top_n)
+
+
+def fetch_dragon_tiger(top_n: int = 20, trade_date: str = "") -> List[Dict[str, Any]]:
+    """龙虎榜（东方财富 datacenter）。
+
+    返回 [{code, name, close, pct, amount, net_buy, explain, trade_date}, ...]。
+    不指定 trade_date 时取最近一个交易日。任何失败返回空列表。
+    """
+    out: List[Dict[str, Any]] = []
+    try:
+        if not trade_date:
+            trade_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        fdate = trade_date.replace("-", "")
+        url = (
+            "https://datacenter.eastmoney.com/securities/api/data/v1/get"
+            f"?reportName=RPT_DAILYBILLBOARD_DETAILS"
+            "&columns=SECURITY_CODE,SECURITY_NAME_ABBR,TRADE_DATE,CLOSE_PRICE,"
+            "CHANGE_RATE,AMOUNT,NET_BUY_AMOUNT,EXPLAIN"
+            f"&filter=(TRADE_DATE='{trade_date}')"
+            f"&pageSize={top_n}&sortColumns=AMOUNT&sortTypes=-1&source=WEB&client=WEB"
+        )
+        j = requests.get(url, headers=_RT_UA, timeout=10).json()
+        rows = ((j.get("data") or {}).get("data") or []) if isinstance(j, dict) else []
+        for r in rows:
+            if not isinstance(r, dict):
+                continue
+            out.append({
+                "code": r.get("SECURITY_CODE", ""),
+                "name": r.get("SECURITY_NAME_ABBR", ""),
+                "close": _rt_f(r.get("CLOSE_PRICE")),
+                "pct": _rt_f(r.get("CHANGE_RATE")),
+                "amount": _rt_f(r.get("AMOUNT")),
+                "net_buy": _rt_f(r.get("NET_BUY_AMOUNT")),
+                "explain": r.get("EXPLAIN", "") or "",
+                "trade_date": r.get("TRADE_DATE") or trade_date,
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.debug("龙虎榜失败: %s", e)
+    return out
+
+
+def validate_dedup_realtime(snapshots: Dict[str, Dict[str, Any]], tol_pct: float = 1.5) -> Dict[str, Any]:
+    """多源实时价校验与去重。
+
+    输入 {symbol: {ok, last, source, ...}}（来自 fetch_realtime_snapshots 等多源合并）。
+    逻辑：
+      · 汇集每个 symbol 所有 ok 源的 last；以中位数（或众数）为共识价。
+      · 任一源与共识价偏差 > tol_pct → 标记为 outlier（疑似异常源，不参与共识）。
+      · 返回 {consensus:{symbol: last}, outliers:{symbol:[(source,last),...]}}。
+    用于「结论区」实时看板过滤脏数据，保证多源一致可靠。
+    """
+    consensus: Dict[str, Any] = {}
+    outliers: Dict[str, Any] = {}
+    try:
+        import statistics
+        for sym, snap in snapshots.items():
+            if not isinstance(snap, dict) or not snap.get("ok"):
+                continue
+            last = snap.get("last")
+            if last is None or not isinstance(last, (int, float)):
+                continue
+            # 多源合并：snap 可能携带 sources 列表
+            srcs = snap.get("sources") or [{"source": snap.get("source", "?"), "last": last}]
+            prices = [s["last"] for s in srcs if isinstance(s, dict) and isinstance(s.get("last"), (int, float))]
+            if not prices:
+                prices = [last]
+            med = statistics.median(prices)
+            out_list = []
+            used = []
+            for s in srcs:
+                pl = s.get("last") if isinstance(s, dict) else None
+                if pl is None:
+                    continue
+                dev = abs(pl - med) / med * 100.0 if med else 0.0
+                if dev > tol_pct:
+                    out_list.append((s.get("source", "?"), pl))
+                else:
+                    used.append(pl)
+            if used:
+                consensus[sym] = round(statistics.median(used), 4)
+            if out_list:
+                outliers[sym] = out_list
+    except Exception as e:  # noqa: BLE001
+        logger.debug("实时校验去重失败: %s", e)
+    return {"consensus": consensus, "outliers": outliers}
+
 
 
 # ---------------------------------------------------------------------------

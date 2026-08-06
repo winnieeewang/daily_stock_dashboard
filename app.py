@@ -323,6 +323,36 @@ GLOBAL_CSS = """
     /* 风险/数字高亮 */
     .tw-num-up { color: #f87171; font-weight: 700; }   /* 涨（A股红）*/
     .tw-num-down { color: #34d399; font-weight: 700; } /* 跌（A股绿）*/
+
+    /* ===== 分层架构视觉：结论区(强调) / 证据层(安静) =====
+       结论区用浅蓝渐变 + 左侧 accent 边框，强调「先看这里」；
+       证据层 Tab 内用既有 .card/.section-sub 安静风格，弱化存在感。 */
+    .layer-badge {
+        display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+        color: var(--text-dim); background: #eef2f7; border: 1px solid var(--border);
+        padding: 3px 10px; border-radius: 999px; margin: 2px 0 10px 0;
+    }
+    .layer-badge.concl { color: #0369a1; background: #e0f2fe; border-color: #bae6fd; }
+    .conclusion-zone {
+        background: linear-gradient(180deg, rgba(37,99,235,0.05) 0%, rgba(255,255,255,0) 100%);
+        border: 1px solid rgba(37,99,235,0.18);
+        border-left: 4px solid var(--accent);
+        border-radius: 14px; padding: 14px 16px; margin-bottom: 18px;
+    }
+    .conclusion-zone .section-title { margin-top: 6px; }
+
+    /* 实时速览条（结论区集成实时行情） */
+    .rt-strip {
+        display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        background: rgba(103,232,249,0.10); border: 1px solid rgba(103,232,249,0.30);
+        border-radius: 10px; padding: 8px 14px; margin-bottom: 6px;
+    }
+    .rt-strip .rt-label { font-size: 13px; font-weight: 700; color: #0369a1; white-space: nowrap; }
+    .rt-strip .rt-time { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+    .rt-strip .rt-chips { display: flex; gap: 12px; flex-wrap: wrap; }
+    .rt-strip .rt-chip { font-size: 12px; color: var(--text); white-space: nowrap; }
+    .rt-strip .rt-na { color: var(--text-dim); }
+
     @media (max-width: 700px) { .tw-grid { grid-template-columns: 1fr; } }
 </style>
 """
@@ -462,7 +492,7 @@ with st.sidebar:
     st.divider()
     page = st.radio(
         "导航",
-        ["🏠 Dashboard", "🔍 个股深度分析", "📡 实时行情监控", "📊 跨资产对比"],
+        ["🏠 Dashboard", "🔍 个股深度分析", "📊 跨资产对比"],
         label_visibility="collapsed",
         key="nav_radio",
     )
@@ -675,10 +705,55 @@ def _render_tomorrow_watch(symbol: str) -> None:
         )
 
 
-def page_dashboard():
-    st.markdown('<div class="section-title"><span class="accent">🏠</span>市场全景 Dashboard</div>', unsafe_allow_html=True)
+# ===========================================================================
+# 新版 Dashboard：第0层·结论区（组合策略 + 今日重点/Top机会/Top风险 + 冲突说明）
+#            + 第1层·证据层（4 主题 Tab：宏观 / 结构 / 事件 / 研判）
+# 由 app.py 的 page_dashboard 重构而来（分层架构，避免扁平化）。
+# ===========================================================================
 
-    # ===== v2.4 新增：组合策略 Portfolio Context =====
+
+def _rt_dash_strip() -> None:
+    """结论区实时速览：默认观察列表的实时价（自动刷新，多源降级）。
+
+    通过 st.fragment(run_every=30) 注册，仅本 fragment 重跑，页面控件不闪烁。
+    集成实时行情到 Dashboard（需求3：不再单独模块），失败容错显示 —。
+    """
+    from datetime import datetime, timezone, timedelta
+    syms = list(_RT_DEFAULT_WATCHLIST)
+    try:
+        snaps = U.fetch_realtime_snapshots(syms)
+    except Exception:  # noqa: BLE001
+        snaps = {}
+    chips = []
+    for s in syms:
+        q = snaps.get(s, {})
+        if not q.get("ok"):
+            chips.append(f"<span class='rt-chip'><b>{s}</b> <span class='rt-na'>—</span></span>")
+            continue
+        c = color_for_change(safe_float(q.get("pct")))
+        chips.append(
+            f"<span class='rt-chip'>"
+            f"<b>{s}</b> "
+            f"<span style='color:{c};font-weight:700;'>{safe_float(q.get('last')):.2f} {fmt_pct(safe_float(q.get('pct')))}</span>"
+            f"</span>"
+        )
+    now = datetime.now(timezone(timedelta(hours=8)))
+    st.markdown(
+        f"<div class='rt-strip'>"
+        f"<span class='rt-label'>📡 实时速览</span>"
+        f"<span class='rt-time'>{now:%H:%M:%S} 北京时间 · 腾讯/东财/新浪 自动降级</span>"
+        f"<div class='rt-chips'>{''.join(chips)}</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_conclusion_zone() -> None:
+    """第0层·结论区：组合策略 + 今日重点/Top机会/Top风险 + 冲突说明（唯一默认可见）。"""
+    st.markdown('<div class="layer-badge concl">🎯 第 0 层 · 结论区 — 先看这里，再下钻证据</div>', unsafe_allow_html=True)
+    st.markdown('<div class="conclusion-zone">', unsafe_allow_html=True)
+
+    # ===== 组合策略 Portfolio Context =====
     dominance = U.compute_portfolio_dominance(STOCKS_DF)
     dominance_emoji = dominance.get("emoji", "💤")
     dominance_label = dominance.get("dominance_label", "空仓")
@@ -700,7 +775,6 @@ def page_dashboard():
     flat_pct = dominance.get("flat_pct", 0.0)
     etf_n = dominance.get("etf_count", 0)
     err = dominance.get("error")
-    # 取 30 天内最大回撤作为时间戳
     last_update = "—"
     if STOCKS_DF is not None and not STOCKS_DF.empty and "日期" in STOCKS_DF.columns:
         try:
@@ -770,7 +844,125 @@ def page_dashboard():
     else:
         st.warning(f"组合策略卡数据缺失: {err}（请先运行 `python stock_dashboard.py` 生成 data/stocks.csv）")
 
-    # ===== 第一组：市场情绪与波动率（F&G / 自建情绪 / VIX / VXN / SOX / 10Y） =====
+    # ===== 今日重点 + Top 机会 + Top 风险（共享 top_syms / risk_syms 供冲突说明）=====
+    st.markdown('<div class="section-title">🎯 今日重点 & 自选扫描</div>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1.2, 1, 1])
+
+    # 今日重点：基于自选股 + 宏观 + 财报/事件
+    with c1:
+        st.markdown('<div class="card"><h4>📌 今日重点</h4>', unsafe_allow_html=True)
+        focuses = []
+        if STOCKS_DF is not None and not STOCKS_DF.empty:
+            if "涨跌幅" in STOCKS_DF.columns:
+                top_up = STOCKS_DF.nlargest(1, "涨跌幅").iloc[0]
+                focuses.append(
+                    f"🚀 <b>{top_up['symbol']}</b> <span style='color:var(--text-dim);font-size:11px;'>{U.STOCK_NAMES.get(top_up['symbol'],'')}</span> 今日涨 {safe_float(top_up.get('涨跌幅')):.2f}%，关注能否突破 / 短线见顶"
+                )
+                top_dn = STOCKS_DF.nsmallest(1, "涨跌幅").iloc[0]
+                focuses.append(
+                    f"🔻 <b>{top_dn['symbol']}</b> <span style='color:var(--text-dim);font-size:11px;'>{U.STOCK_NAMES.get(top_dn['symbol'],'')}</span> 今日跌 {safe_float(top_dn.get('涨跌幅')):.2f}%，关注是否到支撑 / 风险扩大"
+                )
+            if "RSI_14" in STOCKS_DF.columns:
+                oversold = STOCKS_DF[STOCKS_DF["RSI_14"] < 30]
+                if not oversold.empty:
+                    focuses.append(
+                        f"🟢 RSI 超卖: {', '.join(oversold['symbol'].head(3).tolist())}，可能反弹"
+                    )
+        cal = U.fetch_economic_calendar(SERPAPI_KEY)
+        today_str = datetime.now().strftime("%m-%d")
+        todays = [e for e in cal if today_str in e.get("date", "")]
+        if not todays:
+            todays = cal[:2]
+        for e in todays[:2]:
+            focuses.append(
+                f"📅 {e.get('date','')} {e.get('event','')} ({e.get('importance','')})"
+            )
+        if not focuses:
+            focuses = ["数据加载中…"]
+        for f in focuses:
+            st.markdown(f"<div style='font-size:13px;line-height:1.7;margin:6px 0;'>{f}</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # Top 机会
+    top_syms = []
+    with c2:
+        st.markdown('<div class="card"><h4>🟢 Top 机会 (AI 评分)</h4>', unsafe_allow_html=True)
+        if STOCKS_DF is not None and not STOCKS_DF.empty:
+            tmp = STOCKS_DF.copy()
+            if "AI评分" not in tmp.columns and CARDS_MAP:
+                tmp["AI评分"] = tmp["symbol"].map(lambda x: CARDS_MAP.get(x, {}).get("score"))
+            if "AI评分" in tmp.columns and tmp["AI评分"].notna().any():
+                top = tmp[tmp["AI评分"].notna()].nlargest(5, "AI评分")
+            else:
+                top = tmp.head(5)
+            for _, r in top.iterrows():
+                sym = r["symbol"]
+                top_syms.append(sym)
+                score = r.get("AI评分", "—")
+                chg = safe_float(r.get("涨跌幅"))
+                st.markdown(
+                    f"<div class='stock-row' style='display:flex;justify-content:space-between;align-items:center;'><span><b>{sym}</b> · 评分 <b style='color:var(--accent);'>{score}</b></span><span style='color:{color_for_change(chg)};font-weight:600;font-size:12px;'>{fmt_pct(chg)}</span></div>",
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.caption("暂无个股数据")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # Top 风险
+    risk_syms = []
+    with c3:
+        st.markdown('<div class="card"><h4>🔴 Top 风险</h4>', unsafe_allow_html=True)
+        if STOCKS_DF is not None and not STOCKS_DF.empty:
+            risks = []
+            tmp = STOCKS_DF.copy()
+            if "RSI_14" in tmp.columns:
+                for _, r in tmp[tmp["RSI_14"] > 70].head(3).iterrows():
+                    risks.append((r["symbol"], f"RSI {safe_float(r.get('RSI_14')):.0f} 超买", "🟠"))
+            if "涨跌幅" in tmp.columns:
+                for _, r in tmp.nsmallest(3, "涨跌幅").iterrows():
+                    if not any(s == r["symbol"] for s, *_ in risks):
+                        risks.append((r["symbol"], f"今日 {fmt_pct(safe_float(r.get('涨跌幅')))}", "🔴"))
+            for sym, lev in (LEV_MAP or {}).items():
+                if lev.get("综合风险等级") == "高" and not any(s == sym for s, *_ in risks):
+                    risks.append((sym, "杠杆高危", "⚠️"))
+                    risk_syms.append(sym)
+            for sym, msg, ic in risks[:6]:
+                st.markdown(
+                    f"<div class='stock-row' style='display:flex;justify-content:space-between;align-items:center;'><span><b>{sym}</b> · {msg}</span><span>{ic}</span></div>",
+                    unsafe_allow_html=True,
+                )
+            if not risks:
+                st.caption("当前无显著风险信号")
+            else:
+                st.caption("暂无数据")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # 冲突说明（Top 机会 与 Top 风险 同现）
+    _conflict = sorted(set(top_syms) & set(risk_syms))
+    if _conflict:
+        _ex = "、".join(_conflict)
+        st.markdown(
+            f'<div class="card" style="min-height:auto;background:#fffbeb;border-left:4px solid #f59e0b;">'
+            f'<div style="font-size:12.5px;line-height:1.7;color:#92400e;">'
+            f'⚠️ <b>冲突说明：{_ex} 同时出现在「Top 机会」与「Top 风险」。</b><br>'
+            f'这并非系统矛盾，而是「<b>机会与风险并存</b>」的典型信号：'
+            f'<b>机会面</b>来自其高 AI 评分 / 强势趋势 / 基本面（趋势与结构占优）；'
+            f'<b>风险面</b>来自短线超买(RSI&gt;70)、近期回撤或高杠杆（追高回吐 / 强平风险）。'
+            f'<br>操作含义：宜用<b>分批介入 + R 倍数纪律</b>（见个股深度分析·交易策略），而非一次性追高；'
+            f'机会决定「买不买」，风险决定「买多少、止损在哪」。'
+            f'</div></div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown('</div>', unsafe_allow_html=True)  # close .conclusion-zone
+
+    # 实时速览（集成实时行情，自动刷新）
+    st.fragment(_rt_dash_strip, run_every=30)()
+
+
+def _render_macro_tab() -> None:
+    """第1层·证据层 — 宏观：情绪与波动率 + 全球主指数 + 利率与杠杆 + 风险雷达 + 宏观解读。"""
+    # ===== 市场情绪与波动率 =====
     st.markdown('<div class="section-sub"><span class="accent">▍</span>市场情绪与波动率</div>', unsafe_allow_html=True)
     fg = U.calculate_fear_greed()
     macro_row = MACRO_DF.iloc[0] if MACRO_DF is not None and not MACRO_DF.empty else None
@@ -824,7 +1016,6 @@ def page_dashboard():
             unsafe_allow_html=True,
         )
     with c4:
-        # VXN (纳指恐慌) — 实时拉
         vxn_quote = U.fetch_index_quote("^VXN")
         vxn = vxn_quote.get("last", 0.0)
         vxn_color = "#dc2626" if vxn > 30 else ("#f97316" if vxn > 22 else "#16a34a")
@@ -848,7 +1039,7 @@ def page_dashboard():
             unsafe_allow_html=True,
         )
 
-    # ===== 第二组：全球主指数（上证 / 恒指 / 标普 / 纳指 / 道指） =====
+    # ===== 全球主要指数 =====
     st.markdown('<div class="section-sub"><span class="accent">▍</span>全球主要指数</div>', unsafe_allow_html=True)
     world_idx = [
         ("000001.SS", "上证指数", "🇨🇳"),
@@ -874,7 +1065,6 @@ def page_dashboard():
                 px = q["last"]
                 chg = q["chg_pct"]
                 color = "#dc2626" if chg > 0 else ("#16a34a" if chg < 0 else "var(--text-dim)")
-                # 30 天趋势 (牛/熊)
                 regime_emoji = ""
                 try:
                     h = yf.download(sym, period="1mo", progress=False, auto_adjust=True)
@@ -894,7 +1084,7 @@ def page_dashboard():
                     unsafe_allow_html=True,
                 )
 
-    # ===== 第三组：利率与杠杆（2Y / US Debt / Margin Debt / NFCI） =====
+    # ===== 利率与杠杆 =====
     st.markdown('<div class="section-sub"><span class="accent">▍</span>利率与杠杆（FRED）</div>', unsafe_allow_html=True)
     y2c = EXTRA_DATA.get("2y_scorecard") or {}
     debt = EXTRA_DATA.get("us_debt") or {}
@@ -1001,7 +1191,7 @@ def page_dashboard():
         nfci_v = nfci.get("value")
         if nfci_v is not None:
             nfci_chg = nfci.get("chg", 0)
-            chg_color = "#16a34a" if nfci_chg < 0 else "#dc2626"  # 下降 = 宽松 = 利好
+            chg_color = "#16a34a" if nfci_chg < 0 else "#dc2626"
             st.markdown(
                 f'<div class="card" style="text-align:center;">'
                 f'<h4>🏦 NFCI Leverage</h4>'
@@ -1021,7 +1211,7 @@ def page_dashboard():
                 unsafe_allow_html=True,
             )
 
-    # ===== v2.4 新增：🚨 宏观风险雷达 =====
+    # ===== 宏观风险雷达 =====
     radar = U.compute_macro_risk_radar()
     overall = radar.get("overall", {})
     overall_color = {"green": "#16a34a", "yellow": "#f59e0b", "red": "#dc2626"}.get(overall.get("signal"), "#9ca3af")
@@ -1035,7 +1225,6 @@ def page_dashboard():
         sig_label = {"green": "✅ 正常", "yellow": "⚠️ 关注", "red": "🔴 警戒"}.get(signal, "—")
         metrics = g.get("metrics", {}) or {}
         emoji = g.get("emoji", "")
-        # 把 metrics 渲染成 key: value 行
         rows = ""
         for k, v in metrics.items():
             rows += f'<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span style="color:var(--text-dim);">{k}</span><b>{v}</b></div>'
@@ -1068,7 +1257,7 @@ def page_dashboard():
         st.markdown(_radar_group_card("cross_asset", "跨资产 Cross", "🌐"), unsafe_allow_html=True)
         st.markdown(_radar_group_card("a_share", "A股 A-Share", "🇨🇳"), unsafe_allow_html=True)
 
-    # ===== 需求4：宏观数值文字总结（结合宏观雷达）=====
+    # ===== 宏观数值文字总结 =====
     try:
         _macro_text = U.macro_risk_narrative(radar)
         st.markdown(
@@ -1081,7 +1270,15 @@ def page_dashboard():
     except Exception as e:  # noqa: BLE001
         logger.debug("宏观文字总结失败: %s", e)
 
-    # ===== v2.3 新增：🌍 全球市场三段（美股 / A股 / 港股）=====
+
+def _render_structure_tab() -> None:
+    """第1层·证据层 — 结构：全球市场总览(US/CN/HK) + 全市场热力图 + 维科夫吸筹扫描。"""
+    fg = U.calculate_fear_greed()
+    fg_label = fg.get("label", "中性")
+    fg_score = fg.get("score", 50.0)
+    fg_color = {"极度贪婪": "#16a34a", "贪婪": "#84cc16", "中性": "#fbbf24", "恐惧": "#f97316", "极度恐惧": "#dc2626"}.get(fg_label, "#9ca3af")
+
+    # ===== 全球市场三段 =====
     st.markdown('<div class="section-title"><span class="accent">🌍</span>全球市场总览（按市场分段）</div>', unsafe_allow_html=True)
     seg_us, seg_cn, seg_hk = st.tabs(["🇺🇸 美股 (US)", "🇨🇳 A股 (CN)", "🇭🇰 港股 (HK)"])
 
@@ -1117,7 +1314,6 @@ def page_dashboard():
         with c2:
             st.markdown('<div class="card"><h4>📊 美股情绪</h4>', unsafe_allow_html=True)
             try:
-                fg = fg  # 上面的 F&G
                 st.markdown(
                     f'<div style="font-size:11px;color:var(--text-dim);">Fear &amp; Greed</div>'
                     f'<div style="font-size:24px;font-weight:800;color:{fg_color};">{fg_score:.0f} · {fg_label}</div>',
@@ -1125,7 +1321,6 @@ def page_dashboard():
                 )
             except Exception:
                 st.markdown('<div style="color:var(--text-dim);">F&G 待加载</div>', unsafe_allow_html=True)
-            # VIX
             try:
                 vix_t = yf.Ticker("^VIX")
                 vix_info = vix_t.fast_info
@@ -1139,7 +1334,6 @@ def page_dashboard():
                 )
             except Exception:
                 pass
-            # 10Y (用 ^TNX)
             try:
                 tnx_t = yf.Ticker("^TNX")
                 tnx_info = tnx_t.fast_info
@@ -1287,7 +1481,6 @@ def page_dashboard():
                 )
             except Exception:
                 pass
-            # HSI 20D Realized Vol
             try:
                 hsi_hist = yf.download("^HSI", period="3mo", progress=False)
                 if not hsi_hist.empty:
@@ -1319,155 +1512,7 @@ def page_dashboard():
                         )
             st.markdown("</div>", unsafe_allow_html=True)
 
-    # ===== 需求2：Dashboard 模块导航（逻辑递进 + 勾稽关系）=====
-    st.markdown('<div class="section-title"><span class="accent">🗺️</span>Dashboard 指标导航 &amp; 勾稽关系</div>', unsafe_allow_html=True)
-    _dash_modules = [
-        ("① 市场状态条", "US/HK/CN 开盘 · Fear&amp;Greed · VIX", "情绪温度，决定当日「交易窗口」是否打开。"),
-        ("② 宏观风险雷达", "VIX/DXY · 利率曲线 · 金银/铜金比 · 跨资产 · A股", "系统风险底色，决定整体「仓位基调」（绿灯放大、红灯防守）。"),
-        ("③ 全球市场总览", "美股 / A股 / 港股主指数 + 情绪", "大类资产方向，承接雷达结论、给出市场β。"),
-        ("④ 今日重点 &amp; 自选扫描", "Top 机会(评分) / Top 风险(超买·回撤·杠杆)", "个股线索入口，由宏观与市场方向收敛到具体标的。"),
-        ("⑤ 全市场热力图", "美股 / 港股 / A股 按板块涨跌幅", "板块与个股强弱分布，定位资金主线。"),
-        ("⑥ 维科夫吸筹扫描", "选股第一层：7 事件量价序列", "纯量价判定「是否在吸筹」，为④的线索做结构背书。"),
-        ("⑦ 经济日程 &amp; FedWatch", "非农/CPI/PCE/FOMC · 下次会议概率", "事件驱动风险，短线扰动②与③、并验证④的假设。"),
-        ("⑧ AI 报告", "Morning Brief / Evening Recap", "把①~⑦综合成叙事结论，形成可执行的当日视角。"),
-    ]
-    _mod_rows = "".join(
-        f'<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px;align-items:baseline;">'
-        f'<div style="flex:0 0 150px;font-weight:700;color:var(--accent);">{t}</div>'
-        f'<div style="flex:0 0 230px;color:var(--text-dim);">{sub}</div>'
-        f'<div style="flex:1;color:var(--text);">{desc}</div>'
-        f'</div>'
-        for t, sub, desc in _dash_modules
-    )
-    st.markdown(
-        f'<div class="card" style="min-height:auto;">'
-        f'<div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">'
-        f'📐 逻辑递进：<b>宏观定调(①②) → 市场方向(③) → 个股线索(④⑤) → 结构确认(⑥) → 事件校验(⑦) → 综合叙事(⑧)</b>。'
-        f'勾稽要点：雷达②决定③④的仓位与方向；维科夫⑥为④的线索做量价背书；FedWatch/日程⑦短线扰动②并验证④。'
-        f'</div>'
-        f'{_mod_rows}'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
-
-    # ===== 第二行：今日重点 + Top 机会 + Top 风险 =====
-    st.markdown('<div class="section-title">🎯 今日重点 & 自选扫描</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1.2, 1, 1])
-
-    # 今日重点：基于自选股 + 宏观 + 财报/事件，AI 生成的 Top 3 关注点
-    with c1:
-        st.markdown('<div class="card"><h4>📌 今日重点</h4>', unsafe_allow_html=True)
-        # 静态 + 动态混合
-        focuses = []
-        if STOCKS_DF is not None and not STOCKS_DF.empty:
-            # 涨幅最大
-            if "涨跌幅" in STOCKS_DF.columns:
-                top_up = STOCKS_DF.nlargest(1, "涨跌幅").iloc[0]
-                focuses.append(
-                    f"🚀 <b>{top_up['symbol']}</b> <span style='color:var(--text-dim);font-size:11px;'>{U.STOCK_NAMES.get(top_up['symbol'],'')}</span> 今日涨 {safe_float(top_up.get('涨跌幅')):.2f}%，关注能否突破 / 短线见顶"
-                )
-                top_dn = STOCKS_DF.nsmallest(1, "涨跌幅").iloc[0]
-                focuses.append(
-                    f"🔻 <b>{top_dn['symbol']}</b> <span style='color:var(--text-dim);font-size:11px;'>{U.STOCK_NAMES.get(top_dn['symbol'],'')}</span> 今日跌 {safe_float(top_dn.get('涨跌幅')):.2f}%，关注是否到支撑 / 风险扩大"
-                )
-            # RSI 超卖 / 超买
-            if "RSI_14" in STOCKS_DF.columns:
-                oversold = STOCKS_DF[STOCKS_DF["RSI_14"] < 30]
-                if not oversold.empty:
-                    focuses.append(
-                        f"🟢 RSI 超卖: {', '.join(oversold['symbol'].head(3).tolist())}，可能反弹"
-                    )
-        # 财报/事件
-        cal = U.fetch_economic_calendar(SERPAPI_KEY)
-        today_str = datetime.now().strftime("%m-%d")
-        todays = [e for e in cal if today_str in e.get("date", "")]
-        if not todays:
-            todays = cal[:2]
-        for e in todays[:2]:
-            focuses.append(
-                f"📅 {e.get('date','')} {e.get('event','')} ({e.get('importance','')})"
-            )
-        if not focuses:
-            focuses = ["数据加载中…"]
-        for f in focuses:
-            st.markdown(f"<div style='font-size:13px;line-height:1.7;margin:6px 0;'>{f}</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # Top 机会
-    top_syms = []
-    with c2:
-        st.markdown('<div class="card"><h4>🟢 Top 机会 (AI 评分)</h4>', unsafe_allow_html=True)
-        if STOCKS_DF is not None and not STOCKS_DF.empty:
-            tmp = STOCKS_DF.copy()
-            if "AI评分" not in tmp.columns and CARDS_MAP:
-                tmp["AI评分"] = tmp["symbol"].map(lambda x: CARDS_MAP.get(x, {}).get("score"))
-            if "AI评分" in tmp.columns and tmp["AI评分"].notna().any():
-                top = tmp[tmp["AI评分"].notna()].nlargest(5, "AI评分")
-            else:
-                top = tmp.head(5)
-            for _, r in top.iterrows():
-                sym = r["symbol"]
-                top_syms.append(sym)
-                score = r.get("AI评分", "—")
-                chg = safe_float(r.get("涨跌幅"))
-                st.markdown(
-                    f"<div class='stock-row' style='display:flex;justify-content:space-between;align-items:center;'><span><b>{sym}</b> · 评分 <b style='color:var(--accent);'>{score}</b></span><span style='color:{color_for_change(chg)};font-weight:600;font-size:12px;'>{fmt_pct(chg)}</span></div>",
-                    unsafe_allow_html=True,
-                )
-        else:
-            st.caption("暂无个股数据")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # Top 风险
-    risk_syms = []
-    with c3:
-        st.markdown('<div class="card"><h4>🔴 Top 风险</h4>', unsafe_allow_html=True)
-        if STOCKS_DF is not None and not STOCKS_DF.empty:
-            risks = []
-            tmp = STOCKS_DF.copy()
-            # RSI 超买
-            if "RSI_14" in tmp.columns:
-                for _, r in tmp[tmp["RSI_14"] > 70].head(3).iterrows():
-                    risks.append((r["symbol"], f"RSI {safe_float(r.get('RSI_14')):.0f} 超买", "🟠"))
-            # 跌幅大
-            if "涨跌幅" in tmp.columns:
-                for _, r in tmp.nsmallest(3, "涨跌幅").iterrows():
-                    if not any(s == r["symbol"] for s, *_ in risks):
-                        risks.append((r["symbol"], f"今日 {fmt_pct(safe_float(r.get('涨跌幅')))}", "🔴"))
-            # 杠杆高危
-            for sym, lev in (LEV_MAP or {}).items():
-                if lev.get("综合风险等级") == "高" and not any(s == sym for s, *_ in risks):
-                    risks.append((sym, "杠杆高危", "⚠️"))
-                    risk_syms.append(sym)
-            for sym, msg, ic in risks[:6]:
-                st.markdown(
-                    f"<div class='stock-row' style='display:flex;justify-content:space-between;align-items:center;'><span><b>{sym}</b> · {msg}</span><span>{ic}</span></div>",
-                    unsafe_allow_html=True,
-                )
-            if not risks:
-                st.caption("当前无显著风险信号")
-            else:
-                st.caption("暂无数据")
-            st.markdown("</div>", unsafe_allow_html=True)
-
-    # ===== 需求5：Top 机会 与 Top 风险 冲突说明（典型如 MSFT 同现）=====
-    _conflict = sorted(set(top_syms) & set(risk_syms))
-    if _conflict:
-        _ex = "、".join(_conflict)
-        st.markdown(
-            f'<div class="card" style="min-height:auto;background:#fffbeb;border-left:4px solid #f59e0b;">'
-            f'<div style="font-size:12.5px;line-height:1.7;color:#92400e;">'
-            f'⚠️ <b>冲突说明：{_ex} 同时出现在「Top 机会」与「Top 风险」。</b><br>'
-            f'这并非系统矛盾，而是「<b>机会与风险并存</b>」的典型信号：'
-            f'<b>机会面</b>来自其高 AI 评分 / 强势趋势 / 基本面（趋势与结构占优）；'
-            f'<b>风险面</b>来自短线超买(RSI&gt;70)、近期回撤或高杠杆（追高回吐 / 强平风险）。'
-            f'<br>操作含义：宜用<b>分批介入 + R 倍数纪律</b>（见个股深度分析·交易策略），而非一次性追高；'
-            f'机会决定「买不买」，风险决定「买多少、止损在哪」。'
-            f'</div></div>',
-            unsafe_allow_html=True,
-        )
-
-    # ===== 第三行：美股 / 港股 / A股 热力图 =====
+    # ===== 全市场热力图 =====
     st.markdown('<div class="section-title"><span class="accent">🔥</span>全市场热力图</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -1486,7 +1531,7 @@ def page_dashboard():
             a_hm = U.build_heatmap_data(U.A_SHARE_HEATMAP_TICKERS)
         _draw_heatmap(a_hm, "sector", "symbol", "change_pct", "weight")
 
-    # ===== v3.0 新增：维科夫吸筹扫描（选股三层架构 · 第一层）=====
+    # ===== 维科夫吸筹扫描 =====
     st.markdown('<div class="section-title"><span class="accent">🧬</span>维科夫吸筹扫描 <span style="font-size:11px;color:var(--text-dim);">纯计算 · 无 LLM</span></div>', unsafe_allow_html=True)
     wyc_syms = [s for s in (STOCKS_DF["symbol"].tolist() if STOCKS_DF is not None and not STOCKS_DF.empty else []) if not s.endswith((".HK", ".SS", ".SZ"))][:8]
     if wyc_syms:
@@ -1523,7 +1568,6 @@ def page_dashboard():
                     st.markdown(f"**{wsym}** ({w['stage']}) 置信度 {w['confidence']} · 事件序列: {evs}")
                     st.caption(w["summary"])
 
-            # ===== 需求6：维科夫吸筹 · 内嵌 AI 分析指引（结合智能荐股）=====
             _top_w = wyc_rows[0][1]
             _exp = screener.explain_wyckoff(_top_w)
             st.markdown(
@@ -1537,7 +1581,6 @@ def page_dashboard():
                 f'</div></div>',
                 unsafe_allow_html=True,
             )
-            # 可选：调用 DeepSeek 生成第三层叙事（仅基于结构化数据，无 key 时降级）
             if st.button("🤖 生成 AI 研判（DeepSeek · 仅解释结构化数据）", key="wyc_ai_dash", use_container_width=True):
                 with st.spinner("调用 DeepSeek 生成研判…"):
                     _wh_top = _fetch_price_history(wyc_rows[0][0], period="6mo", interval="1d")
@@ -1562,7 +1605,9 @@ def page_dashboard():
     else:
         st.caption("暂无美股标的可扫描")
 
-    # ===== 第四行：经济日历 + FedWatch =====
+
+def _render_events_tab() -> None:
+    """第1层·证据层 — 事件：经济日程 + FedWatch。"""
     st.markdown('<div class="section-title"><span class="accent">📅</span>经济日程 & FedWatch</div>', unsafe_allow_html=True)
     c1, c2 = st.columns([1.4, 1])
     with c1:
@@ -1595,10 +1640,12 @@ def page_dashboard():
             st.progress(int(fw["prob_cut"]), text=f"降息 {fw['prob_cut']:.0f}%")
             st.progress(int(fw["prob_hold"]), text=f"维持 {fw['prob_hold']:.0f}%")
             st.progress(int(fw["prob_hike"]), text=f"加息 {fw['prob_hike']:.0f}%")
-            # 公开站点不展示数据源标注
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ===== 第五行：Morning Brief / Evening Recap =====
+
+def _render_research_tab() -> None:
+    """第1层·证据层 — 研判：Morning Brief / Evening Recap + 智能荐股。"""
+    # ===== Morning Brief / Evening Recap =====
     st.markdown('<div class="section-title"><span class="accent">🧠</span>AI 报告 · Morning Brief &amp; Evening Recap</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
@@ -1610,7 +1657,7 @@ def page_dashboard():
         er = DATA.get("evening") or "（尚未生成）首次运行 stock_dashboard.py 后会自动写入 data/evening_recap.md"
         st.markdown(f'<div class="brief-box">{er}</div>', unsafe_allow_html=True)
 
-    # ===== v2.5 新增：📊 智能荐股 =====
+    # ===== 智能荐股 =====
     st.markdown('<div class="section-title"><span class="accent">📊</span>智能荐股（技术面 · 估值 · 动量 · 杠杆止损）</div>', unsafe_allow_html=True)
     st.caption("综合 技术面(MA20/60 趋势) + 估值(PE) + 动量(当日) + 杠杆止损位，量化初筛三类建议。综合评分≥60 为买入信号。⚠️ 仅供参考，不构成投资建议。")
     try:
@@ -1643,6 +1690,27 @@ def page_dashboard():
                 st.caption("当前无综合评分≥60 的标的")
     except Exception as e:  # noqa: BLE001
         st.warning(f"⚠️ 智能荐股计算失败: {e}")
+
+
+def page_dashboard():
+    st.markdown('<div class="section-title"><span class="accent">🏠</span>市场全景 Dashboard</div>', unsafe_allow_html=True)
+
+    # ===== 第0层 · 结论区（唯一默认可见）=====
+    _render_conclusion_zone()
+
+    # ===== 第1层 · 证据层（4 主题 Tab，非按数据源）=====
+    st.markdown('<div class="layer-badge">第 1 层 · 证据层 — 按主题组织，点击展开</div>', unsafe_allow_html=True)
+    tab_macro, tab_struct, tab_event, tab_research = st.tabs(
+        ["📊 宏观", "🧩 结构", "📅 事件", "🧠 研判"]
+    )
+    with tab_macro:
+        _render_macro_tab()
+    with tab_struct:
+        _render_structure_tab()
+    with tab_event:
+        _render_events_tab()
+    with tab_research:
+        _render_research_tab()
 
 
 def _draw_heatmap(df: pd.DataFrame, sector_col: str, sym_col: str, color_col: str, size_col: str):
@@ -1778,12 +1846,10 @@ def page_stock_deepdive():
         is_hk = sym.endswith(".HK")
         market_label = "港股" if is_hk else ("A股" if sym.endswith((".SS", ".SZ")) else "美股")
 
-        # 1) 股票概览
+        # ===== 固定顶部：概览 + AI摘要（始终可见，不随 Tab 切换）=====
         chg = safe_float(r.get("涨跌幅"))
         price = safe_float(r.get("收盘价"))
         _price_src = "data/stocks.csv"
-        # 需求10：实时价校正（A股优先东财 push2；港股/A股均有多源兜底），
-        # 避免展示过期/错误股价（如 688809 曾因 stocks.csv 旧值 + 东财断连显示错误价格）
         if sym.endswith((".SS", ".SZ", ".HK")):
             try:
                 if sym.endswith((".SS", ".SZ")):
@@ -1827,7 +1893,7 @@ def page_stock_deepdive():
             unsafe_allow_html=True,
         )
 
-        # 2) AI 摘要
+        # AI 摘要（固定顶部）
         st.markdown('<div class="section-title">🧠 AI 摘要</div>', unsafe_allow_html=True)
         card = CARDS_MAP.get(sym, {})
         core = card.get("core_view") or r.get("核心观点", "")
@@ -1847,117 +1913,381 @@ def page_stock_deepdive():
                 if m_term:
                     st.markdown(f"<div class='ai-box' style='border-left-color:#7c3aed;'><div class='label' style='color:#6d28d9;'>中期 (1-4 周)</div>{m_term}</div>", unsafe_allow_html=True)
 
-        # 3) K 线
-        st.markdown(f'<div class="section-title">📈 K 线 · {selected_period}</div>', unsafe_allow_html=True)
-        try:
-            hist = _fetch_price_history(sym, period=period_map[selected_period], interval="1d")
-            if not hist.empty and len(hist) > 5:
-                _draw_kline(hist, sym, with_volume=True)
-            else:
-                st.caption(f"📉 {sym} 数据不足")
-        except Exception as e:  # noqa: BLE001
-            st.caption(f"⚠️ K线加载失败: {e}")
+        # ===== 第2层·钻取层（3 主题 Subtab）=====
+        t1, t2, t3 = st.tabs(["📈 K线技术面", "🎯 策略与风险", "🧠 AI研判"])
 
-        # 4) 资金
-        st.markdown('<div class="section-title">💰 资金面</div>', unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns(4)
-        poc = r.get("资金集中价位")
-        conc = r.get("集中度", 0)
-        vol = r.get("成交量")
-        vol_pcr = r.get("Volume_PCR")
-        oi_pcr = r.get("OI_PCR")
-        c1.metric("POC 资金集中区", f"{poc:.2f}" if pd.notna(poc) and poc else "N/A")
-        c2.metric("集中度", f"{conc:.1f}%" if pd.notna(conc) else "N/A")
-        c3.metric("成交量", f"{int(vol):,}" if pd.notna(vol) else "N/A")
-        c4.metric("Vol/OI PCR", f"{vol_pcr:.2f} / {oi_pcr:.2f}" if pd.notna(vol_pcr) and pd.notna(oi_pcr) else "N/A")
-
-        # 5) 策略 (sniper + R 倍数分批减仓 + 杠杆)
-        st.markdown('<div class="section-title">🎯 交易策略</div>', unsafe_allow_html=True)
-        sniper = card.get("sniper", {}) or r.get("sniper", {})
-        if sniper:
-            c1, c2, c3, c4 = st.columns(4)
-            for col, (label, val, color) in zip([c1, c2, c3, c4], [
-                ("理想买入", sniper.get("ideal_buy", "—"), "#2563eb"),
-                ("二次加仓", sniper.get("second_buy", "—"), "#16a34a"),
-                ("止损位", sniper.get("stop_loss", "—"), "#dc2626"),
-                ("止盈逻辑", "分批减仓", "#f59e0b"),
-            ]):
-                with col:
-                    st.markdown(f"<div class='card' style='text-align:center;border-top:3px solid {color};padding:10px;'><h4>{label}</h4><div style='font-size:14px;font-weight:700;color:{color};'>{val}</div></div>", unsafe_allow_html=True)
-
-            # R 倍数分批止盈计划（垫厚利润）：+1R 减1/3 → +2R 再减1/3 → 剩余移动止损
+        # ---------- Subtab 1：K线技术面（含实时盘口/分时/成交明细）----------
+        with t1:
+            # 实时分时（当日分钟级）
+            st.markdown('<div class="section-title">📈 当日分时（实时）</div>', unsafe_allow_html=True)
             try:
-                import risk as _risk
-                _buy = _risk._num(sniper.get("ideal_buy") or r.get("收盘价"))
-                _stop = _risk._num(sniper.get("stop_loss"))
-                if _buy is not None and _stop is not None and _stop < _buy:
-                    _atr_v = safe_float(r.get("ATR"))
-                    plan = _risk.r_multiple_plan(_buy, _stop, current_price=price, atr=_atr_v or None)
-                    if plan.get("ok"):
-                        st.markdown("##### 📐 R 倍数分批止盈（垫厚利润）")
-                        st.caption("原逻辑：单一止盈目标一次性了结，容易卖飞或回吐。新逻辑：以入场风险 R 为单位，分三批兑现，边涨边垫高止损。")
-                        _s1, _s2, _s3 = plan["stages"]
-                        _trail = _s3.get("price")
-                        _ma20 = safe_float(r.get("MA20"))
-                        _trail_note = f"（≈ MA20 {_ma20:.2f}）" if _ma20 and _trail and _ma20 > _trail else ""
-                        _row = (
-                            f"<div class='card' style='padding:10px 12px;font-size:12px;'>"
-                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
-                            f"<span>入场风险 R</span><b>{plan['risk_pct']:.1f}% <span style='color:var(--text-dim);font-size:10px;'>(${plan['risk_r']:.2f})</span></b></div>"
-                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;color:var(--text-dim);'>"
-                            f"<span>当前盈亏</span><b style='color:{color_for_change(plan.get('current_pnl_pct', 0))};'>{plan.get('current_pnl_pct', 0):+.2f}% ({plan.get('current_pnl_R', 0):+.2f}R)</b></div>"
-                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
-                            f"<span>① +1R ({_s1['price_pct']:+.1f}%)</span><b style='color:#2563eb;'>{_s1['price']:.2f} · 减仓 1/3，止损上移至成本价</b></div>"
-                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
-                            f"<span>② +2R ({_s2['price_pct']:+.1f}%)</span><b style='color:#16a34a;'>{_s2['price']:.2f} · 再减 1/3，止损上移至 +1R</b></div>"
-                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
-                            f"<span>③ 剩余 1/3</span><b style='color:#f59e0b;'>{_s3['action']}</b></div>"
-                            f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;background:#fffbeb;padding:4px 6px;border-radius:6px;'>"
-                            f"<span style='color:#92400e;'>清仓触发价</span><b style='color:#b45309;'>{_trail:.2f}{_trail_note} · 回撤至此或跌破 MA20 即清仓</b></div>"
-                            f"<div style='font-size:11px;color:var(--accent);font-weight:600;margin-top:4px;'>▶ {plan.get('current_stage','')}</div>"
-                            f"</div>"
-                        )
-                        st.markdown(_row, unsafe_allow_html=True)
-                        st.caption("具体减仓价位点已标注：① 到 +1R 价减 1/3 并保本；② 到 +2R 价再减 1/3 并锁定 +1R；③ 剩余移动止损，回撤至清仓触发价或破 MA20 出局。原逻辑（单一止盈目标一次性了结）已被替代，避免卖飞或回吐。")
-            except Exception as e:  # noqa: BLE001
-                logger.debug("R 倍数计划生成失败: %s", e)
-
-        # ===== v3.2 明日观察位（DSA 暗色玻璃态：规则引擎 + AI 研判） =====
-        _render_tomorrow_watch(sym)
-
-        lev = LEV_MAP.get(sym, {})
-        if lev and lev.get("details"):
-            st.markdown("##### ⚠️ 杠杆强平监控")
-            lev_cols = st.columns(len(lev["details"]))
-            for idx, (k, ld) in enumerate(lev["details"].items()):
-                atr_mult = ld.get("距强平ATR倍数", 999)
-                if isinstance(atr_mult, (int, float)):
-                    color = "#dc2626" if atr_mult < 3 else ("#f59e0b" if atr_mult < 6 else "#16a34a")
+                trend = U.fetch_intraday_trend(sym)
+                if trend is not None and not trend.empty and "price" in trend.columns:
+                    fig = go.Figure()
+                    base = float(trend["price"].iloc[0])
+                    series = (trend["price"] / base - 1.0) * 100.0 if base else trend["price"]
+                    col = "#dc2626" if series.iloc[-1] >= 0 else "#16a34a"
+                    fig.add_trace(go.Scatter(x=trend["time"], y=trend["price"], mode="lines",
+                                            name="分时", line=dict(color=col, width=1.6)))
+                    fig.update_layout(height=300, margin=dict(l=0, r=0, t=10, b=0),
+                                      paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                      font=dict(color="#9ca3af", size=11),
+                                      xaxis=dict(gridcolor="rgba(0,0,0,0.06)"),
+                                      yaxis=dict(gridcolor="rgba(0,0,0,0.06)", title="价格"),
+                                      hovermode="x unified")
+                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
                 else:
-                    color = "#9ca3af"
-                with lev_cols[idx]:
-                    st.markdown(
-                        f"<div class='card' style='text-align:center;border-color:{color}40;padding:8px;'>"
-                        f"<h4>{k} 强平价</h4>"
-                        f"<div style='font-size:14px;font-weight:700;'>${ld.get('强平价', 'N/A')}</div>"
-                        f"<div style='font-size:11px;color:{color};font-weight:600;'>{atr_mult}x ATR</div>"
-                        f"</div>",
-                        unsafe_allow_html=True,
+                    st.caption("🕐 暂无分时数据（非交易时段，或该市场无免费分时源）")
+            except Exception as e:  # noqa: BLE001
+                st.caption(f"⚠️ 分时加载失败: {e}")
+
+            # K 线
+            st.markdown(f'<div class="section-title">📈 K 线 · {selected_period}</div>', unsafe_allow_html=True)
+            try:
+                hist = _fetch_price_history(sym, period=period_map[selected_period], interval="1d")
+                if not hist.empty and len(hist) > 5:
+                    _draw_kline(hist, sym, with_volume=True)
+                else:
+                    st.caption(f"📉 {sym} 数据不足")
+            except Exception as e:  # noqa: BLE001
+                st.caption(f"⚠️ K线加载失败: {e}")
+
+            # 实时盘口（五档）+ 成交明细（新维度：富途/东财）
+            is_cn_hk = sym.endswith((".SS", ".SZ", ".HK"))
+            if is_cn_hk:
+                st.markdown('<div class="section-title">📊 实时盘口 & 成交明细</div>', unsafe_allow_html=True)
+                oc1, oc2 = st.columns(2)
+                with oc1:
+                    st.markdown("##### 🔢 五档盘口")
+                    try:
+                        book = U.fetch_order_book(sym)
+                        if book.get("ok"):
+                            bids = book.get("bids", [])
+                            asks = book.get("asks", [])
+                            rows = ""
+                            for i in range(min(5, len(asks))):
+                                p, v = asks[4 - i]
+                                rows += (f'<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;">'
+                                         f'<span style="color:#16a34a;font-weight:600;">卖{5-i}</span>'
+                                         f'<span>{p:.2f}</span><span style="color:var(--text-dim);">{_rt_fmt_volume(v)}</span></div>')
+                            rows += '<div style="height:1px;background:var(--border);margin:4px 0;"></div>'
+                            for i in range(min(5, len(bids))):
+                                p, v = bids[i]
+                                rows += (f'<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;">'
+                                         f'<span style="color:#dc2626;font-weight:600;">买{i+1}</span>'
+                                         f'<span>{p:.2f}</span><span style="color:var(--text-dim);">{_rt_fmt_volume(v)}</span></div>')
+                            st.markdown(
+                                f'<div class="card" style="font-size:12px;">{rows}'
+                                f'<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">源: {book.get("source","")}</div></div>',
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.caption("📡 盘口暂不可用（非交易时段或源校验未通过）")
+                    except Exception as e:  # noqa: BLE001
+                        st.caption(f"⚠️ 盘口加载失败: {e}")
+                with oc2:
+                    st.markdown("##### 🧾 当日成交明细（逐笔）")
+                    try:
+                        tick = U.fetch_tick_detail(sym, count=20)
+                        if tick.get("ok"):
+                            ticks = tick.get("ticks", [])
+                            drows = ""
+                            for t in ticks[:20]:
+                                dirc = t.get("direction", "NEUTRAL")
+                                dc = "#dc2626" if dirc == "BUY" else ("#16a34a" if dirc == "SELL" else "#9ca3af")
+                                dl = {"BUY": "买", "SELL": "卖", "NEUTRAL": "—"}.get(dirc, "—")
+                                drows += (f'<div style="display:flex;justify-content:space-between;font-size:11px;padding:1px 0;">'
+                                          f'<span style="color:var(--text-dim);">{t.get("time","")[-8:]}</span>'
+                                          f'<span>{t.get("price",0):.2f}</span>'
+                                          f'<span style="color:var(--text-dim);">{_rt_fmt_volume(t.get("volume",0))}</span>'
+                                          f'<span style="color:{dc};font-weight:600;">{dl}</span></div>')
+                            st.markdown(
+                                f'<div class="card" style="font-size:11px;max-height:220px;overflow:auto;">{drows}'
+                                f'<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">源: {tick.get("source","")}</div></div>',
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.caption("📡 成交明细暂不可用（非交易时段或源校验未通过）")
+                    except Exception as e:  # noqa: BLE001
+                        st.caption(f"⚠️ 成交明细加载失败: {e}")
+            else:
+                st.caption("ℹ️ 美股无免费盘口/逐笔数据源（盘口与成交明细仅 A股/港股）。")
+
+            # 资金面
+            st.markdown('<div class="section-title">💰 资金面</div>', unsafe_allow_html=True)
+            c1, c2, c3, c4 = st.columns(4)
+            poc = r.get("资金集中价位")
+            conc = r.get("集中度", 0)
+            vol = r.get("成交量")
+            vol_pcr = r.get("Volume_PCR")
+            oi_pcr = r.get("OI_PCR")
+            c1.metric("POC 资金集中区", f"{poc:.2f}" if pd.notna(poc) and poc else "N/A")
+            c2.metric("集中度", f"{conc:.1f}%" if pd.notna(conc) else "N/A")
+            c3.metric("成交量", f"{int(vol):,}" if pd.notna(vol) else "N/A")
+            c4.metric("Vol/OI PCR", f"{vol_pcr:.2f} / {oi_pcr:.2f}" if pd.notna(vol_pcr) and pd.notna(oi_pcr) else "N/A")
+
+            # 维科夫吸筹结构（技术面）
+            st.markdown("#### 🧬 维科夫吸筹结构")
+            try:
+                wh2 = _fetch_price_history(sym, period="6mo", interval="1d")
+                if wh2 is not None and not wh2.empty and len(wh2) >= 120:
+                    w = screener.detect_wyckoff_events(wh2)
+                    if w.get("ok"):
+                        conf = w["confidence"]
+                        conf_color = "#16a34a" if conf >= 0.71 else ("#f59e0b" if conf >= 0.43 else ("#3b82f6" if conf >= 0.14 else "#9ca3af"))
+                        st.markdown(
+                            f'<div class="card" style="text-align:center;border-top:3px solid {conf_color};">'
+                            f'<div style="display:flex;justify-content:center;">{_donut(conf * 100, size=62, label="置信度")}</div>'
+                            f'<div style="font-size:13px;font-weight:700;margin-top:4px;">{w["stage"]}</div>'
+                            f'<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">{w["event_count"]}/7 事件 · {w["phase"]}</div>'
+                            f'<div style="font-size:11px;margin-top:6px;text-align:left;color:var(--text);">{w["summary"]}</div>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+                        if w["events"]:
+                            st.caption("事件序列: " + " → ".join(e["event"] for e in w["events"]))
+                        _exp2 = screener.explain_wyckoff(w)
+                        st.markdown(
+                            f'<div style="font-size:11.5px;line-height:1.6;color:var(--text-dim);margin-top:6px;padding:6px 8px;background:#f0f9ff;border-radius:6px;border-left:3px solid #0284c7;">'
+                            f'<b style="color:#0369a1;">AI 解读：</b>{_exp2["confidence_meaning"]}<br>'
+                            f'{_exp2["stage_meaning"]}'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.caption(f"维科夫检测不可用：{w.get('error','')}")
+                else:
+                    st.caption("K线数据不足 120 根，无法检测吸筹结构")
+            except Exception as e:  # noqa: BLE001
+                st.caption(f"维科夫检测失败: {e}")
+
+        # ---------- Subtab 2：策略与风险 ----------
+        with t2:
+            # 交易策略（sniper + R 倍数分批减仓 + 杠杆）
+            st.markdown('<div class="section-title">🎯 交易策略</div>', unsafe_allow_html=True)
+            sniper = card.get("sniper", {}) or r.get("sniper", {})
+            if sniper:
+                c1, c2, c3, c4 = st.columns(4)
+                for col, (label, val, color) in zip([c1, c2, c3, c4], [
+                    ("理想买入", sniper.get("ideal_buy", "—"), "#2563eb"),
+                    ("二次加仓", sniper.get("second_buy", "—"), "#16a34a"),
+                    ("止损位", sniper.get("stop_loss", "—"), "#dc2626"),
+                    ("止盈逻辑", "分批减仓", "#f59e0b"),
+                ]):
+                    with col:
+                        st.markdown(f"<div class='card' style='text-align:center;border-top:3px solid {color};padding:10px;'><h4>{label}</h4><div style='font-size:14px;font-weight:700;color:{color};'>{val}</div></div>", unsafe_allow_html=True)
+
+                try:
+                    import risk as _risk
+                    _buy = _risk._num(sniper.get("ideal_buy") or r.get("收盘价"))
+                    _stop = _risk._num(sniper.get("stop_loss"))
+                    if _buy is not None and _stop is not None and _stop < _buy:
+                        _atr_v = safe_float(r.get("ATR"))
+                        plan = _risk.r_multiple_plan(_buy, _stop, current_price=price, atr=_atr_v or None)
+                        if plan.get("ok"):
+                            st.markdown("##### 📐 R 倍数分批止盈（垫厚利润）")
+                            st.caption("原逻辑：单一止盈目标一次性了结，容易卖飞或回吐。新逻辑：以入场风险 R 为单位，分三批兑现，边涨边垫高止损。")
+                            _s1, _s2, _s3 = plan["stages"]
+                            _trail = _s3.get("price")
+                            _ma20 = safe_float(r.get("MA20"))
+                            _trail_note = f"（≈ MA20 {_ma20:.2f}）" if _ma20 and _trail and _ma20 > _trail else ""
+                            _row = (
+                                f"<div class='card' style='padding:10px 12px;font-size:12px;'>"
+                                f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
+                                f"<span>入场风险 R</span><b>{plan['risk_pct']:.1f}% <span style='color:var(--text-dim);font-size:10px;'>(${plan['risk_r']:.2f})</span></b></div>"
+                                f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;color:var(--text-dim);'>"
+                                f"<span>当前盈亏</span><b style='color:{color_for_change(plan.get('current_pnl_pct', 0))};'>{plan.get('current_pnl_pct', 0):+.2f}% ({plan.get('current_pnl_R', 0):+.2f}R)</b></div>"
+                                f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
+                                f"<span>① +1R ({_s1['price_pct']:+.1f}%)</span><b style='color:#2563eb;'>{_s1['price']:.2f} · 减仓 1/3，止损上移至成本价</b></div>"
+                                f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
+                                f"<span>② +2R ({_s2['price_pct']:+.1f}%)</span><b style='color:#16a34a;'>{_s2['price']:.2f} · 再减 1/3，止损上移至 +1R</b></div>"
+                                f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
+                                f"<span>③ 剩余 1/3</span><b style='color:#f59e0b;'>{_s3['action']}</b></div>"
+                                f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;background:#fffbeb;padding:4px 6px;border-radius:6px;'>"
+                                f"<span style='color:#92400e;'>清仓触发价</span><b style='color:#b45309;'>{_trail:.2f}{_trail_note} · 回撤至此或跌破 MA20 即清仓</b></div>"
+                                f"<div style='font-size:11px;color:var(--accent);font-weight:600;margin-top:4px;'>▶ {plan.get('current_stage','')}</div>"
+                                f"</div>"
+                            )
+                            st.markdown(_row, unsafe_allow_html=True)
+                            st.caption("具体减仓价位点已标注：① 到 +1R 价减 1/3 并保本；② 到 +2R 价再减 1/3 并锁定 +1R；③ 剩余移动止损，回撤至清仓触发价或破 MA20 出局。")
+                except Exception as e:  # noqa: BLE001
+                    logger.debug("R 倍数计划生成失败: %s", e)
+
+            # 明日观察位（规则引擎 + AI 研判）
+            _render_tomorrow_watch(sym)
+
+            # 杠杆强平监控
+            lev = LEV_MAP.get(sym, {})
+            if lev and lev.get("details"):
+                st.markdown("##### ⚠️ 杠杆强平监控")
+                lev_cols = st.columns(len(lev["details"]))
+                for idx, (k, ld) in enumerate(lev["details"].items()):
+                    atr_mult = ld.get("距强平ATR倍数", 999)
+                    if isinstance(atr_mult, (int, float)):
+                        color = "#dc2626" if atr_mult < 3 else ("#f59e0b" if atr_mult < 6 else "#16a34a")
+                    else:
+                        color = "#9ca3af"
+                    with lev_cols[idx]:
+                        st.markdown(
+                            f"<div class='card' style='text-align:center;border-color:{color}40;padding:8px;'>"
+                            f"<h4>{k} 强平价</h4>"
+                            f"<div style='font-size:14px;font-weight:700;'>${ld.get('强平价', 'N/A')}</div>"
+                            f"<div style='font-size:11px;color:{color};font-weight:600;'>{atr_mult}x ATR</div>"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
+
+            # 催化剂 / 风险
+            cats = card.get("catalysts", [])
+            rsks = card.get("risks", [])
+            if cats or rsks:
+                c1, c2 = st.columns(2)
+                with c1:
+                    if cats:
+                        st.success("**🚀 利好**: " + " · ".join(cats))
+                with c2:
+                    if rsks:
+                        st.error("**⚠️ 风险**: " + " · ".join(rsks))
+
+        # ---------- Subtab 3：AI研判（新闻解读 + 下周走势 + 公告/龙虎榜）----------
+        with t3:
+            # 0) 宏观 + 政策新闻
+            macro_news_items = (NEWS_DATA.get("macro", []) if isinstance(NEWS_DATA, dict) else []) or []
+            policy_news_items = (NEWS_DATA.get("policy", []) if isinstance(NEWS_DATA, dict) else []) or []
+            if not macro_news_items and not policy_news_items:
+                with st.spinner("实时拉取宏观/政策新闻…"):
+                    try:
+                        macro_news_items = U.fetch_yahoo_rss(query="Federal Reserve")
+                        policy_news_items = U.fetch_policy_news_free(top_n=6)
+                    except Exception:  # noqa: BLE001
+                        pass
+            if macro_news_items or policy_news_items:
+                m1, m2 = st.columns(2)
+                with m1:
+                    st.markdown("##### 🌍 宏观新闻")
+                    for n in (macro_news_items or [])[:5]:
+                        st.markdown(
+                            f"<div class='news-card' style='padding:6px 10px;'>"
+                            f"<a href='{n.get('link','#')}' target='_blank' class='title' style='font-size:12px;'>{n.get('title','')}</a>"
+                            f"<div class='meta' style='font-size:10px;'>{n.get('source','')} · {n.get('date','')}</div>"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
+                with m2:
+                    st.markdown("##### 🏛️ 政策新闻")
+                    for n in (policy_news_items or [])[:5]:
+                        st.markdown(
+                            f"<div class='news-card' style='padding:6px 10px;'>"
+                            f"<a href='{n.get('link','#')}' target='_blank' class='title' style='font-size:12px;'>{n.get('title','')}</a>"
+                            f"<div class='meta' style='font-size:10px;'>{n.get('source','')} · {n.get('date','')}</div>"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
+                st.divider()
+
+            # 1) 个股新闻 + 近2日启发式解读
+            sym_news = []
+            if isinstance(NEWS_DATA, dict):
+                sym_news = (NEWS_DATA.get("stocks", {}) or {}).get(sel, []) if isinstance(NEWS_DATA.get("stocks"), dict) else []
+            if not sym_news:
+                with st.spinner(f"实时拉取 {sel} 新闻…"):
+                    if sel.endswith((".SS", ".SZ")):
+                        _em = U.fetch_eastmoney_stock_news(sel)
+                        sym_news = list(_em or [])
+                        if not sym_news:
+                            sym_news = U.fetch_10jqka_news(top_n=5) or U.fetch_xueqiu_news(top_n=5)
+                    else:
+                        sym_news = U.fetch_yahoo_rss(ticker=sel)
+                        if not sym_news and not sel.endswith(".HK"):
+                            sym_news = U.fetch_stocktwits(sel, limit=8)
+
+            interp = U.interpret_news(sel, sym_news, within_days=2)
+            n_l, n_r = st.columns([1, 1])
+            with n_l:
+                st.markdown("##### 🗞️ 新闻列表（近2日优先）")
+                if sym_news:
+                    for n in sym_news[:6]:
+                        st.markdown(
+                            f"<div class='news-card'>"
+                            f"<a href='{n.get('link', '#')}' target='_blank' class='title'>{n.get('title','')}</a>"
+                            f"<div class='meta'>{n.get('source','')} · {n.get('date','')}</div>"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
+                else:
+                    st.caption("暂无新闻（SerpApi/免费源 均未拉到）")
+            with n_r:
+                st.markdown("##### 🔍 近2日新闻解读（启发式）")
+                tone_color = {"看多": "#16a34a", "看空": "#dc2626", "中性": "#f59e0b", "信息不足": "#9ca3af"}.get(interp["tone"], "#9ca3af")
+                st.markdown(
+                    f"<div class='ai-box' style='border-left-color:{tone_color};'>"
+                    f"<div class='label' style='color:{tone_color};'>综合情绪：{interp['tone']}（净分 {interp['score']:+.2f}）</div>"
+                    f"{interp['summary']}"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+                if interp["positives"]:
+                    st.success("**偏多**: " + " · ".join(interp["positives"][:3]))
+                if interp["negatives"]:
+                    st.error("**偏空**: " + " · ".join(interp["negatives"][:3]))
+                st.caption("⚠️ 以上为基于标题关键词的机器启发式解读，非投顾建议。")
+
+            # 2) 下周走势预测
+            st.markdown("##### 🔮 下周走势预测")
+            pred_block = (PREDICTIONS_DATA.get("stocks", {}) or {}).get(sel, {}) if isinstance(PREDICTIONS_DATA, dict) else {}
+            if pred_block and pred_block.get("prediction"):
+                pred_md = pred_block["prediction"]
+                st.markdown(
+                    f'<div class="ai-box" style="border-left-color:#7c3aed;font-size:13px;line-height:1.7;">{pred_md.replace(chr(10), "<br>")}</div>',
+                    unsafe_allow_html=True,
+                )
+                tech = pred_block.get("technical", {})
+                if tech:
+                    st.caption(
+                        f"基线技术: ${tech.get('close', 0):.2f} · "
+                        f"RSI {tech.get('rsi', 0):.0f} · "
+                        f"ATR {tech.get('atr', 0):.2f}"
                     )
+            else:
+                st.caption("暂无预测（运行 `python stock_dashboard.py --predictions` 生成）")
 
-        # 催化剂 / 风险
-        cats = card.get("catalysts", [])
-        rsks = card.get("risks", [])
-        if cats or rsks:
-            c1, c2 = st.columns(2)
-            with c1:
-                if cats:
-                    st.success("**🚀 利好**: " + " · ".join(cats))
-            with c2:
-                if rsks:
-                    st.error("**⚠️ 风险**: " + " · ".join(rsks))
+            # 3) 公告 & 龙虎榜（新维度：巨潮官方公告 + 东财龙虎榜，A股）
+            if sym.endswith((".SS", ".SZ")):
+                st.markdown("##### 📋 个股公告（巨潮资讯网·官方）")
+                try:
+                    anns = U.fetch_cninfo_stock_announcements(sym, top_n=6)
+                    if anns:
+                        for a in anns[:6]:
+                            st.markdown(
+                                f"<div class='news-card'><a href='{a.get('link','#')}' target='_blank' class='title' style='font-size:12px;'>{a.get('title','')}</a>"
+                                f"<div class='meta' style='font-size:10px;'>{a.get('source','')} · {a.get('date','')}</div></div>",
+                                unsafe_allow_html=True,
+                            )
+                    else:
+                        st.caption("暂无公告")
+                except Exception as e:  # noqa: BLE001
+                    st.caption(f"⚠️ 公告加载失败: {e}")
+            else:
+                st.caption("ℹ️ 个股公告为 A股专属（巨潮官方源）。")
 
-    # ============== 右栏 ==============
+            st.markdown("##### 🐯 龙虎榜（全市场·上一交易日）")
+            try:
+                dt_list = U.fetch_dragon_tiger(top_n=15)
+                if dt_list:
+                    dt_rows = "".join(
+                        f"<div style='display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border);'>"
+                        f"<span><b>{d.get('name','')}</b> <span style='color:var(--text-dim);font-size:10px;'>{d.get('code','')}</span></span>"
+                        f"<span style='color:{color_for_change(safe_float(d.get('pct')))};font-weight:600;'>{safe_float(d.get('pct')):+.2f}%</span>"
+                        f"<span style='color:var(--text-dim);'>净买 {_rt_fmt_volume(d.get('net_buy') or 0)}</span>"
+                        f"</div>"
+                        for d in dt_list[:15]
+                    )
+                    st.markdown(f"<div class='card' style='font-size:12px;'>{dt_rows}</div>", unsafe_allow_html=True)
+                else:
+                    st.caption("暂无龙虎榜数据")
+            except Exception as e:  # noqa: BLE001
+                st.caption(f"⚠️ 龙虎榜加载失败: {e}")
+
     with right:
         if not sel:
             return
@@ -2151,7 +2481,7 @@ def page_stock_deepdive():
             else:
                 st.caption("暂无期权数据（由每日数据管线生成 data/options_pcr.json）")
 
-        # 下周走势预测已移至三栏下方的全宽区（见本函数末尾）
+        # 下周走势预测 + 新闻解读 + 公告/龙虎榜 已并入中栏「🧠 AI研判」Subtab
 
         # 市场上下文
         st.markdown("#### 🌍 市场上下文")
@@ -2160,121 +2490,9 @@ def page_stock_deepdive():
             st.markdown("**板块**: " + " · ".join(sectors))
         st.caption(f"VIX {safe_float(MACRO_DF.iloc[0].get('VIX'), 0) if MACRO_DF is not None and not MACRO_DF.empty else 0:.2f} · 10Y {safe_float(MACRO_DF.iloc[0].get('10年期美债收益率'), 0) if MACRO_DF is not None and not MACRO_DF.empty else 0:.2f}%")
 
-    # ============== 全宽区：新闻列表 + 近2日解读 + 下周走势（华尔街分析师排版） ==============
-    if sel:
-        st.divider()
-        st.markdown(
-            '<div class="section-title"><span class="accent">📰</span>'
-            '标的新闻 · 近2日解读 · 下周走势 · 宏观/政策</div>',
-            unsafe_allow_html=True,
-        )
-
-        # 0) 宏观 + 政策新闻（原新闻中心并入个股页）
-        macro_news_items = (NEWS_DATA.get("macro", []) if isinstance(NEWS_DATA, dict) else []) or []
-        policy_news_items = (NEWS_DATA.get("policy", []) if isinstance(NEWS_DATA, dict) else []) or []
-        if not macro_news_items and not policy_news_items:
-            with st.spinner("实时拉取宏观/政策新闻…"):
-                try:
-                    macro_news_items = U.fetch_yahoo_rss(query="Federal Reserve")
-                    policy_news_items = U.fetch_policy_news_free(top_n=6)
-                except Exception:  # noqa: BLE001
-                    pass
-        if macro_news_items or policy_news_items:
-            m1, m2 = st.columns(2)
-            with m1:
-                st.markdown("##### 🌍 宏观新闻")
-                for n in (macro_news_items or [])[:5]:
-                    st.markdown(
-                        f"<div class='news-card' style='padding:6px 10px;'>"
-                        f"<a href='{n.get('link','#')}' target='_blank' class='title' style='font-size:12px;'>{n.get('title','')}</a>"
-                        f"<div class='meta' style='font-size:10px;'>{n.get('source','')} · {n.get('date','')}</div>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-            with m2:
-                st.markdown("##### 🏛️ 政策新闻")
-                for n in (policy_news_items or [])[:5]:
-                    st.markdown(
-                        f"<div class='news-card' style='padding:6px 10px;'>"
-                        f"<a href='{n.get('link','#')}' target='_blank' class='title' style='font-size:12px;'>{n.get('title','')}</a>"
-                        f"<div class='meta' style='font-size:10px;'>{n.get('source','')} · {n.get('date','')}</div>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-        st.divider()
-
-        # 1) 拉取新闻（NEWS_DATA 缓存优先，否则实时免费源）
-        sym_news = []
-        if isinstance(NEWS_DATA, dict):
-            sym_news = (NEWS_DATA.get("stocks", {}) or {}).get(sel, []) if isinstance(NEWS_DATA.get("stocks"), dict) else []
-        if not sym_news:
-            with st.spinner(f"实时拉取 {sel} 新闻…"):
-                if sel.endswith((".SS", ".SZ")):
-                    # A 股：东方财富个股快讯（按个股精确过滤，已验证可用）为主源，
-                    # 失败降级同花顺/雪球全局快讯。巨潮官方「全市场公告」已在新闻中心大盘页提供。
-                    _em = U.fetch_eastmoney_stock_news(sel)
-                    sym_news = list(_em or [])
-                    if not sym_news:
-                        sym_news = U.fetch_10jqka_news(top_n=5) or U.fetch_xueqiu_news(top_n=5)
-                else:
-                    sym_news = U.fetch_yahoo_rss(ticker=sel)
-                    if not sym_news and not sel.endswith(".HK"):
-                        sym_news = U.fetch_stocktwits(sel, limit=8)
-
-        # 2) 启发式解读（确定性，无需密钥）
-        interp = U.interpret_news(sel, sym_news, within_days=2)
-
-        n_l, n_r = st.columns([1, 1])
-        with n_l:
-            st.markdown("##### 🗞️ 新闻列表（近2日优先）")
-            if sym_news:
-                for n in sym_news[:6]:
-                    st.markdown(
-                        f"<div class='news-card'>"
-                        f"<a href='{n.get('link', '#')}' target='_blank' class='title'>{n.get('title','')}</a>"
-                        f"<div class='meta'>{n.get('source','')} · {n.get('date','')}</div>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-            else:
-                st.caption("暂无新闻（SerpApi/免费源 均未拉到）")
-        with n_r:
-            st.markdown("##### 🔍 近2日新闻解读（启发式）")
-            tone_color = {"看多": "#16a34a", "看空": "#dc2626", "中性": "#f59e0b", "信息不足": "#9ca3af"}.get(interp["tone"], "#9ca3af")
-            st.markdown(
-                f"<div class='ai-box' style='border-left-color:{tone_color};'>"
-                f"<div class='label' style='color:{tone_color};'>综合情绪：{interp['tone']}（净分 {interp['score']:+.2f}）</div>"
-                f"{interp['summary']}"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
-            if interp["positives"]:
-                st.success("**偏多**: " + " · ".join(interp["positives"][:3]))
-            if interp["negatives"]:
-                st.error("**偏空**: " + " · ".join(interp["negatives"][:3]))
-            st.caption("⚠️ 以上为基于标题关键词的机器启发式解读，非投顾建议。")
-
-        # 3) 下周走势预测（全宽，正常排版，不再挤在右侧窄栏）
-        st.markdown("##### 🔮 下周走势预测")
-        pred_block = (PREDICTIONS_DATA.get("stocks", {}) or {}).get(sel, {}) if isinstance(PREDICTIONS_DATA, dict) else {}
-        if pred_block and pred_block.get("prediction"):
-            pred_md = pred_block["prediction"]
-            st.markdown(
-                f'<div class="ai-box" style="border-left-color:#7c3aed;font-size:13px;line-height:1.7;">{pred_md.replace(chr(10), "<br>")}</div>',
-                unsafe_allow_html=True,
-            )
-            tech = pred_block.get("technical", {})
-            if tech:
-                st.caption(
-                    f"基线技术: ${tech.get('close', 0):.2f} · "
-                    f"RSI {tech.get('rsi', 0):.0f} · "
-                    f"ATR {tech.get('atr', 0):.2f}"
-                )
-        else:
-            st.caption("暂无预测（运行 `python stock_dashboard.py --predictions` 生成）")
+    
 
 
-# ---------------------------------------------------------------------------
 # 页面：跨资产对比（修复版）
 # ---------------------------------------------------------------------------
 def page_cross_asset():
@@ -2731,9 +2949,8 @@ def _draw_kline(hist: pd.DataFrame, sym: str, with_volume: bool = True):
 
 
 # ---------------------------------------------------------------------------
-# 页面：实时行情监控（v3.3）
-# 特性：访客可增删股票（自动识别市场）、刷新频率可配置、fragment 局部自动刷新、
-#       多源降级 + 逐只容错、红涨绿跌、醒目最近更新时间。
+# 实时行情公共工具（被 Dashboard 结论区实时速览 + 个股深度实时盘口复用）
+# 说明：不再设独立「实时行情监控」页面（需求3：实时数据并入 Dashboard 与个股深度页）。
 # ---------------------------------------------------------------------------
 _RT_DEFAULT_WATCHLIST = ["688809.SS", "300408.SZ", "0700.HK", "07709.HK", "NVDA", "TSLA"]
 
@@ -2784,194 +3001,12 @@ def _rt_market_label(sym: str) -> str:
     return "🇺🇸"
 
 
-def _rt_live_area() -> None:
-    """实时区域：自动刷新只重跑本 fragment，页面控件不闪烁。
-    由页面底部 st.fragment(_rt_live_area, run_every=...) 注册（支持动态频率）。"""
-    from datetime import datetime, timezone, timedelta
-    syms = list(st.session_state.get("rt_watchlist", []))
-    if not syms:
-        st.info("👆 在上方输入框添加股票代码后，这里会自动开始实时监控。")
-        return
-    freq = st.session_state.get("rt_freq", 30)
-    with st.spinner("⏳ 拉取实时行情…"):
-        snaps = U.fetch_realtime_snapshots(syms)
-        trends = U.fetch_intraday_trends(syms)
-
-    now = datetime.now(timezone(timedelta(hours=8)))
-    ok_n = sum(1 for v in snaps.values() if v.get("ok"))
-    freq_txt = f"每 {freq} 秒" if freq else "手动刷新"
-    st.markdown(
-        f"<div style='display:flex;align-items:center;gap:10px;flex-wrap:wrap;"
-        f"background:rgba(103,232,249,.08);border:1px solid rgba(103,232,249,.25);"
-        f"border-radius:10px;padding:10px 14px;margin-bottom:12px;'>"
-        f"<span style='font-size:13px;'>⏱️ <b>最近更新 {now:%H:%M:%S}</b>（北京时间）</span>"
-        f"<span style='font-size:12px;color:var(--text-dim);'>数据源：腾讯 → 东财 → 新浪（自动降级）</span>"
-        f"<span style='font-size:12px;color:var(--text-dim);'>自动刷新：{freq_txt}</span>"
-        f"<span style='font-size:12px;color:{'#dc2626' if ok_n == len(syms) else '#f59e0b'};'>成功 {ok_n}/{len(syms)}</span>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-
-    # ---- 概览卡片（每只：代码+名称 / 最新价 / 涨跌幅）----
-    cards = []
-    for s in syms:
-        q = snaps.get(s, {})
-        if not q.get("ok"):
-            cards.append(
-                f"<div style='background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);"
-                f"border-radius:12px;padding:10px;text-align:center;'>"
-                f"<div style='font-size:11px;color:var(--text-dim);'>{_rt_market_label(s)} {s}</div>"
-                f"<div style='font-size:20px;font-weight:800;margin:4px 0;color:var(--text-dim);'>⚠️</div>"
-                f"<div style='font-size:10px;color:var(--text-dim);'>数据暂不可用</div></div>"
-            )
-            continue
-        c = color_for_change(safe_float(q.get("pct")))
-        cards.append(
-            f"<div style='background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);"
-            f"border-radius:12px;padding:10px;text-align:center;'>"
-            f"<div style='font-size:11px;color:var(--text-dim);'>{_rt_market_label(s)} {s} · {q.get('name','')}</div>"
-            f"<div style='font-size:20px;font-weight:800;margin:4px 0;color:{c};'>{safe_float(q.get('last')):.2f}</div>"
-            f"<div style='font-size:12px;font-weight:700;color:{c};'>{fmt_pct(safe_float(q.get('pct')))}</div>"
-            f"<div style='font-size:9px;color:var(--text-dim);margin-top:3px;'>{q.get('source','')} · {q.get('ts','')}</div>"
-            f"</div>"
-        )
-    st.markdown(
-        "<div style='display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;'>"
-        + "".join(cards) + "</div>",
-        unsafe_allow_html=True,
-    )
-    st.divider()
-
-    # ---- 明细表格 ----
-    rows = []
-    for s in syms:
-        q = snaps.get(s, {})
-        if not q.get("ok"):
-            rows.append({"代码": s, "名称": "⚠️ 数据暂不可用", "最新价": None, "涨跌额": None,
-                         "涨跌幅%": None, "今开": None, "最高": None, "最低": None, "昨收": None,
-                         "成交量": None, "成交额": None, "换手率%": None, "振幅%": None,
-                         "PE": None, "数据源": "—", "更新时间": "—"})
-            continue
-        rows.append({
-            "代码": s, "名称": q.get("name", ""), "最新价": q.get("last"),
-            "涨跌额": q.get("chg"), "涨跌幅%": q.get("pct"),
-            "今开": q.get("open"), "最高": q.get("high"), "最低": q.get("low"), "昨收": q.get("prev_close"),
-            "成交量": q.get("volume"), "成交额": q.get("amount"),
-            "换手率%": q.get("turnover"), "振幅%": q.get("amplitude"), "PE": q.get("pe"),
-            "数据源": q.get("source", ""), "更新时间": str(q.get("ts", ""))[:19],
-        })
-    df = pd.DataFrame(rows)
-    if not df.empty:
-        try:
-            styled = (
-                df.style
-                .format({"最新价": "{:.2f}", "涨跌额": "{:+.2f}", "涨跌幅%": "{:+.2f}",
-                         "今开": "{:.2f}", "最高": "{:.2f}", "最低": "{:.2f}", "昨收": "{:.2f}",
-                         "换手率%": "{:.2f}", "振幅%": "{:.2f}", "PE": "{:.1f}",
-                         "成交量": _rt_fmt_volume, "成交额": _rt_fmt_volume})
-                .map(lambda v: "color:#dc2626;font-weight:700;" if isinstance(v, (int, float)) and v > 0 else (
-                     "color:#16a34a;font-weight:700;" if isinstance(v, (int, float)) and v < 0 else ""),
-                     subset=["涨跌额", "涨跌幅%"])
-            )
-            st.dataframe(styled, use_container_width=True, height=min(420, 60 + 34 * len(df)))
-        except Exception:  # noqa: BLE001
-            st.dataframe(df, use_container_width=True)
-
-    # ---- 当日分时图（相对昨收 %，多只叠加）----
-    st.markdown('<div class="section-title">📈 当日分时走势（相对昨收 %）</div>', unsafe_allow_html=True)
-    has_trend = False
-    fig = go.Figure()
-    for s in syms:
-        tdf = trends.get(s)
-        if tdf is None or tdf.empty:
-            continue
-        q = snaps.get(s, {})
-        prev = q.get("prev_close")
-        if not prev:
-            continue
-        has_trend = True
-        series = (tdf["price"] / float(prev) - 1.0) * 100.0
-        color = "#dc2626" if safe_float(q.get("pct")) >= 0 else "#16a34a"
-        fig.add_trace(go.Scatter(x=tdf["time"], y=series, mode="lines", name=s,
-                                 line=dict(color=color, width=1.6)))
-    if has_trend:
-        fig.update_layout(
-            height=380, margin=dict(l=0, r=0, t=10, b=0),
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#9ca3af", size=11),
-            xaxis=dict(gridcolor="rgba(255,255,255,.06)", title=""),
-            yaxis=dict(gridcolor="rgba(255,255,255,.06)", title="涨跌幅 %", ticksuffix="%"),
-            hovermode="x unified", legend=dict(orientation="h", y=-0.22),
-        )
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    else:
-        st.caption("🕐 暂无分时数据（非交易时段，或该市场无免费分时源）")
-
-
-def page_realtime_monitor() -> None:
-    st.markdown('<div class="section-title"><span class="accent">📡</span>实时行情监控 · 多市场多标的 · 自动刷新</div>',
-                unsafe_allow_html=True)
-    st.caption("支持 A股 / 港股 / 美股，访客可自行添加或删除代码；数据来自腾讯/东财/新浪免费接口，多源自动降级。")
-
-    # ---- 状态（fragment 外，避免自动刷新打断交互）----
-    if "rt_watchlist" not in st.session_state:
-        st.session_state.rt_watchlist = list(_RT_DEFAULT_WATCHLIST)
-    if "rt_freq" not in st.session_state:
-        st.session_state.rt_freq = 30
-
-    c1, c2, c3 = st.columns([2.0, 1.3, 1.0])
-    with c1:
-        new_raw = st.text_input(
-            "➕ 添加股票", placeholder="如 600519 / 688809 / 0700.HK / 7709 / NVDA，回车添加",
-            key="rt_add_input",
-        )
-        if new_raw.strip():
-            sym = _rt_normalize_input(new_raw)
-            if sym is None:
-                st.warning("⚠️ 无法识别该代码（A股 6 位数字、港股 4/5 位数字、美股字母代码）")
-            elif sym in st.session_state.rt_watchlist:
-                st.info(f"`{sym}` 已在监控列表")
-            else:
-                st.session_state.rt_watchlist.append(sym)
-                st.rerun()
-    with c2:
-        freq_map = {"15 秒": 15, "30 秒": 30, "1 分钟": 60, "2 分钟": 120, "关闭": None}
-        freq_label = st.selectbox("⏱️ 自动刷新", list(freq_map), index=1, key="rt_freq_sel")
-        st.session_state.rt_freq = freq_map[freq_label]
-    with c3:
-        if st.button("🔄 重置默认列表", use_container_width=True):
-            st.session_state.rt_watchlist = list(_RT_DEFAULT_WATCHLIST)
-            st.rerun()
-        st.caption(f"当前 {len(st.session_state.rt_watchlist)} 只 · 每访客独立")
-
-    # 删除区
-    if st.session_state.rt_watchlist:
-        with st.expander(f"🗑️ 删除股票（当前 {len(st.session_state.rt_watchlist)} 只）", expanded=False):
-            del_col, btn_col = st.columns([4, 1])
-            with del_col:
-                del_syms = st.multiselect("勾选要删除的标的", st.session_state.rt_watchlist, key="rt_del_sel")
-            with btn_col:
-                st.write("")
-                st.write("")
-                if st.button("确认删除", use_container_width=True, type="primary", key="rt_del_btn"):
-                    st.session_state.rt_watchlist = [s for s in st.session_state.rt_watchlist if s not in del_syms]
-                    st.rerun()
-
-    st.divider()
-
-    # ---- 实时区（fragment：自动刷新仅重跑此区域，频率可动态配置）----
-    st.fragment(_rt_live_area, run_every=st.session_state.rt_freq)()
-
-
-# ---------------------------------------------------------------------------
 # 路由
 # ---------------------------------------------------------------------------
 if page == "🏠 Dashboard":
     page_dashboard()
 elif page == "🔍 个股深度分析":
     page_stock_deepdive()
-elif page == "📡 实时行情监控":
-    page_realtime_monitor()
 elif page == "📊 跨资产对比":
     page_cross_asset()
 elif page == "📰 新闻中心":
