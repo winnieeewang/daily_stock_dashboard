@@ -45,6 +45,10 @@ SECRET_KEYS: List[str] = [
     "DEEPSEEK_API_KEY",   # DeepSeek AI 研判（主通道）
     "OPENROUTER_API_KEY", # OpenRouter 兜底（Claude 3.5 Sonnet）
     "SERPAPI",            # SerpApi 新闻增强（100/月免费）
+    "HITHINK_FINANCE_API_KEY",  # 同花顺 Financial-API（A股实时最高优先级，云端配 Secrets 即生效）
+    "USE_FUTU",                 # 富途 OpenD 开关（仅本地/公网 OpenD 网关可用）
+    "FUTU_OPEND_HOST",          # 富途 OpenD 主机（默认 127.0.0.1；公网部署时填云服务器 IP）
+    "FUTU_OPEND_PORT",          # 富途 OpenD 端口（默认 11111）
 ]
 
 # 运行「必需」与「可选增强」分离：缺失必需项直接报错；缺失可选项降级

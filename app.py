@@ -492,7 +492,7 @@ with st.sidebar:
     st.divider()
     page = st.radio(
         "导航",
-        ["🏠 Dashboard", "🔍 个股深度分析", "📊 跨资产对比"],
+        ["🏠 Dashboard", "🔍 个股深度分析", "📊 跨资产对比", "📖 使用说明"],
         label_visibility="collapsed",
         key="nav_radio",
     )
@@ -912,8 +912,8 @@ def _render_conclusion_zone() -> None:
     risk_syms = []
     with c3:
         st.markdown('<div class="card"><h4>🔴 Top 风险</h4>', unsafe_allow_html=True)
+        risks = []
         if STOCKS_DF is not None and not STOCKS_DF.empty:
-            risks = []
             tmp = STOCKS_DF.copy()
             if "RSI_14" in tmp.columns:
                 for _, r in tmp[tmp["RSI_14"] > 70].head(3).iterrows():
@@ -926,16 +926,14 @@ def _render_conclusion_zone() -> None:
                 if lev.get("综合风险等级") == "高" and not any(s == sym for s, *_ in risks):
                     risks.append((sym, "杠杆高危", "⚠️"))
                     risk_syms.append(sym)
-            for sym, msg, ic in risks[:6]:
-                st.markdown(
-                    f"<div class='stock-row' style='display:flex;justify-content:space-between;align-items:center;'><span><b>{sym}</b> · {msg}</span><span>{ic}</span></div>",
-                    unsafe_allow_html=True,
-                )
-            if not risks:
-                st.caption("当前无显著风险信号")
-            else:
-                st.caption("暂无数据")
-            st.markdown("</div>", unsafe_allow_html=True)
+        for sym, msg, ic in risks[:6]:
+            st.markdown(
+                f"<div class='stock-row' style='display:flex;justify-content:space-between;align-items:center;'><span><b>{sym}</b> · {msg}</span><span>{ic}</span></div>",
+                unsafe_allow_html=True,
+            )
+        if not risks:
+            st.caption("当前无显著风险信号（无 RSI>70 / 跌幅领先 / 杠杆高危）")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # 冲突说明（Top 机会 与 Top 风险 同现）
     _conflict = sorted(set(top_syms) & set(risk_syms))
@@ -957,7 +955,11 @@ def _render_conclusion_zone() -> None:
     st.markdown('</div>', unsafe_allow_html=True)  # close .conclusion-zone
 
     # 实时速览（集成实时行情，自动刷新）
-    st.fragment(_rt_dash_strip, run_every=30)()
+    try:
+        st.fragment(_rt_dash_strip, run_every=30)()
+    except Exception as _e:  # noqa: BLE001
+        logger.exception("实时速览 fragment 失败: %s", _e)
+        st.caption(f"📡 实时速览暂不可用: {_e}")
 
 
 def _render_macro_tab() -> None:
@@ -1365,27 +1367,27 @@ def _render_structure_tab() -> None:
 
     # --- A股 ---
     with seg_cn:
-        if U.akshare_available():
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.markdown('<div class="card"><h4>📈 A股主指数</h4>', unsafe_allow_html=True)
-                with st.spinner("akshare 拉取 A股…"):
-                    cn_overview = U.fetch_a_share_overview()
-                if cn_overview.get("error"):
-                    st.caption(f"⚠️ {cn_overview['error']}")
-                for idx in cn_overview.get("indices", [])[:8]:
-                    name = idx.get("名称", "")
-                    px = float(idx.get("最新价", 0) or 0)
-                    chg = float(idx.get("涨跌幅", 0) or 0)
-                    color = "#dc2626" if chg > 0 else ("#16a34a" if chg < 0 else "var(--text-dim)")
-                    st.markdown(
-                        f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">'
-                        f'<span>{name}</span>'
-                        f'<span><b>{px:.2f}</b> <span style="color:{color};font-weight:600;">{chg:+.2f}%</span></span>'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
-                st.markdown("</div>", unsafe_allow_html=True)
+        # 不再硬性依赖 akshare：fetch_a_share_overview 内部已多源降级（东财 push2 → 腾讯 gtimg → akshare）
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown('<div class="card"><h4>📈 A股主指数</h4>', unsafe_allow_html=True)
+            with st.spinner("拉取 A股实时行情…"):
+                cn_overview = U.fetch_a_share_overview()
+            if cn_overview.get("error"):
+                st.caption(f"⚠️ {cn_overview['error']}")
+            for idx in cn_overview.get("indices", [])[:8]:
+                name = idx.get("名称", "")
+                px = float(idx.get("最新价", 0) or 0)
+                chg = float(idx.get("涨跌幅", 0) or 0)
+                color = "#dc2626" if chg > 0 else ("#16a34a" if chg < 0 else "var(--text-dim)")
+                st.markdown(
+                    f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">'
+                    f'<span>{name}</span>'
+                    f'<span><b>{px:.2f}</b> <span style="color:{color};font-weight:600;">{chg:+.2f}%</span></span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            st.markdown("</div>", unsafe_allow_html=True)
             with c2:
                 st.markdown('<div class="card"><h4>📊 A股情绪</h4>', unsafe_allow_html=True)
                 adv = cn_overview.get("advance") or cn_overview.get("上涨")
@@ -1435,8 +1437,6 @@ def _render_structure_tab() -> None:
                                 unsafe_allow_html=True,
                             )
                 st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ A股 实时数据需要 `akshare` 库。requirements.txt 已包含 `akshare>=1.13.0`，重新部署即可。")
 
     # --- 港股 ---
     with seg_hk:
@@ -3001,6 +3001,158 @@ def _rt_market_label(sym: str) -> str:
     return "🇺🇸"
 
 
+# ---------------------------------------------------------------------------
+# 使用说明（面向非专业用户）
+# ---------------------------------------------------------------------------
+def page_usage_guide() -> None:
+    """📖 使用说明：通俗使用指南 + AI分析额度警示 + 订阅引导 + 功能现状 + 数据层构成。"""
+    st.markdown('<div class="layer-badge concl">📖 使用说明 — 写给不太懂投资的你</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="conclusion-zone" style="font-size:13.5px;line-height:1.9;color:var(--text);">'
+        '本系统是一个 <b>投资研究辅助工具</b>：把行情、新闻、宏观、技术指标汇总到一个面板里，'
+        '帮你快速看清「今天市场怎么了、哪些股票值得关注、风险在哪」。<br>'
+        '请记住：<b>它只做信息和数据整理，不构成任何投资建议</b>，最终买卖决策由你自己负责。'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # 1) 怎么用
+    st.markdown("### 🧭 一、三步上手（不用懂术语也能看）", unsafe_allow_html=True)
+    _guide = [
+        ("🏠 Dashboard（总览）", "打开默认就是这个页。先看最上面的<b>结论区</b>（今天该关注什么、机会、风险），"
+                                 "再点下面的标签（宏观 / 结构 / 事件 / 研判）看细节。"),
+        ("🔍 个股深度分析", "在左侧输入股票代码（例如美股 <code>AAPL</code>、港股 <code>0700.HK</code>、A股 <code>600519.SH</code>），"
+                            "就能看到它的 K线、买卖策略、风险位、新闻解读。"),
+        ("📊 跨资产对比", "把几只股票放在一起比强弱、比估值，适合纠结「买哪只」的时候。"),
+    ]
+    for title, desc in _guide:
+        st.markdown(
+            f'<div class="card" style="background:var(--card);border:1px solid var(--border);'
+            f'border-left:4px solid var(--accent);padding:14px 16px;margin:10px 0;border-radius:12px;">'
+            f'<h4 style="margin:0 0 6px;color:var(--text);">{title}</h4>'
+            f'<div style="color:var(--text-dim);font-size:13px;line-height:1.8;">{desc}</div></div>',
+            unsafe_allow_html=True,
+        )
+    st.caption("💡 小提示：本系统遵循「红涨绿跌」的中国习惯。数据由 GitHub 每日自动更新；点左侧「🔄 强制刷新数据」可手动清缓存。")
+
+    # 2) AI分析 额度警示
+    st.markdown("### ⚠️ 二、重要提醒：请谨慎点击「🤖 AI分析」按钮", unsafe_allow_html=True)
+    st.markdown(
+        '<div style="background:#fff7ed;border:1px solid #fed7aa;border-left:4px solid #f59e0b;'
+        'border-radius:12px;padding:16px 18px;margin:10px 0;font-size:13.5px;line-height:1.9;color:#7c2d12;">'
+        '系统里凡带 <b>「🤖 生成 AI 研判」</b> 字样的按钮（个股深度分析、维科夫吸筹扫描等），'
+        '每点一次都会调用大模型（DeepSeek / OpenRouter），<b>消耗真实的 API 额度（token）</b>，是有成本的。<br><br>'
+        '📌 <b>请遵守以下约定：</b><br>'
+        '① <b>非必要请勿点击</b> AI 分析按钮；<br>'
+        '② 大多数时候，页面上的「结论区 / 结构化指标 / 规则解读」已经足够你做判断，<b>不必点 AI</b>；<br>'
+        '③ 若没有配置大模型 Key，系统会自动降级为「规则总结」，<b>不消耗额度</b>——这时点了也不会多花钱，但也没必要。<br><br>'
+        '简单说：<b>能看结构化结论就别点 AI，把额度留给真正需要的时候。</b>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # 3) 订阅引导（王妍君 红包）
+    st.markdown("### 💝 三、如何订阅 / 续费（解锁 AI 研判与 AI 评分）", unsafe_allow_html=True)
+    st.markdown(
+        '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #16a34a;'
+        'border-radius:12px;padding:16px 18px;margin:10px 0;font-size:13.5px;line-height:1.9;color:#14532d;">'
+        '本系统的 AI 研判、AI 评分等高级能力由大模型驱动，<b>消耗 API 额度</b>。<br><br>'
+        '如需长期使用，请通过微信向 <b>「王妍君」</b> 发送红包完成订阅 / 续费，'
+        '订阅后即可获得（或延长）<b>API 额度配额</b>，解锁全部 AI 功能。<br><br>'
+        '📮 订阅流程：微信 → 找到「王妍君」 → 发红包并留言你的使用需求 → 等待配额开通。<br>'
+        '<span style="color:#166534;">未订阅时，系统仍可用，但 AI 相关功能会降级为规则总结，不影响基础行情与指标查看。</span>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # 4) 功能现状说明（港股/A股缺AI评分、K线非实时）
+    st.markdown("### 📋 四、功能现状说明（已知限制与改进方向）", unsafe_allow_html=True)
+
+    with st.expander("❓ 为什么港股 / A股 板块缺少 AI 评分及相关数据？", expanded=True):
+        st.markdown(
+            '<div style="font-size:13px;line-height:1.9;color:var(--text);">'
+            '<b>现象：</b>在「结论区 → Top机会(Top 5)」与个股深度分析中，<b>港股(.HK)、A股(.SS/.SZ) 往往没有 AI 评分</b>，'
+            '且部分相关计算（个股期权 PCR、杠杆强平价、AI 决策卡片）也缺失或不完整。<br><br>'
+            '<b>根本原因：</b>AI 评分来自每日数据管线 <code>stock_dashboard.py</code> 调用大模型，'
+            '但只对「<b>成功取到技术数据的标的</b>」生成卡片。而港股 / A股的<b>日线历史数据唯一免费源是 akshare（东方财富系）</b>'
+            '（见 <code>stock_dashboard.py</code> 的 <code>fetch_hk / fetch_a_share</code>）。'
+            '在云端 CI / Streamlit Cloud（美国节点）上，akshare 常因<b>未安装</b>或<b>中国数据端点不可达</b>而失败，'
+            '回退到 yfinance 对 <code>.HK/.SS/.SZ</code> 多返回空 → 这些标的在内存里是 <code>None</code> → '
+            '<b>既不写入 stocks.csv，也不生成 AI 卡片</b>。于是整块 AI 评分及相关数据都缺了。<br><br>'
+            '<b>改进方向：</b><br>'
+            '① 在 CI 中预装 akshare，并配置可访问中国数据源的网络 / 代理；<br>'
+            '② 为港股 / A股 接入<b>富途 OpenD</b> 或<b>同花顺 Financial-API</b>（需本地运行或 API Key）作为技术数据源；<br>'
+            '③ 对港股 / A股 单独批次调用大模型生成 AI 卡片（不依赖美股同批次）。'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    with st.expander("❓ 为什么 K线图不是实时数据？", expanded=True):
+        st.markdown(
+            '<div style="font-size:13px;line-height:1.9;color:var(--text);">'
+            '<b>现象：</b>个股深度分析的 K线图，最新一根蜡烛是<b>上一交易日的收盘</b>，盘中不跳动。<br><br>'
+            '<b>根本原因：</b>主 K线（<code>_draw_kline</code>）使用的是<b>日K（日线）</b>数据'
+            '（yfinance <code>interval=\"1d\"</code> 或 akshare 日线），本质是 T+1 的历史收盘，'
+            '天然不含盘中实时。实时盘中走势目前只在「📈 K线技术面 → 当日分时」里以折线呈现'
+            '（<code>fetch_intraday_trend</code>，美股 / A股 / 港股均有，港股 / A股依赖东财 / 腾讯分时源）。<br><br>'
+            '<b>改进方向：</b><br>'
+            '① 接入<b>富途 OpenD</b> / <b>同花顺</b> 的分钟级行情，补全实时蜡烛；<br>'
+            '② 将「当日分时」升级为<b>实时刷新蜡烛图</b>（需要分钟级 tick 数据源，通常为付费或本地通道）。'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    # 5) 数据层构成清单
+    st.markdown("### 🧱 五、本系统的数据层由哪些模块构成？", unsafe_allow_html=True)
+    st.markdown(
+        '<div style="font-size:12.5px;line-height:1.85;color:var(--text-dim);margin-bottom:8px;">'
+        '下面按职责列出全部数据模块（函数名在 <code>utils.py</code> / <code>stock_dashboard.py</code> 中可查）。'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    _layers = [
+        ("① 宏观数据层", "利率 / 杠杆 / 波动率 / 期权情绪",
+         "fetch_fred_linkage_series、fetch_us_debt、fetch_nfci_leverage、fetch_margin_debt（含 FINRA Margin Debt）、"
+         "fetch_2y_scorecard、fetch_options_pcr / fetch_all_pcr"),
+        ("② 新闻舆情层", "宏观 / 政策 / 个股 / 公告 / 龙虎榜",
+         "fetch_macro_news、fetch_policy_news（含免费版）、fetch_all_news、fetch_google_news_rss、"
+         "fetch_stock_news、fetch_eastmoney_stock_news、fetch_cninfo_market_announcements、"
+         "fetch_cninfo_stock_announcements、fetch_dragon_tiger、fetch_10jqka_news、fetch_xueqiu_news、interpret_news"),
+        ("③ 行情与实时层", "实时报价 / 速览 / 分时 / 盘口 / 逐笔",
+         "fetch_realtime_quote（东财→腾讯→新浪多源）、fetch_realtime_snapshots、fetch_intraday_trend、"
+         "fetch_order_book（五档盘口）、fetch_tick_detail（逐笔成交）"),
+        ("④ A股数据层", "指数 / 热力图 / K线 / 个股报价 / 资金流",
+         "fetch_a_share_overview（东财→腾讯→akshare 降级）、fetch_a_share_heatmap_data、fetch_a_share_kline、"
+         "fetch_a_share_quote、fetch_a_share_top_movers、fetch_capital_flow_eastmoney（主力资金）"),
+        ("⑤ 港股数据层", "港股日线 / 实时报价",
+         "stock_dashboard.fetch_hk（akshare）、fetch_realtime_quote 的港股分支（东财→腾讯→新浪）"),
+        ("⑥ 美股 / ETF 数据层", "历史 K线 / 新闻 / 指数",
+         "fetch_history_fixed（yfinance）、fetch_yahoo_rss、fetch_finnhub_news、fetch_stocktwits、fetch_index_quote"),
+        ("⑦ 技术指标与评分层", "组合 / 宏观风险 / 选股 / 明日观察位",
+         "compute_portfolio_dominance、compute_macro_risk_radar、screener（维科夫 + 多因子）、"
+         "BottomFishingEngine、ReversalAnalyzer、compute_tomorrow_watch、risk.r_multiple_plan（R倍数止盈）"),
+        ("⑧ AI 研判层", "大模型自然语言生成（DeepSeek / OpenRouter）",
+         "_call_llm、narrate_tomorrow_watch、build_prediction_prompt、build_morning_brief_prompt、"
+         "render_morning_brief、generate_overview、generate_cards（AI 评分卡片）"),
+        ("⑨ 数据管线 / 持久化层", "每日 CI 生成静态数据文件",
+         "stock_dashboard.collect_all / _fetch_stock_parallel / _persist；产物：stocks.csv、macro.csv、"
+         "sox.csv、cards.json、leverage_risk.json、morning_brief.md、evening_recap.md"),
+        ("⑩ 外部增强层（可选）", "本地 / Key 增强，缺失不影响主流程",
+         "fetch_realtime_via_futu（富途 OpenD，需本地进程）、fetch_realtime_via_ths / utils_ths.py（同花顺，需 API Key）"),
+    ]
+    for name, duty, fns in _layers:
+        st.markdown(
+            f'<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;'
+            f'padding:12px 14px;margin:8px 0;">'
+            f'<div style="font-weight:700;color:var(--text);font-size:13.5px;">{name}'
+            f'<span style="font-weight:400;color:var(--accent);font-size:12px;margin-left:8px;">· {duty}</span></div>'
+            f'<div style="color:var(--text-dim);font-size:12px;line-height:1.7;margin-top:4px;">'
+            f'<code style="font-size:11px;">{fns}</code></div></div>',
+            unsafe_allow_html=True,
+        )
+    st.caption("⚠️ 投资有风险，本系统所有数据与 AI 结论仅供参考，不构成投资建议。")
+
+
 # 路由
 # ---------------------------------------------------------------------------
 if page == "🏠 Dashboard":
@@ -3011,6 +3163,8 @@ elif page == "📊 跨资产对比":
     page_cross_asset()
 elif page == "📰 新闻中心":
     page_news_center()
+elif page == "📖 使用说明":
+    page_usage_guide()
 elif page == "⚙️ 数据诊断":
     page_diagnostics()
 

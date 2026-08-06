@@ -2018,10 +2018,13 @@ def fetch_realtime_via_ths(symbol: str) -> Dict[str, Any]:
         return out
     try:
         import utils_ths as THS
-        if not THS.ths_available:
+        # 双路读取 key：os.environ 优先，其次 Streamlit Cloud Secrets（st.secrets）；
+        # 保证云端在 Settings→Secrets 配了 HITHINK_FINANCE_API_KEY 后即生效。
+        _key = _get_secret("HITHINK_FINANCE_API_KEY")
+        if not _key and not THS.ths_available:
             out["error"] = "no_key"
             return out
-        res = THS.fetch_ths_quote([symbol])
+        res = THS.fetch_ths_quote([symbol], api_key=_key)
         d = res.get(symbol) if isinstance(res, dict) else None
         if not d or d.get("price") is None:
             out["error"] = "empty"
@@ -3221,13 +3224,51 @@ def akshare_available() -> bool:
     return _AKSHARE_AVAILABLE
 
 
+def _fetch_a_share_indices_tencent() -> List[Dict[str, Any]]:
+    """腾讯 gtimg A股指数行情（非东方财富源，东方财富整体限流时作降级）。
+
+    接口: https://qt.gtimg.cn/q=sh000001,sz399001,... 返回 v_sh000001="1~上证指数~000001~现价~昨收~今开~...~涨跌%~..."
+    字段以 ~ 分隔: [1]=名称 [3]=最新价 [32]=涨跌幅%
+    """
+    codes = [
+        ("sh000001", "上证指数"), ("sz399001", "深证成指"), ("sz399006", "创业板指"),
+        ("sh000300", "沪深300"), ("sh000905", "中证500"), ("sh000688", "科创50"),
+    ]
+    try:
+        q = ",".join(c for c, _ in codes)
+        url = f"https://qt.gtimg.cn/q={q}"
+        txt = requests.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0", "Referer": "https://gu.qq.com/"},
+            timeout=8,
+        ).text
+        rows: List[Dict[str, Any]] = []
+        for line in txt.replace("\n", ";").split(";"):
+            if "v_" not in line or "=" not in line:
+                continue
+            payload = line.split("=", 1)[1].strip().strip('"')
+            f = payload.split("~")
+            if len(f) < 33:
+                continue
+            try:
+                last = float(f[3])
+                pct = float(f[32])
+            except (ValueError, IndexError):
+                continue
+            rows.append({"名称": f[1], "最新价": round(last, 2), "涨跌幅": round(pct, 2)})
+        return rows
+    except Exception as e:  # noqa: BLE001
+        logger.debug("腾讯 A股指数失败: %s", e)
+        return []
+
+
 def fetch_a_share_overview() -> Dict[str, Any]:
     """
     A股市场全景：
       - 上证综指 / 深证成指 / 创业板 / 沪深 300 / 中证 500 / 科创 50 实时行情
       - 涨/平/跌家数
       - 北向资金净流入
-    优先：东方财富单只指数接口（快、稳）；降级：akshare 全市场快照。
+    优先级（多源降级）：东方财富 push2 → 腾讯 gtimg → akshare（东方财富整体限流时腾讯可补）。
     """
     out: Dict[str, Any] = {"indices": [], "advance": None, "decline": None, "north_flow": None, "asof": ""}
     # 1) 东财单只指数（首选）
@@ -3248,7 +3289,10 @@ def fetch_a_share_overview() -> Dict[str, Any]:
             out["indices"] = rows[:8]
     except Exception as e:  # noqa: BLE001
         logger.debug("东财 A股指数失败: %s", e)
-    # 2) akshare 降级（仅当东财无结果时）
+    # 1.5) 腾讯 gtimg（非东财源，东方财富整体限流/断连时降级）
+    if not out["indices"]:
+        out["indices"] = _fetch_a_share_indices_tencent()
+    # 2) akshare 降级（仅当东财+腾讯 都无结果时）
     if not out["indices"]:
         if not _AKSHARE_AVAILABLE:
             out["error"] = "akshare 未安装（pip install akshare）"
@@ -3261,7 +3305,7 @@ def fetch_a_share_overview() -> Dict[str, Any]:
                 out["indices"] = df.head(8).to_dict(orient="records")
         except Exception as e:  # noqa: BLE001
             logger.warning("akshare 指数失败: %s", e)
-            out["error"] = str(e)
+            out["error"] = f"东财/腾讯/akshare 全部失败: {e}"
     # 3) 涨跌家数（仅 akshare 有，尽力而为）
     if _AKSHARE_AVAILABLE:
         try:

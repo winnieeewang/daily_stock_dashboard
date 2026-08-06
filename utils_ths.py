@@ -82,16 +82,23 @@ def _throttle() -> None:
     _LAST_CALL_TS = time.time()
 
 
-def _ths_get(path: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+def _resolve_key(api_key: Optional[str] = None) -> str:
+    """解析同花顺 key：调用方传入优先，其次模块级 THS_API_KEY 缓存。"""
+    return (api_key or THS_API_KEY or "").strip()
+
+
+def _ths_get(path: str, params: Optional[Dict[str, Any]] = None, api_key: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """
     GET 同花顺 REST，返回 payload["data"]，出错返回 None（不抛）。
-    错误写入 logger 而非传播——调用方应通过 ths_available 与返回值联合判断。
+    错误写入 logger 而非传播——调用方应通过返回值判断。
+    api_key 为空时回退模块级 THS_API_KEY；两者皆空则直接返回 None。
     """
-    if not ths_available:
+    key = _resolve_key(api_key)
+    if not key:
         return None
     clean = {k: v for k, v in (params or {}).items() if v is not None}
     url = f"{THS_BASE_URL}{path}"
-    headers = {"X-api-key": THS_API_KEY, "User-Agent": "Winnie-Dashboard/1.0"}
+    headers = {"X-api-key": key, "User-Agent": "Winnie-Dashboard/1.0"}
     last_exc: Optional[Exception] = None
     for attempt in range(THS_MAX_RETRIES):
         try:
@@ -127,20 +134,21 @@ def _ths_get(path: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dic
 # 高层封装
 # ---------------------------------------------------------------------------
 
-def fetch_ths_quote(symbols: Iterable[str]) -> Dict[str, Dict[str, Any]]:
+def fetch_ths_quote(symbols: Iterable[str], api_key: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
     """
     A 股实时行情快照（多标的）。
     输入 yfinance 代码列表（"600519.SS" / "000001.SZ"），返回 {yf_code: {price, open, high, low, prev_close, chg, chg_pct, volume, turnover, ts}}。
+    api_key 可选：调用方传入时优先于模块级 THS_API_KEY（便于 Streamlit Cloud 运行时注入）；
     无 key / 失败 → 返回空 dict。
     """
-    if not ths_available:
+    if not _resolve_key(api_key):
         return {}
     sym_list = list(dict.fromkeys(symbols))  # 保序去重
     if not sym_list:
         return {}
     ths_codes = [yf_to_ths(s) for s in sym_list]
     joined = ",".join(ths_codes)
-    data = _ths_get("/api/a-share/prices/snapshot", {"thscodes": joined})
+    data = _ths_get("/api/a-share/prices/snapshot", {"thscodes": joined}, api_key=api_key)
     if not isinstance(data, dict) or not data:
         return {}
     out: Dict[str, Dict[str, Any]] = {}
