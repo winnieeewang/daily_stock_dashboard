@@ -56,60 +56,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(
 logger = logging.getLogger("copilot_app")
 
 # ---------------------------------------------------------------------------
-# 主题（深色模式 Phase 3）：侧边栏切换，动态注入 CSS 变量覆盖
+# Plotly 图表统一输出
 # ---------------------------------------------------------------------------
-if "dark_mode" not in st.session_state:
-    st.session_state.dark_mode = False
-
-DARK_CSS = """
-<style>
-    :root {
-        --bg: #0a0a0a;          /* Bloomberg 黑底 */
-        --card: #12151c;
-        --border: #262b36;
-        --text: #e5e7eb;
-        --text-dim: #9ca3af;
-        --accent: #00ff9d;      /* 青绿 */
-        --up: #ff4d4f;          /* 涨 → 红（保留中国习惯） */
-        --down: #00e676;        /* 跌 → 绿 */
-        --neutral: #6b7280;
-        --bg2: #1a1f2b;
-    }
-    .stApp { background: var(--bg); }
-    .card { background: var(--card) !important; border-color: var(--border) !important; }
-    .card h4 { color: var(--text-dim) !important; }
-    .brief-box { background: var(--card) !important; color: var(--text) !important; border-color: var(--border) !important; }
-    .conclusion-zone { background: linear-gradient(135deg, #0e1420 0%, #111a2e 100%) !important; }
-    .dsa-glass { background: rgba(18,21,28,0.92) !important; border-color: var(--border) !important; }
-    .pill-up { background: rgba(255,77,79,0.15); color: #ff8a8c; }
-    .pill-down { background: rgba(0,230,118,0.12); color: #4dff9d; }
-    .pill-neutral { background: rgba(107,114,128,0.18); color: #cbd5e1; }
-    .top-bar { background: linear-gradient(135deg, #0d1117 0%, #123a2a 100%); }
-    input, textarea, [data-baseweb="input"] { background: #0f1117 !important; color: var(--text) !important; }
-    [data-testid="stSidebar"] { background: #0d0f14 !important; }
-    [data-testid="stDataFrame"] { background: #12151c !important; }
-    .stMarkdown, p, li, h1, h2, h3, h4, h5 { color: var(--text); }
-</style>
-"""
-
-def _inject_theme_css() -> None:
-    """根据 session_state 注入主题 CSS（深色或浅色）。"""
-    if st.session_state.dark_mode:
-        st.markdown(DARK_CSS, unsafe_allow_html=True)
-
-
 def _plotly_chart(fig, use_container_width: bool = True, config=None) -> None:
-    """统一输出 plotly 图：深色模式下自动套用 plotly_dark 模板。"""
-    if st.session_state.dark_mode:
-        try:
-            fig.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                font=dict(color="#e5e7eb"),
-            )
-        except Exception:  # noqa: BLE001
-            pass
+    """统一输出 plotly 图。"""
+    st.plotly_chart(fig, use_container_width=use_container_width, config=config)
     _plotly_chart(fig, use_container_width=use_container_width, config=config)
 
 
@@ -548,12 +499,6 @@ def safe_float(v: Any, default: float = 0.0) -> float:
 with st.sidebar:
     st.markdown("### 🤖 Investment Copilot")
     st.caption("by Winnie")
-    st.divider()
-    _inject_theme_css()  # 注入主题 CSS（在首次渲染前）
-    dark_toggle = st.toggle("🌙 深色模式（Bloomberg）", value=st.session_state.dark_mode, key="dark_toggle")
-    if dark_toggle != st.session_state.dark_mode:
-        st.session_state.dark_mode = dark_toggle
-        st.rerun()
     st.divider()
     page = st.radio(
         "导航",
@@ -3398,11 +3343,18 @@ def _fetch_price_history(symbol: str, period: str = "3mo", interval: str = "1d")
 
 
 def _draw_kline(hist: pd.DataFrame, sym: str, with_volume: bool = True):
+    # 技能建议①：K线最多显示最近 500 根（防大周期卡顿；指标在截断后计算）
+    if hist is not None and len(hist) > 500:
+        hist = hist.tail(500)
     if with_volume:
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.06, row_heights=[0.7, 0.3])
         fig.add_trace(go.Candlestick(
             x=hist.index, open=hist["Open"], high=hist["High"], low=hist["Low"], close=hist["Close"],
-            name=sym, increasing_line_color="#dc2626", decreasing_line_color="#16a34a",
+            name=sym,
+            # 技能建议③：色盲双编码 — 涨=实心红填充 / 跌=空心绿（仅描边）
+            increasing_line_color="#dc2626",
+            decreasing_line_color="#16a34a",
+            decreasing_fillcolor="rgba(0,0,0,0)",
         ), row=1, col=1)
         if len(hist) >= 20:
             ma20 = hist["Close"].rolling(20).mean()
@@ -3411,7 +3363,8 @@ def _draw_kline(hist: pd.DataFrame, sym: str, with_volume: bool = True):
             ma50 = hist["Close"].rolling(50).mean()
             fig.add_trace(go.Scatter(x=hist.index, y=ma50, line=dict(color="#2563eb", width=1.2), name="MA50"), row=1, col=1)
         colors = ["#dc2626" if c > 0 else "#16a34a" for c in hist["Close"].diff().fillna(0)]
-        fig.add_trace(go.Bar(x=hist.index, y=hist["Volume"], name="Volume", marker_color=colors, opacity=0.5), row=2, col=1)
+        # 技能建议②：成交量柱 40% 透明度
+        fig.add_trace(go.Bar(x=hist.index, y=hist["Volume"], name="Volume", marker_color=colors, opacity=0.4), row=2, col=1)
         fig.update_layout(
             height=420, margin=dict(l=0, r=0, t=10, b=0), paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="white", xaxis_rangeslider_visible=False, showlegend=False,
@@ -3422,7 +3375,10 @@ def _draw_kline(hist: pd.DataFrame, sym: str, with_volume: bool = True):
     else:
         fig = go.Figure(go.Candlestick(
             x=hist.index, open=hist["Open"], high=hist["High"], low=hist["Low"], close=hist["Close"],
-            name=sym, increasing_line_color="#dc2626", decreasing_line_color="#16a34a",
+            name=sym,
+            increasing_line_color="#dc2626",
+            decreasing_line_color="#16a34a",
+            decreasing_fillcolor="rgba(0,0,0,0)",
         ))
         fig.update_layout(height=300, paper_bgcolor="rgba(0,0,0,0)", xaxis_rangeslider_visible=False)
     _plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
