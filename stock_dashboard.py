@@ -75,7 +75,7 @@ class Config:
         "MU", "AAOI", "GOOGL", "MSFT", "AMZN", "MRVL", "LITE",
         "SNDK", "NVDA", "ORCL", "SPCX", "SKHY", "TSLA", "PLTR",
         # 港股
-        "0700.HK", "0883.HK", "3750.HK", "07709.HK", "00981.HK", "02500.HK",
+        "0700.HK", "0883.HK", "3750.HK", "07709.HK", "00981.HK", "01879.HK",
         # A 股（强一股份 / 三环集团 / 电连技术 等）
         "688809.SS", "300408.SZ", "300679.SZ", "000426.SZ",
         "002624.SZ", "601872.SS", "601975.SS", "002258.SZ",
@@ -1281,14 +1281,42 @@ class ReportOrchestrator:
 
     # ===== v2.1 升级点 6: Vol/OI PCR（每只个股）=====
     def _fetch_options_pcr_and_save(self):
-        """并发拉每只自选股的 Vol/OI PCR。"""
+        """并发拉每只自选股的 Vol/OI PCR，并追加到历史序列。"""
         logger.info("📈 拉取 Vol/OI PCR...")
         try:
             result = U.fetch_all_pcr(list(self.cfg.stocks), out_path=self.cfg.output_dir / "options_pcr.json")
             valid = sum(1 for v in result.values() if v.get("vol_pcr") is not None)
             logger.info(f"✅ Vol/OI PCR 已写入 data/options_pcr.json ({valid}/{len(result)} 有效)")
+            # 序列化追加到历史文件
+            self._append_pcr_history(result)
         except Exception as e:  # noqa: BLE001
             logger.error(f"❌ Vol/OI PCR 失败: {e}")
+
+    def _append_pcr_history(self, result: Dict[str, Any]):
+        """把当天 PCR 快照追加到 options_pcr_history.json（按日期索引）。"""
+        hist_path = self.cfg.output_dir / "options_pcr_history.json"
+        today = datetime.now().strftime("%Y-%m-%d")
+        hist = {}
+        if hist_path.exists():
+            try:
+                hist = json.loads(hist_path.read_text(encoding="utf-8"))
+            except Exception:
+                hist = {}
+        # 只保留关键字段，避免文件膨胀
+        slim = {}
+        for sym, data in result.items():
+            slim[sym] = {
+                "vol_pcr": data.get("vol_pcr"),
+                "oi_pcr": data.get("oi_pcr"),
+                "iv_call": data.get("iv_call"),
+                "iv_put": data.get("iv_put"),
+            }
+        hist[today] = slim
+        # 保留最近 180 天
+        cutoff = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
+        hist = {k: v for k, v in hist.items() if k >= cutoff}
+        hist_path.write_text(json.dumps(hist, ensure_ascii=False, indent=2), encoding="utf-8")
+        logger.info(f"✅ PCR 历史已追加 {today} ({len(slim)} 只)")
 
     # ===== v2.1 升级点 7: 下周走势预测（综合四维）=====
     def _generate_predictions_and_save(self):

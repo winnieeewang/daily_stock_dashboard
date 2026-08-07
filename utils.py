@@ -519,6 +519,23 @@ def calc_fedwatch_from_futures() -> Dict[str, Any]:
         prob_hike = 5.0
         verdict = f"市场预期下次会议降息约 {cut_bps}bp"
 
+    # P3: 非议息窗口检测（概率质量是否堆积在非会议日期）
+    emergency_cut_prob = 0.0
+    try:
+        fomc_dates = [
+            "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17",
+            "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-09",
+        ]
+        # 简化：如果 prob_cut 显著 > 0 但 next_meeting 不在近期 FOMC 日历中
+        # 或隐含利率变化时点与 FOMC 日历明显错位 → 命中紧急降息
+        from datetime import datetime as _dt
+        nm = _dt.strptime(next_meeting, "%Y-%m-%d").date() if next_meeting else None
+        if nm and not any(str(nm) == d for d in fomc_dates):
+            # 下次会议日期不在官方 FOMC 日历 → 市场定价了紧急降息
+            emergency_cut_prob = round(prob_cut * 0.8, 1)
+    except Exception:
+        emergency_cut_prob = 0.0
+
     return {
         "implied_rate": round(implied_rate, 2),
         "current_ffr": current_ffr,
@@ -528,6 +545,8 @@ def calc_fedwatch_from_futures() -> Dict[str, Any]:
         "prob_hold": round(prob_hold, 1),
         "prob_hike": round(prob_hike, 1),
         "verdict": verdict,
+        "emergency_cut_prob": emergency_cut_prob,
+        "emergency_cut_hit": emergency_cut_prob > 30.0,
         "source": "CME SOFR/FF 期货 (SR3=F / ZQ=F)",
         "asof": str(close.index[-1].date()) if hasattr(close.index[-1], "date") else "",
     }
@@ -4036,7 +4055,7 @@ STOCK_NAMES = {
     "MU": "美光", "AAOI": "应用光电", "GOOGL": "谷歌", "MSFT": "微软", "AMZN": "亚马逊",
     "MRVL": "迈威尔", "LITE": "Lumentum", "SNDK": "闪迪", "NVDA": "英伟达", "ORCL": "甲骨文",
     "SPCX": "SpaceX", "SKHY": "Sky Harbour Group", "TSLA": "特斯拉",
-    "PLTR": "Palantir", "02500.HK": "曦智科技",
+    "PLTR": "Palantir", "01879.HK": "曦智科技",
     "0700.HK": "腾讯控股", "0883.HK": "中国海洋石油", "3750.HK": "宁德时代",
     "07709.HK": "南方两倍做多海力士", "7709.HK": "南方两倍做多海力士", "00981.HK": "中芯国际",
     "688809.SS": "强一股份", "300408.SZ": "三环集团", "300679.SZ": "电连技术",
@@ -4650,4 +4669,96 @@ def fetch_capital_flow_eastmoney(symbol: str) -> Optional[Dict[str, Any]]:
             "rows_n": len(rows),
         }
     except Exception:  # noqa: BLE001
+        return None
+
+
+# ---------------------------------------------------------------------------
+# 避险资产联动 (阶段1b)
+# ---------------------------------------------------------------------------
+
+SAFE_HAVEN_TICKERS = {"GLD": "黄金ETF", "TLT": "20+年美债ETF", "DXY": "美元指数"}
+SAFE_HAVEN_HISTORY_PATH = DATA_DIR / "safe_haven_history.json"
+
+
+def fetch_safe_haven_prices() -> Dict[str, Dict[str, Any]]:
+    """
+    抓取 GLD / TLT / DXY 最新收盘价，返回 {ticker: {"price": float, "chg_pct": float}}。
+    失败返回空 dict，不抛异常。
+    """
+    import yfinance as yf
+    out: Dict[str, Dict[str, Any]] = {}
+    for tick in SAFE_HAVEN_TICKERS:
+        try:
+            df = yf.download(tick, period="5d", progress=False, auto_adjust=False)
+            if df is None or df.empty:
+                continue
+            close = _normalize_close_series(df)
+            if close is None or len(close) < 2:
+                continue
+            last = float(close.iloc[-1])
+            prev = float(close.iloc[-2])
+            chg = round((last - prev) / prev * 100, 2) if prev else 0.0
+            out[tick] = {"price": round(last, 2), "chg_pct": chg, "date": str(close.index[-1].date())}
+        except Exception as e:  # noqa: BLE001
+            logger.debug("避险资产 %s 抓取失败: %s", tick, e)
+    return out
+
+
+def append_safe_haven_snapshot() -> None:
+    """每日跑批调用：把当天避险资产价格追加到历史文件。"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    hist = {}
+    if SAFE_HAVEN_HISTORY_PATH.exists():
+        try:
+            hist = json.loads(SAFE_HAVEN_HISTORY_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            hist = {}
+    prices = fetch_safe_haven_prices()
+    if prices:
+        hist[today] = prices
+        # 保留最近 90 天
+        cutoff = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+        hist = {k: v for k, v in hist.items() if k >= cutoff}
+        SAFE_HAVEN_HISTORY_PATH.write_text(json.dumps(hist, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def compute_safe_haven_correlation(symbol: str, days: int = 30) -> Optional[Dict[str, Any]]:
+    """
+    计算某股票与避险资产(GLD/TLT/DXY)的日收益率 30 日滚动相关系数。
+    返回 {"correlations": {"GLD": float, ...}, "desc": str} 或 None。
+    数据不足返回 None。
+    """
+    import yfinance as yf
+    try:
+        sym_hist = yf.download(symbol, period=f"{days + 5}d", progress=False, auto_adjust=False)
+        if sym_hist is None or len(sym_hist) < days + 2:
+            return None
+        sym_close = _normalize_close_series(sym_hist)
+        if sym_close is None:
+            return None
+        sym_ret = sym_close.pct_change().dropna().iloc[-days:]
+
+        corrs = {}
+        for tick in SAFE_HAVEN_TICKERS:
+            t_hist = yf.download(tick, period=f"{days + 5}d", progress=False, auto_adjust=False)
+            if t_hist is None or len(t_hist) < days + 2:
+                continue
+            t_close = _normalize_close_series(t_hist)
+            if t_close is None:
+                continue
+            t_ret = t_close.pct_change().dropna().iloc[-days:]
+            # 对齐日期
+            combined = pd.concat([sym_ret, t_ret], axis=1).dropna()
+            if len(combined) >= days // 2:
+                corrs[tick] = round(float(combined.iloc[:, 0].corr(combined.iloc[:, 1])), 3)
+
+        if not corrs:
+            return None
+
+        # 描述：如果下跌当天避险资产同步走强且相关性历史高位 → 资金真离场
+        avg_corr = sum(abs(v) for v in corrs.values()) / len(corrs)
+        desc = "资金真离场倾向" if avg_corr > 0.5 else "板块内换仓倾向"
+        return {"correlations": corrs, "avg_abs_corr": round(avg_corr, 3), "desc": desc}
+    except Exception as e:  # noqa: BLE001
+        logger.debug("避险资产相关计算失败 %s: %s", symbol, e)
         return None

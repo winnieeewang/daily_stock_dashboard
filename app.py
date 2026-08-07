@@ -751,218 +751,223 @@ def _rt_dash_strip() -> None:
 
 def _render_conclusion_zone() -> None:
     """第0层·结论区：组合策略 + 今日重点/Top机会/Top风险 + 冲突说明（唯一默认可见）。"""
-    st.markdown('<div class="layer-badge concl">🎯 第 0 层 · 结论区 — 先看这里，再下钻证据</div>', unsafe_allow_html=True)
-    st.markdown('<div class="conclusion-zone">', unsafe_allow_html=True)
+    try:
+        st.markdown('<div class="layer-badge concl">🎯 第 0 层 · 结论区 — 先看这里，再下钻证据</div>', unsafe_allow_html=True)
+        st.markdown('<div class="conclusion-zone">', unsafe_allow_html=True)
 
-    # ===== 组合策略 Portfolio Context =====
-    dominance = U.compute_portfolio_dominance(STOCKS_DF)
-    dominance_emoji = dominance.get("emoji", "💤")
-    dominance_label = dominance.get("dominance_label", "空仓")
-    if dominance_label == "多头占优":
-        dominance_color = "#dc2626"
-    elif dominance_label == "空头占优":
-        dominance_color = "#16a34a"
-    elif dominance_label == "空仓":
-        dominance_color = "#9ca3af"
-    else:
-        dominance_color = "#f59e0b"
-    total_n = dominance.get("total", 0)
-    long_n = dominance.get("long_count", 0)
-    short_n = dominance.get("short_count", 0)
-    flat_n = dominance.get("flat_count", 0)
-    avg_chg = dominance.get("avg_chg", 0.0)
-    long_pct = dominance.get("long_pct", 0.0)
-    short_pct = dominance.get("short_pct", 0.0)
-    flat_pct = dominance.get("flat_pct", 0.0)
-    etf_n = dominance.get("etf_count", 0)
-    err = dominance.get("error")
-    last_update = "—"
-    if STOCKS_DF is not None and not STOCKS_DF.empty and "日期" in STOCKS_DF.columns:
-        try:
-            last_update = str(STOCKS_DF["日期"].max())[:10]
-        except Exception:
-            pass
-
-    if err is None:
-        st.markdown(
-            f"""
-<div class="card" style="background:linear-gradient(135deg,#fff 0%,#f8fafc 100%);">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-    <div>
-      <h4 style="margin:0 0 4px 0;">🎯 组合策略 Portfolio Context</h4>
-      <div style="font-size:11px;color:var(--text-dim);">{total_n}/16 策略持仓 · 更新 {last_update}</div>
-    </div>
-    <div style="display:flex;gap:12px;align-items:center;">
-      <div style="text-align:center;">
-        <div style="font-size:10px;color:var(--text-dim);">持仓策略</div>
-        <div style="font-size:18px;font-weight:800;color:var(--text);">{total_n}</div>
-      </div>
-      <div style="text-align:center;">
-        <div style="font-size:10px;color:var(--text-dim);">活跃均值</div>
-        <div style="font-size:18px;font-weight:800;color:{dominance_color};">{avg_chg:+.2f}%</div>
-      </div>
-      <div style="text-align:center;">
-        <div style="font-size:10px;color:var(--text-dim);">ETF 持仓</div>
-        <div style="font-size:18px;font-weight:800;color:var(--text);">{etf_n}</div>
-      </div>
-    </div>
-  </div>
-  <div style="display:flex;align-items:center;gap:24px;margin-top:14px;flex-wrap:wrap;">
-    <div style="display:flex;align-items:center;gap:8px;min-width:200px;">
-      <span style="font-size:48px;">{dominance_emoji}</span>
-      <div>
-        <div style="font-size:28px;font-weight:800;color:{dominance_color};">{dominance_label}</div>
-        <div style="font-size:11px;color:var(--text-dim);">{U.emoji_for_sentiment(min(100, max(0, 50 + avg_chg*10)))} 风险偏好: {min(100, max(0, 50 + avg_chg*10)):.0f}/100</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;flex:1;flex-wrap:wrap;">
-      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;flex:1;min-width:120px;">
-        <div style="font-size:11px;color:#dc2626;font-weight:600;">● 多头</div>
-        <div style="font-size:22px;font-weight:800;color:#dc2626;">{long_n}</div>
-        <div style="font-size:11px;color:var(--text-dim);">{long_pct:.1f}%</div>
-      </div>
-      <div style="background:#dcfce7;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;flex:1;min-width:120px;">
-        <div style="font-size:11px;color:#16a34a;font-weight:600;">● 空头</div>
-        <div style="font-size:22px;font-weight:800;color:#16a34a;">{short_n}</div>
-        <div style="font-size:11px;color:var(--text-dim);">{short_pct:.1f}%</div>
-      </div>
-      <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;flex:1;min-width:120px;">
-        <div style="font-size:11px;color:#475569;font-weight:600;">● 空仓</div>
-        <div style="font-size:22px;font-weight:800;color:#475569;">{flat_n}</div>
-        <div style="font-size:11px;color:var(--text-dim);">{flat_pct:.1f}%</div>
-      </div>
-    </div>
-  </div>
-  <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:12px;background:#e5e7eb;">
-    <div style="width:{long_pct}%;background:#dc2626;transition:width 0.4s;"></div>
-    <div style="width:{short_pct}%;background:#16a34a;transition:width 0.4s;"></div>
-    <div style="width:{flat_pct}%;background:#94a3b8;transition:width 0.4s;"></div>
-  </div>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.warning(f"组合策略卡数据缺失: {err}（请先运行 `python stock_dashboard.py` 生成 data/stocks.csv）")
-
-    # ===== 今日重点 + Top 机会 + Top 风险（共享 top_syms / risk_syms 供冲突说明）=====
-    st.markdown('<div class="section-title">🎯 今日重点 & 自选扫描</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1.2, 1, 1])
-
-    # 今日重点：基于自选股 + 宏观 + 财报/事件
-    with c1:
-        st.markdown('<div class="card"><h4>📌 今日重点</h4>', unsafe_allow_html=True)
-        focuses = []
-        if STOCKS_DF is not None and not STOCKS_DF.empty:
-            if "涨跌幅" in STOCKS_DF.columns:
-                top_up = STOCKS_DF.nlargest(1, "涨跌幅").iloc[0]
-                focuses.append(
-                    f"🚀 <b>{top_up['symbol']}</b> <span style='color:var(--text-dim);font-size:11px;'>{U.STOCK_NAMES.get(top_up['symbol'],'')}</span> 今日涨 {safe_float(top_up.get('涨跌幅')):.2f}%，关注能否突破 / 短线见顶"
-                )
-                top_dn = STOCKS_DF.nsmallest(1, "涨跌幅").iloc[0]
-                focuses.append(
-                    f"🔻 <b>{top_dn['symbol']}</b> <span style='color:var(--text-dim);font-size:11px;'>{U.STOCK_NAMES.get(top_dn['symbol'],'')}</span> 今日跌 {safe_float(top_dn.get('涨跌幅')):.2f}%，关注是否到支撑 / 风险扩大"
-                )
-            if "RSI_14" in STOCKS_DF.columns:
-                oversold = STOCKS_DF[STOCKS_DF["RSI_14"] < 30]
-                if not oversold.empty:
-                    focuses.append(
-                        f"🟢 RSI 超卖: {', '.join(oversold['symbol'].head(3).tolist())}，可能反弹"
-                    )
-        cal = U.fetch_economic_calendar(SERPAPI_KEY)
-        today_str = datetime.now().strftime("%m-%d")
-        todays = [e for e in cal if today_str in e.get("date", "")]
-        if not todays:
-            todays = cal[:2]
-        for e in todays[:2]:
-            focuses.append(
-                f"📅 {e.get('date','')} {e.get('event','')} ({e.get('importance','')})"
-            )
-        if not focuses:
-            focuses = ["数据加载中…"]
-        for f in focuses:
-            st.markdown(f"<div style='font-size:13px;line-height:1.7;margin:6px 0;'>{f}</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # Top 机会
-    top_syms = []
-    with c2:
-        st.markdown('<div class="card"><h4>🟢 Top 机会 (AI 评分)</h4>', unsafe_allow_html=True)
-        if STOCKS_DF is not None and not STOCKS_DF.empty:
-            tmp = STOCKS_DF.copy()
-            if "AI评分" not in tmp.columns and CARDS_MAP:
-                tmp["AI评分"] = tmp["symbol"].map(lambda x: CARDS_MAP.get(x, {}).get("score"))
-            if "AI评分" in tmp.columns and tmp["AI评分"].notna().any():
-                top = tmp[tmp["AI评分"].notna()].nlargest(5, "AI评分")
-            else:
-                top = tmp.head(5)
-            for _, r in top.iterrows():
-                sym = r["symbol"]
-                top_syms.append(sym)
-                score = r.get("AI评分", "—")
-                chg = safe_float(r.get("涨跌幅"))
-                st.markdown(
-                    f"<div class='stock-row' style='display:flex;justify-content:space-between;align-items:center;'><span><b>{sym}</b> · 评分 <b style='color:var(--accent);'>{score}</b></span><span style='color:{color_for_change(chg)};font-weight:600;font-size:12px;'>{fmt_pct(chg)}</span></div>",
-                    unsafe_allow_html=True,
-                )
+        # ===== 组合策略 Portfolio Context =====
+        dominance = U.compute_portfolio_dominance(STOCKS_DF)
+        dominance_emoji = dominance.get("emoji", "💤")
+        dominance_label = dominance.get("dominance_label", "空仓")
+        if dominance_label == "多头占优":
+            dominance_color = "#dc2626"
+        elif dominance_label == "空头占优":
+            dominance_color = "#16a34a"
+        elif dominance_label == "空仓":
+            dominance_color = "#9ca3af"
         else:
-            st.caption("暂无个股数据")
-        st.markdown("</div>", unsafe_allow_html=True)
+            dominance_color = "#f59e0b"
+        total_n = dominance.get("total", 0)
+        long_n = dominance.get("long_count", 0)
+        short_n = dominance.get("short_count", 0)
+        flat_n = dominance.get("flat_count", 0)
+        avg_chg = dominance.get("avg_chg", 0.0)
+        long_pct = dominance.get("long_pct", 0.0)
+        short_pct = dominance.get("short_pct", 0.0)
+        flat_pct = dominance.get("flat_pct", 0.0)
+        etf_n = dominance.get("etf_count", 0)
+        err = dominance.get("error")
+        last_update = "—"
+        if STOCKS_DF is not None and not STOCKS_DF.empty and "日期" in STOCKS_DF.columns:
+            try:
+                last_update = str(STOCKS_DF["日期"].max())[:10]
+            except Exception:
+                pass
 
-    # Top 风险
-    risk_syms = []
-    with c3:
-        st.markdown('<div class="card"><h4>🔴 Top 风险</h4>', unsafe_allow_html=True)
-        risks = []
-        if STOCKS_DF is not None and not STOCKS_DF.empty:
-            tmp = STOCKS_DF.copy()
-            if "RSI_14" in tmp.columns:
-                for _, r in tmp[tmp["RSI_14"] > 70].head(3).iterrows():
-                    risks.append((r["symbol"], f"RSI {safe_float(r.get('RSI_14')):.0f} 超买", "🟠"))
-            if "涨跌幅" in tmp.columns:
-                for _, r in tmp.nsmallest(3, "涨跌幅").iterrows():
-                    if not any(s == r["symbol"] for s, *_ in risks):
-                        risks.append((r["symbol"], f"今日 {fmt_pct(safe_float(r.get('涨跌幅')))}", "🔴"))
-            for sym, lev in (LEV_MAP or {}).items():
-                if lev.get("综合风险等级") == "高" and not any(s == sym for s, *_ in risks):
-                    risks.append((sym, "杠杆高危", "⚠️"))
-                    risk_syms.append(sym)
-        for sym, msg, ic in risks[:6]:
+        if err is None:
             st.markdown(
-                f"<div class='stock-row' style='display:flex;justify-content:space-between;align-items:center;'><span><b>{sym}</b> · {msg}</span><span>{ic}</span></div>",
+                f"""
+    <div class="card" style="background:linear-gradient(135deg,#fff 0%,#f8fafc 100%);">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div>
+          <h4 style="margin:0 0 4px 0;">🎯 组合策略 Portfolio Context</h4>
+          <div style="font-size:11px;color:var(--text-dim);">{total_n}/16 策略持仓 · 更新 {last_update}</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-dim);">持仓策略</div>
+            <div style="font-size:18px;font-weight:800;color:var(--text);">{total_n}</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-dim);">活跃均值</div>
+            <div style="font-size:18px;font-weight:800;color:{dominance_color};">{avg_chg:+.2f}%</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-dim);">ETF 持仓</div>
+            <div style="font-size:18px;font-weight:800;color:var(--text);">{etf_n}</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:24px;margin-top:14px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;min-width:200px;">
+          <span style="font-size:48px;">{dominance_emoji}</span>
+          <div>
+            <div style="font-size:28px;font-weight:800;color:{dominance_color};">{dominance_label}</div>
+            <div style="font-size:11px;color:var(--text-dim);">{U.emoji_for_sentiment(min(100, max(0, 50 + avg_chg*10)))} 风险偏好: {min(100, max(0, 50 + avg_chg*10)):.0f}/100</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex:1;flex-wrap:wrap;">
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;flex:1;min-width:120px;">
+            <div style="font-size:11px;color:#dc2626;font-weight:600;">● 多头</div>
+            <div style="font-size:22px;font-weight:800;color:#dc2626;">{long_n}</div>
+            <div style="font-size:11px;color:var(--text-dim);">{long_pct:.1f}%</div>
+          </div>
+          <div style="background:#dcfce7;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;flex:1;min-width:120px;">
+            <div style="font-size:11px;color:#16a34a;font-weight:600;">● 空头</div>
+            <div style="font-size:22px;font-weight:800;color:#16a34a;">{short_n}</div>
+            <div style="font-size:11px;color:var(--text-dim);">{short_pct:.1f}%</div>
+          </div>
+          <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;flex:1;min-width:120px;">
+            <div style="font-size:11px;color:#475569;font-weight:600;">● 空仓</div>
+            <div style="font-size:22px;font-weight:800;color:#475569;">{flat_n}</div>
+            <div style="font-size:11px;color:var(--text-dim);">{flat_pct:.1f}%</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:12px;background:#e5e7eb;">
+        <div style="width:{long_pct}%;background:#dc2626;transition:width 0.4s;"></div>
+        <div style="width:{short_pct}%;background:#16a34a;transition:width 0.4s;"></div>
+        <div style="width:{flat_pct}%;background:#94a3b8;transition:width 0.4s;"></div>
+      </div>
+    </div>
+    """,
                 unsafe_allow_html=True,
             )
-        if not risks:
-            st.caption("当前无显著风险信号（无 RSI>70 / 跌幅领先 / 杠杆高危）")
-        st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.warning(f"组合策略卡数据缺失: {err}（请先运行 `python stock_dashboard.py` 生成 data/stocks.csv）")
 
-    # 冲突说明（Top 机会 与 Top 风险 同现）
-    _conflict = sorted(set(top_syms) & set(risk_syms))
-    if _conflict:
-        _ex = "、".join(_conflict)
-        st.markdown(
-            f'<div class="card" style="min-height:auto;background:#fffbeb;border-left:4px solid #f59e0b;">'
-            f'<div style="font-size:12.5px;line-height:1.7;color:#92400e;">'
-            f'⚠️ <b>冲突说明：{_ex} 同时出现在「Top 机会」与「Top 风险」。</b><br>'
-            f'这并非系统矛盾，而是「<b>机会与风险并存</b>」的典型信号：'
-            f'<b>机会面</b>来自其高 AI 评分 / 强势趋势 / 基本面（趋势与结构占优）；'
-            f'<b>风险面</b>来自短线超买(RSI&gt;70)、近期回撤或高杠杆（追高回吐 / 强平风险）。'
-            f'<br>操作含义：宜用<b>分批介入 + R 倍数纪律</b>（见个股深度分析·交易策略），而非一次性追高；'
-            f'机会决定「买不买」，风险决定「买多少、止损在哪」。'
-            f'</div></div>',
-            unsafe_allow_html=True,
-        )
+        # ===== 今日重点 + Top 机会 + Top 风险（共享 top_syms / risk_syms 供冲突说明）=====
+        st.markdown('<div class="section-title">🎯 今日重点 & 自选扫描</div>', unsafe_allow_html=True)
+        c1, c2, c3 = st.columns([1.2, 1, 1])
 
-    st.markdown('</div>', unsafe_allow_html=True)  # close .conclusion-zone
+        # 今日重点：基于自选股 + 宏观 + 财报/事件
+        with c1:
+            st.markdown('<div class="card"><h4>📌 今日重点</h4>', unsafe_allow_html=True)
+            focuses = []
+            if STOCKS_DF is not None and not STOCKS_DF.empty:
+                if "涨跌幅" in STOCKS_DF.columns:
+                    top_up = STOCKS_DF.nlargest(1, "涨跌幅").iloc[0]
+                    focuses.append(
+                        f"🚀 <b>{top_up['symbol']}</b> <span style='color:var(--text-dim);font-size:11px;'>{U.STOCK_NAMES.get(top_up['symbol'],'')}</span> 今日涨 {safe_float(top_up.get('涨跌幅')):.2f}%，关注能否突破 / 短线见顶"
+                    )
+                    top_dn = STOCKS_DF.nsmallest(1, "涨跌幅").iloc[0]
+                    focuses.append(
+                        f"🔻 <b>{top_dn['symbol']}</b> <span style='color:var(--text-dim);font-size:11px;'>{U.STOCK_NAMES.get(top_dn['symbol'],'')}</span> 今日跌 {safe_float(top_dn.get('涨跌幅')):.2f}%，关注是否到支撑 / 风险扩大"
+                    )
+                if "RSI_14" in STOCKS_DF.columns:
+                    oversold = STOCKS_DF[STOCKS_DF["RSI_14"] < 30]
+                    if not oversold.empty:
+                        focuses.append(
+                            f"🟢 RSI 超卖: {', '.join(oversold['symbol'].head(3).tolist())}，可能反弹"
+                        )
+            cal = U.fetch_economic_calendar(SERPAPI_KEY)
+            today_str = datetime.now().strftime("%m-%d")
+            todays = [e for e in cal if today_str in e.get("date", "")]
+            if not todays:
+                todays = cal[:2]
+            for e in todays[:2]:
+                focuses.append(
+                    f"📅 {e.get('date','')} {e.get('event','')} ({e.get('importance','')})"
+                )
+            if not focuses:
+                focuses = ["数据加载中…"]
+            for f in focuses:
+                st.markdown(f"<div style='font-size:13px;line-height:1.7;margin:6px 0;'>{f}</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-    # 实时速览（集成实时行情，自动刷新）
-    try:
-        st.fragment(_rt_dash_strip, run_every=30)()
+        # Top 机会
+        top_syms = []
+        with c2:
+            st.markdown('<div class="card"><h4>🟢 Top 机会 (AI 评分)</h4>', unsafe_allow_html=True)
+            if STOCKS_DF is not None and not STOCKS_DF.empty:
+                tmp = STOCKS_DF.copy()
+                if "AI评分" not in tmp.columns and CARDS_MAP:
+                    tmp["AI评分"] = tmp["symbol"].map(lambda x: CARDS_MAP.get(x, {}).get("score"))
+                if "AI评分" in tmp.columns and tmp["AI评分"].notna().any():
+                    top = tmp[tmp["AI评分"].notna()].nlargest(5, "AI评分")
+                else:
+                    top = tmp.head(5)
+                for _, r in top.iterrows():
+                    sym = r["symbol"]
+                    top_syms.append(sym)
+                    score = r.get("AI评分", "—")
+                    chg = safe_float(r.get("涨跌幅"))
+                    st.markdown(
+                        f"<div class='stock-row' style='display:flex;justify-content:space-between;align-items:center;'><span><b>{sym}</b> · 评分 <b style='color:var(--accent);'>{score}</b></span><span style='color:{color_for_change(chg)};font-weight:600;font-size:12px;'>{fmt_pct(chg)}</span></div>",
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.caption("暂无个股数据")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # Top 风险
+        risk_syms = []
+        with c3:
+            st.markdown('<div class="card"><h4>🔴 Top 风险</h4>', unsafe_allow_html=True)
+            risks = []
+            if STOCKS_DF is not None and not STOCKS_DF.empty:
+                tmp = STOCKS_DF.copy()
+                if "RSI_14" in tmp.columns:
+                    for _, r in tmp[tmp["RSI_14"] > 70].head(3).iterrows():
+                        risks.append((r["symbol"], f"RSI {safe_float(r.get('RSI_14')):.0f} 超买", "🟠"))
+                if "涨跌幅" in tmp.columns:
+                    for _, r in tmp.nsmallest(3, "涨跌幅").iterrows():
+                        if not any(s == r["symbol"] for s, *_ in risks):
+                            risks.append((r["symbol"], f"今日 {fmt_pct(safe_float(r.get('涨跌幅')))}", "🔴"))
+                for sym, lev in (LEV_MAP or {}).items():
+                    if lev.get("综合风险等级") == "高" and not any(s == sym for s, *_ in risks):
+                        risks.append((sym, "杠杆高危", "⚠️"))
+                        risk_syms.append(sym)
+            for sym, msg, ic in risks[:6]:
+                st.markdown(
+                    f"<div class='stock-row' style='display:flex;justify-content:space-between;align-items:center;'><span><b>{sym}</b> · {msg}</span><span>{ic}</span></div>",
+                    unsafe_allow_html=True,
+                )
+            if not risks:
+                st.caption("当前无显著风险信号（无 RSI>70 / 跌幅领先 / 杠杆高危）")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # 冲突说明（Top 机会 与 Top 风险 同现）
+        _conflict = sorted(set(top_syms) & set(risk_syms))
+        if _conflict:
+            _ex = "、".join(_conflict)
+            st.markdown(
+                f'<div class="card" style="min-height:auto;background:#fffbeb;border-left:4px solid #f59e0b;">'
+                f'<div style="font-size:12.5px;line-height:1.7;color:#92400e;">'
+                f'⚠️ <b>冲突说明：{_ex} 同时出现在「Top 机会」与「Top 风险」。</b><br>'
+                f'这并非系统矛盾，而是「<b>机会与风险并存</b>」的典型信号：'
+                f'<b>机会面</b>来自其高 AI 评分 / 强势趋势 / 基本面（趋势与结构占优）；'
+                f'<b>风险面</b>来自短线超买(RSI&gt;70)、近期回撤或高杠杆（追高回吐 / 强平风险）。'
+                f'<br>操作含义：宜用<b>分批介入 + R 倍数纪律</b>（见个股深度分析·交易策略），而非一次性追高；'
+                f'机会决定「买不买」，风险决定「买多少、止损在哪」。'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
+
+        st.markdown('</div>', unsafe_allow_html=True)  # close .conclusion-zone
+
+        # 实时速览（集成实时行情，自动刷新）
+        try:
+            st.fragment(_rt_dash_strip, run_every=30)()
+        except Exception as _e:  # noqa: BLE001
+            logger.exception("实时速览 fragment 失败: %s", _e)
+            st.caption(f"📡 实时速览暂不可用: {_e}")
+
+
     except Exception as _e:  # noqa: BLE001
-        logger.exception("实时速览 fragment 失败: %s", _e)
-        st.caption(f"📡 实时速览暂不可用: {_e}")
-
-
+        logger.exception("结论区渲染异常: %s", _e)
+        st.error(f"⚠️ 结论区加载失败: {_e}")
+        st.info("提示：请确认 data/stocks.csv 已存在且包含数据。")
 def _render_macro_tab() -> None:
     """第1层·证据层 — 宏观：情绪与波动率 + 全球主指数 + 利率与杠杆 + 风险雷达 + 宏观解读。"""
     # ===== 市场情绪与波动率 =====
@@ -1272,6 +1277,71 @@ def _render_macro_tab() -> None:
         )
     except Exception as e:  # noqa: BLE001
         logger.debug("宏观文字总结失败: %s", e)
+
+    # ===== 底部信号灯详情（紧跟宏观风险雷达） =====
+    try:
+        import bottom_signal as BS
+        macro_env = BS.compute_macro_environment_score()
+        m_score = macro_env.get("score", 0)
+        m_hits = macro_env.get("hits", [])
+        m_details = macro_env.get("details", {})
+        m_emoji, m_label, m_color = BS.traffic_light(m_score)
+
+        st.markdown(
+            f'<div class="section-title"><span class="accent">🚦</span>底部信号灯 Bottom Signal '
+            f'<span style="font-size:13px;color:{m_color};margin-left:8px;">{m_emoji} 宏观环境分 {m_score}/2 · {m_label}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        bs_c1, bs_c2 = st.columns([1, 2])
+        with bs_c1:
+            st.markdown(
+                f'<div class="card" style="border-left:4px solid {m_color};">'
+                f'<div style="font-size:14px;font-weight:700;margin-bottom:8px;">{m_emoji} 宏观环境分 {m_score}/2</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);line-height:1.6;">'
+                f'{"<br>".join(m_hits) if m_hits else "暂无宏观底部信号"}'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
+            # 显示各维度详情
+            for dim_name, dim_data in m_details.items():
+                hit = dim_data.get("命中", False)
+                color = "#16a34a" if hit else "#9ca3af"
+                icon = "✅" if hit else "◯"
+                st.markdown(
+                    f'<div style="font-size:11px;color:{color};margin:4px 0;">{icon} {dim_name}</div>',
+                    unsafe_allow_html=True,
+                )
+
+        with bs_c2:
+            if STOCKS_DF is not None and not STOCKS_DF.empty:
+                _btm_symbols = STOCKS_DF["symbol"].tolist()[:8]
+                _btm_rows = []
+                for _bsym in _btm_symbols:
+                    try:
+                        _pe = None
+                        _brow = STOCKS_DF[STOCKS_DF["symbol"] == _bsym]
+                        if not _brow.empty:
+                            _pe = BS._safe_float(_brow.iloc[0].get("PE_Ratio"))
+                        _r = BS.calc_bottom_confidence(_bsym, macro=macro_env, pe=_pe, stocks_df=STOCKS_DF)
+                        _btm_rows.append(_r)
+                    except Exception:
+                        continue
+                if _btm_rows:
+                    _btm_cols = st.columns(min(len(_btm_rows), 8))
+                    for _bc, _br in zip(_btm_cols, _btm_rows):
+                        with _bc:
+                            st.markdown(
+                                f'<div style="text-align:center;padding:8px;border-radius:8px;background:var(--bg2);border-top:3px solid {_br["color"]};">'
+                                f'<div style="font-size:12px;font-weight:600;">{_br["symbol"]}</div>'
+                                f'<div style="font-size:20px;font-weight:800;color:{_br["color"]};">{_br["traffic_light"]} {_br["bottom_score"]}/4</div>'
+                                f'<div style="font-size:10px;color:var(--text-dim);">{_br["label"]}</div>'
+                                f'</div>',
+                                unsafe_allow_html=True,
+                            )
+    except Exception as e:  # noqa: BLE001
+        logger.debug("底部信号灯展示失败: %s", e)
 
 
 def _render_structure_tab() -> None:
@@ -1611,17 +1681,18 @@ def _render_structure_tab() -> None:
     try:
         # 宏观环境分（只算一次）
         _policy = U.fetch_policy_news_free(top_n=30)
-        macro_score, macro_detail = BS.calc_macro_env_score(policy_news=_policy)
+        _macro = BS.compute_macro_environment_score(policy_news=_policy)
+        macro_score = _macro["score"]
         _m_emoji, _m_label, _m_color = BS.traffic_light(macro_score)
         st.markdown(
             f'<div class="card" style="border-left:4px solid {_m_color};">'
             f'<div style="font-size:14px;font-weight:700;margin-bottom:6px;">'
             f'{_m_emoji} 宏观环境分 · {macro_score}/2 · {_m_label}</div>'
             f'<div style="font-size:11px;color:var(--text-dim);line-height:1.6;">'
-            f'维度②监管恐慌: {"命中" if macro_detail.get("维度②_监管恐慌",{}).get("命中") else "未命中"} '
-            f'(政策新闻恐慌={macro_detail.get("维度②_监管恐慌",{}).get("政策新闻恐慌")})<br>'
-            f'维度①宏观杠杆: {"命中" if macro_detail.get("维度①_宏观",{}).get("命中") else "未命中"} '
-            f'(MarginDebt二阶导={macro_detail.get("维度①_宏观",{}).get("MarginDebt二阶导")})'
+            f'监管恐慌: {"命中" if _macro["details"].get("监管恐慌",{}).get("命中") else "未命中"} '
+            f'(政策新闻恐慌={_macro["details"].get("监管恐慌",{}).get("政策新闻恐慌")})<br>'
+            f'杠杆去化: {"命中" if _macro["details"].get("杠杆去化",{}).get("命中") else "未命中"} '
+            f'({_macro["details"].get("杠杆去化",{}).get("离散度描述", "")})'
             f'</div></div>',
             unsafe_allow_html=True,
         )
@@ -1639,8 +1710,7 @@ def _render_structure_tab() -> None:
                             _pe = BS._safe_float(_brow.iloc[0].get("PE_Ratio"))
                     _r = BS.calc_bottom_confidence(
                         _bsym,
-                        macro_score=macro_score,
-                        macro_detail=macro_detail,
+                        macro=_macro,
                         pe=_pe,
                         stocks_df=STOCKS_DF,
                     )
@@ -1664,10 +1734,12 @@ def _render_structure_tab() -> None:
                 with st.expander("📋 底部信号灯明细"):
                     for _br in _btm_rows:
                         st.markdown(f"**{_br['symbol']}** {_br['traffic_light']} {_br['bottom_score']}/4 — {_br['label']}")
-                        _ind = _br.get("individual_detail", {})
+                        _ind = _br.get("individual_details", {})
+                        _mh = _br.get("macro_hits", [])
+                        _ih = _br.get("individual_hits", [])
                         st.caption(
-                            f"个股拥挤出清: {'是' if _ind.get('维度①_个股',{}).get('命中') else '否'} · "
-                            f"估值/资金: {'是' if (_ind.get('维度③_估值',{}).get('命中') or _ind.get('维度④_资金',{}).get('命中')) else '否'}"
+                            f"宏观命中: {'; '.join(_mh) if _mh else '无'} · "
+                            f"个股命中: {'; '.join(_ih) if _ih else '无'}"
                         )
     except Exception as _e:  # noqa: BLE001
         st.caption(f"底部信号灯暂不可用: {_e}")
@@ -1759,16 +1831,162 @@ def _render_research_tab() -> None:
         st.warning(f"⚠️ 智能荐股计算失败: {e}")
 
 
+def _render_ai_traders_tab() -> None:
+    """🤖 AI炒手对战：KIMI vs DeepSeek 净值对比、持仓、交易日志、胜率统计。"""
+    st.markdown('<div class="section-title"><span class="accent">🤖</span>AI 炒手对战 AI Trader Battle</div>', unsafe_allow_html=True)
+
+    import ai_traders as AT
+
+    # 加载两个模型的数据
+    models = {}
+    for mid in AT.MODEL_IDS:
+        try:
+            port = AT.load_portfolio(mid)
+            nav_path = AT._trader_dir(mid) / "nav_history.csv"
+            trades_path = AT._trader_dir(mid) / "trades.jsonl"
+            nav_df = None
+            if nav_path.exists():
+                import pandas as pd
+                nav_df = pd.read_csv(nav_path)
+            trades = AT.load_trades(mid)
+            models[mid] = {"portfolio": port, "nav": nav_df, "trades": trades}
+        except Exception as e:  # noqa: BLE001
+            logger.debug("加载 %s 数据失败: %s", mid, e)
+            models[mid] = None
+
+    # 如果没有任何数据，显示提示
+    if not any(models.values()):
+        st.info("🤖 AI 炒手数据尚未生成。首次运行 `python ai_traders.py` 后会自动创建。")
+        return
+
+    # 顶部：净值对比
+    c1, c2 = st.columns([2, 1])
+    with c1:
+        st.markdown("#### 📈 净值曲线对比（归一化）")
+        nav_data = []
+        for mid, data in models.items():
+            if data and data["nav"] is not None and not data["nav"].empty:
+                ndf = data["nav"].copy()
+                ndf["model"] = mid.upper()
+                nav_data.append(ndf)
+        if nav_data:
+            import pandas as pd
+            import plotly.graph_objects as go
+            nav_all = pd.concat(nav_data, ignore_index=True)
+            fig = go.Figure()
+            for mid in AT.MODEL_IDS:
+                sub = nav_all[nav_all["model"] == mid.upper()]
+                if not sub.empty:
+                    # 归一化到起始值 = 100
+                    base = sub["nav"].iloc[0]
+                    sub = sub.copy()
+                    sub["norm"] = sub["nav"] / base * 100
+                    fig.add_trace(go.Scatter(
+                        x=sub["date"], y=sub["norm"],
+                        mode="lines+markers", name=mid.upper(),
+                        line=dict(width=2),
+                    ))
+            fig.update_layout(
+                height=350, margin=dict(l=40, r=20, t=30, b=40),
+                xaxis_title="日期", yaxis_title="净值 (起点=100)",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.caption("暂无净值历史")
+
+    with c2:
+        st.markdown("#### 💼 当前持仓")
+        for mid, data in models.items():
+            if not data:
+                continue
+            port = data["portfolio"]
+            positions = port.get("positions", {})
+            cash = port.get("cash", AT.INITIAL_CASH)
+            pos_value = sum(p.get("qty", 0) * p.get("avg_cost", 0) for p in positions.values())
+            nav = cash + pos_value
+            st.markdown(
+                f'<div style="padding:10px;border-radius:8px;background:var(--bg2);margin-bottom:8px;">'
+                f'<div style="font-size:13px;font-weight:700;">{mid.upper()}</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);">净值: ${nav:,.2f}</div>'
+                f'<div style="font-size:11px;color:var(--text-dim);">现金: ${cash:,.2f}</div>'
+                f'<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">持仓 {len(positions)} 只</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+    # 中部：持仓明细表格
+    st.markdown("#### 📋 持仓明细")
+    for mid, data in models.items():
+        if not data:
+            continue
+        positions = data["portfolio"].get("positions", {})
+        if positions:
+            rows = []
+            for sym, pos in positions.items():
+                rows.append({
+                    "模型": mid.upper(), "代码": sym,
+                    "数量": pos.get("qty", 0), "成本价": f"${pos.get('avg_cost', 0):.2f}",
+                })
+            import pandas as pd
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    # 下部：交易日志时间线
+    st.markdown("#### 📝 交易日志")
+    for mid, data in models.items():
+        if not data or not data["trades"]:
+            continue
+        with st.expander(f"{mid.upper()} 交易记录 ({len(data['trades'])} 笔)"):
+            for t in data["trades"][-20:]:  # 最近20笔
+                action_emoji = "🟢" if t.get("action") == "BUY" else "🔴"
+                st.markdown(
+                    f"{action_emoji} **{t.get('date', '')}** {t.get('action', '')} "
+                    f"**{t.get('symbol', '')}** {t.get('qty', 0)}股 @ ${t.get('price', 0):.2f} "
+                    f"| 评分{t.get('score_at_trade', 'N/A')} | 来源: {t.get('source', '')}"
+                )
+                if t.get("reasoning"):
+                    st.caption(f"理由: {t['reasoning']}")
+
+    # 胜率对比（读取 threshold_validation_report.json）
+    st.markdown("#### 📊 候选池 vs 模型自选 胜率对比")
+    report_path = DATA_DIR / "threshold_validation_report.json"
+    if report_path.exists():
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            rows = []
+            for mid, r in report.get("models", {}).items():
+                if "error" in r:
+                    continue
+                gte = r.get("gte60", {})
+                lt = r.get("lt60", {})
+                rows.append({
+                    "模型": mid.upper(),
+                    "≥60分交易": gte.get("count", 0),
+                    "≥60平均收益": f"{gte.get('avg_return', 0):.2f}%",
+                    "≥60胜率": f"{gte.get('win_rate', 0):.1f}%",
+                    "<60分交易": lt.get("count", 0),
+                    "<60平均收益": f"{lt.get('avg_return', 0):.2f}%",
+                    "<60胜率": f"{lt.get('win_rate', 0):.1f}%",
+                })
+            if rows:
+                import pandas as pd
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        except Exception as e:  # noqa: BLE001
+            logger.debug("胜率对比展示失败: %s", e)
+    else:
+        st.caption("回测报告尚未生成。运行 `python backtest_threshold.py` 后自动更新。")
+
+
 def page_dashboard():
     st.markdown('<div class="section-title"><span class="accent">🏠</span>市场全景 Dashboard</div>', unsafe_allow_html=True)
 
     # ===== 第0层 · 结论区（唯一默认可见）=====
     _render_conclusion_zone()
 
-    # ===== 第1层 · 证据层（4 主题 Tab，非按数据源）=====
+    # ===== 第1层 · 证据层（5 主题 Tab）=====
     st.markdown('<div class="layer-badge">第 1 层 · 证据层 — 按主题组织，点击展开</div>', unsafe_allow_html=True)
-    tab_macro, tab_struct, tab_event, tab_research = st.tabs(
-        ["📊 宏观", "🧩 结构", "📅 事件", "🧠 研判"]
+    tab_macro, tab_struct, tab_event, tab_research, tab_ai = st.tabs(
+        ["📊 宏观", "🧩 结构", "📅 事件", "🧠 研判", "🤖 AI炒手"]
     )
     with tab_macro:
         _render_macro_tab()
@@ -1778,6 +1996,8 @@ def page_dashboard():
         _render_events_tab()
     with tab_research:
         _render_research_tab()
+    with tab_ai:
+        _render_ai_traders_tab()
 
 
 def _draw_heatmap(df: pd.DataFrame, sector_col: str, sym_col: str, color_col: str, size_col: str):

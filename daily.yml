@@ -1,0 +1,59 @@
+name: Daily Full Pipeline (全量)
+
+on:
+  schedule:
+    # 美东时间 16:30 (盘后 1 小时) = UTC 20:30 (夏令时)
+    - cron: "30 20 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  daily-full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 跑全量数据采集 + AI 报告
+        env:
+          FRED_API: ${{ secrets.FRED_API }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SERPAPI: ${{ secrets.SERPAPI }}
+          FINNHUB_API: ${{ secrets.FINNHUB_API }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ALPHA_API: ${{ secrets.ALPHA_API }}
+          HITHINK_FINANCE_API_KEY: ${{ secrets.HITHINK_FINANCE_API_KEY }}
+        run: |
+          # 默认全跑（含 brief + recap + 新指标 + PCR + 预测 + 底部信号）
+          python stock_dashboard.py
+
+      - name: AI 炒手每日决策（KIMI vs DeepSeek）
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          python ai_traders.py --date $(date +%Y-%m-%d)
+
+      - name: 提交并推送
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --staged --quiet; then
+            echo "无变更"
+          else
+            git commit -m "每日全量数据自动更新 $(date +'%Y-%m-%d %H:%M')"
+            git push
+          fi
