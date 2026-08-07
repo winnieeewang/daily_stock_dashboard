@@ -1,14 +1,14 @@
 {
   "2y_scorecard": {
-    "y2": 4.25,
-    "y10": 4.615,
-    "real_y2": 2.06,
+    "y2": 4.18,
+    "y10": 4.67,
+    "real_y2": 1.95,
     "real_y2_note": "近似（DGS2−T5YIE）",
-    "spread_bps": 36.5,
-    "spread_5d_chg": -1.0,
+    "spread_bps": 49.0,
+    "spread_5d_chg": -5.0,
     "signal": "🟡 正常 (中性)",
-    "asof": "2026-08-03",
-    "y10_5d_chg_bps": -4.8
+    "asof": "2026-08-05",
+    "y10_5d_chg_bps": -7.5
   },
   "us_debt": {
     "value_trillion": 39.065,
@@ -16,13 +16,12 @@
     "asof": "2026-01-01"
   },
   "margin_debt": {
-    "value_billion": null,
-    "mom_chg_pct": null,
-    "yoy_chg_pct": null,
-    "signal": "—",
-    "asof": "",
-    "source": "FRED MDEBT",
-    "error": "Bad Request.  The series does not exist."
+    "value_billion": 1502.07,
+    "mom_chg_pct": 6.11,
+    "yoy_chg_pct": 49.02,
+    "signal": "🔴 融资激增 (杠杆高)",
+    "asof": "Jun-26",
+    "source": "FINRA官网直抓"
   },
   "nfci_leverage": {
     "value": 0.036,
@@ -31,5 +30,5 @@
     "signal": "🟠 轻度紧缩",
     "asof": "2026-07-31"
   },
-  "asof": "2026-08-05 19:08"
+  "asof": "2026-08-07 02:45"
 }
