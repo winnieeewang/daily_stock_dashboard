@@ -37,6 +37,7 @@ import streamlit as st
 import yfinance as yf
 from plotly.subplots import make_subplots
 
+import bottom_signal as BS  # 市场底部判断模块
 import utils as U  # 本地工具模块
 import screener  # v3.0 选股三层架构：维科夫事件序列 + 多因子评分
 from stock_dashboard import Config  # 自选股列表
@@ -1605,6 +1606,72 @@ def _render_structure_tab() -> None:
     else:
         st.caption("暂无美股标的可扫描")
 
+    # ===== 市场底部信号灯（与维科夫并列，不互相修改）=====
+    st.markdown('<div class="section-title"><span class="accent">🚦</span>市场底部信号灯 <span style="font-size:11px;color:var(--text-dim);">宏观环境分(全市场统一) + 个股结构分(逐股不同) · 纯计算</span></div>', unsafe_allow_html=True)
+    try:
+        # 宏观环境分（只算一次）
+        _policy = U.fetch_policy_news_free(top_n=30)
+        macro_score, macro_detail = BS.calc_macro_env_score(policy_news=_policy)
+        _m_emoji, _m_label, _m_color = BS.traffic_light(macro_score)
+        st.markdown(
+            f'<div class="card" style="border-left:4px solid {_m_color};">'
+            f'<div style="font-size:14px;font-weight:700;margin-bottom:6px;">'
+            f'{_m_emoji} 宏观环境分 · {macro_score}/2 · {_m_label}</div>'
+            f'<div style="font-size:11px;color:var(--text-dim);line-height:1.6;">'
+            f'维度②监管恐慌: {"命中" if macro_detail.get("维度②_监管恐慌",{}).get("命中") else "未命中"} '
+            f'(政策新闻恐慌={macro_detail.get("维度②_监管恐慌",{}).get("政策新闻恐慌")})<br>'
+            f'维度①宏观杠杆: {"命中" if macro_detail.get("维度①_宏观",{}).get("命中") else "未命中"} '
+            f'(MarginDebt二阶导={macro_detail.get("维度①_宏观",{}).get("MarginDebt二阶导")})'
+            f'</div></div>',
+            unsafe_allow_html=True,
+        )
+
+        # 个股底部确信度（取 watchlist 前 6 只）
+        _btm_symbols = [s for s in (STOCKS_DF["symbol"].tolist() if STOCKS_DF is not None and not STOCKS_DF.empty else [])][:6]
+        if _btm_symbols:
+            _btm_rows = []
+            for _bsym in _btm_symbols:
+                try:
+                    _pe = None
+                    if STOCKS_DF is not None and not STOCKS_DF.empty:
+                        _brow = STOCKS_DF[STOCKS_DF["symbol"] == _bsym]
+                        if not _brow.empty:
+                            _pe = BS._safe_float(_brow.iloc[0].get("PE_Ratio"))
+                    _r = BS.calc_bottom_confidence(
+                        _bsym,
+                        macro_score=macro_score,
+                        macro_detail=macro_detail,
+                        pe=_pe,
+                        stocks_df=STOCKS_DF,
+                    )
+                    _btm_rows.append(_r)
+                except Exception:
+                    continue
+            if _btm_rows:
+                _btm_cols = st.columns(min(len(_btm_rows), 6))
+                for _bc, _br in zip(_btm_cols, _btm_rows):
+                    with _bc:
+                        st.markdown(
+                            f'<div class="card" style="text-align:center;border-top:3px solid {_br["color"]};">'
+                            f'<h4>{_br["symbol"]}</h4>'
+                            f'<div style="font-size:28px;font-weight:800;color:{_br["color"]};">{_br["traffic_light"]} {_br["bottom_score"]}/4</div>'
+                            f'<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">{_br["label"]}</div>'
+                            f'<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">'
+                            f'宏观{_br["macro_score"]} + 结构{_br["individual_score"]}'
+                            f'</div></div>',
+                            unsafe_allow_html=True,
+                        )
+                with st.expander("📋 底部信号灯明细"):
+                    for _br in _btm_rows:
+                        st.markdown(f"**{_br['symbol']}** {_br['traffic_light']} {_br['bottom_score']}/4 — {_br['label']}")
+                        _ind = _br.get("individual_detail", {})
+                        st.caption(
+                            f"个股拥挤出清: {'是' if _ind.get('维度①_个股',{}).get('命中') else '否'} · "
+                            f"估值/资金: {'是' if (_ind.get('维度③_估值',{}).get('命中') or _ind.get('维度④_资金',{}).get('命中')) else '否'}"
+                        )
+    except Exception as _e:  # noqa: BLE001
+        st.caption(f"底部信号灯暂不可用: {_e}")
+
 
 def _render_events_tab() -> None:
     """第1层·证据层 — 事件：经济日程 + FedWatch。"""
@@ -1849,31 +1916,33 @@ def page_stock_deepdive():
         # ===== 固定顶部：概览 + AI摘要（始终可见，不随 Tab 切换）=====
         chg = safe_float(r.get("涨跌幅"))
         price = safe_float(r.get("收盘价"))
-        _price_src = "data/stocks.csv"
-        if sym.endswith((".SS", ".SZ", ".HK")):
-            try:
-                if sym.endswith((".SS", ".SZ")):
-                    _acode = sym.split(".")[0]
-                    _aq = U.fetch_a_share_quote(_acode)
-                    if _aq and _aq.get("最新价"):
-                        price = float(_aq["最新价"])
-                        chg = float(_aq.get("涨跌幅", chg))
-                        _price_src = "东方财富实时"
-                if _price_src == "data/stocks.csv":
-                    _rq = U.fetch_realtime_quote(sym)
-                    if _rq.get("ok") and _rq.get("last"):
-                        price = float(_rq["last"])
-                        chg = float(_rq.get("pct", chg))
-                        _price_src = f"{_rq.get('source', '行情')}实时"
-            except Exception:  # noqa: BLE001
-                pass
+        _price_src = "stocks.csv"
+        _ts = r.get("日期", "—")
+        try:
+            if sym.endswith((".SS", ".SZ")):
+                _acode = sym.split(".")[0]
+                _aq = U.fetch_a_share_quote(_acode)
+                if _aq and _aq.get("最新价"):
+                    price = float(_aq["最新价"])
+                    chg = float(_aq.get("涨跌幅", chg))
+                    _price_src = "东方财富"
+                    _ts = datetime.now().strftime("%H:%M")
+            else:
+                _rq = U.fetch_realtime_quote(sym)
+                if _rq.get("ok") and _rq.get("last"):
+                    price = float(_rq["last"])
+                    chg = float(_rq.get("pct", chg))
+                    _price_src = _rq.get("source", "行情")
+                    _ts = datetime.now().strftime("%H:%M")
+        except Exception:  # noqa: BLE001
+            pass
         st.markdown(
             f"""
 <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
             <div style="font-size:22px;font-weight:800;">{sym} <span style='font-size:13px;color:var(--text-dim);font-weight:500;'>{market_label}</span></div>
-            <div style="font-size:11px;color:var(--text-dim);">{_price_src} · {DATA.get('cards', {}).get('generated_at', '—') if isinstance(DATA.get('cards'), dict) else '—'}</div>
+            <div style="font-size:11px;color:var(--text-dim);">{_price_src} · {_ts}</div>
         </div>
         <div style="text-align:right;">
             <div style="font-size:32px;font-weight:800;color:{color_for_change(chg)};">{price:.2f}</div>

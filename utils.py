@@ -4035,7 +4035,8 @@ def fetch_macro_history(period="10y", tickers=None):
 STOCK_NAMES = {
     "MU": "美光", "AAOI": "应用光电", "GOOGL": "谷歌", "MSFT": "微软", "AMZN": "亚马逊",
     "MRVL": "迈威尔", "LITE": "Lumentum", "SNDK": "闪迪", "NVDA": "英伟达", "ORCL": "甲骨文",
-    "SPCX": "标普500ETF", "SKHY": "SK海力士", "TSLA": "特斯拉",
+    "SPCX": "SpaceX", "SKHY": "Sky Harbour Group", "TSLA": "特斯拉",
+    "PLTR": "Palantir", "02500.HK": "曦智科技",
     "0700.HK": "腾讯控股", "0883.HK": "中国海洋石油", "3750.HK": "宁德时代",
     "07709.HK": "南方两倍做多海力士", "7709.HK": "南方两倍做多海力士", "00981.HK": "中芯国际",
     "688809.SS": "强一股份", "300408.SZ": "三环集团", "300679.SZ": "电连技术",

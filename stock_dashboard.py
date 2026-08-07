@@ -73,9 +73,9 @@ class Config:
     stocks: Tuple[str, ...] = (
         # 美股
         "MU", "AAOI", "GOOGL", "MSFT", "AMZN", "MRVL", "LITE",
-        "SNDK", "NVDA", "ORCL", "SPCX", "SKHY", "TSLA",
+        "SNDK", "NVDA", "ORCL", "SPCX", "SKHY", "TSLA", "PLTR",
         # 港股
-        "0700.HK", "0883.HK", "3750.HK", "07709.HK", "00981.HK",
+        "0700.HK", "0883.HK", "3750.HK", "07709.HK", "00981.HK", "02500.HK",
         # A 股（强一股份 / 三环集团 / 电连技术 等）
         "688809.SS", "300408.SZ", "300679.SZ", "000426.SZ",
         "002624.SZ", "601872.SS", "601975.SS", "002258.SZ",
@@ -1085,8 +1085,31 @@ class ReportOrchestrator:
                 continue
             row = {"symbol": sym, **data}
             records.append(row)
+        stocks_df = None
         if records:
-            pd.DataFrame(records).to_csv(out / "stocks.csv", index=False)
+            stocks_df = pd.DataFrame(records)
+            stocks_df.to_csv(out / "stocks.csv", index=False)
+
+        # === 底部判断：PE 历史累积 + 底部信号批量计算 ===
+        try:
+            import bottom_signal as _BS
+            if stocks_df is not None and not stocks_df.empty:
+                for _, row in stocks_df.iterrows():
+                    _sym = row.get("symbol")
+                    _pe = row.get("PE_Ratio")
+                    if _sym and _pe is not None:
+                        _BS.append_pe_snapshot(_sym, _pe)
+                _syms = [r["symbol"] for r in records]
+                _treasury = macro.get("10Y收益率")
+                _BS.batch_bottom_signals(
+                    _syms,
+                    stocks_df=stocks_df,
+                    policy_news=None,  # run() 里已有新闻聚合，这里简化
+                    treasury_yield=_treasury,
+                )
+                logger.info("底部信号灯计算完成")
+        except Exception as _e:
+            logger.warning(f"底部信号灯计算失败(非阻塞): {_e}")
 
         sox_row = {k: v for k, v in sox.items() if k != "信号列表"}
         sox_row["信号列表"] = "；".join(sox.get("信号列表", []))
