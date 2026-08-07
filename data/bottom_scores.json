@@ -1,51 +1,102 @@
 {
-  "generated_at": "2026-08-07T02:45:51.564620",
+  "generated_at": "2026-08-07T13:46:24.874546",
   "scores": {
-    "AAOI": {
-      "symbol": "AAOI",
-      "bottom_score": 0,
+    "MU": {
+      "symbol": "MU",
+      "bottom_score": 1,
       "macro_score": 0,
-      "individual_score": 0,
+      "individual_score": 1,
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [
+        "同板块相对估值排名靠后",
+        "PEG<1(成长性价比)"
+      ],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
-          "板块相对低位": false,
-          "PEG<1": false
+        "估值跌透": {
+          "命中": true,
+          "PE历史低位": null,
+          "ERP高位": null,
+          "板块相对低位": true,
+          "PEG小于1": true
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
+    },
+    "AAOI": {
+      "symbol": "AAOI",
+      "bottom_score": 1,
+      "macro_score": 0,
+      "individual_score": 1,
+      "traffic_light": "🔴",
+      "label": "红灯·继续观望",
+      "color": "#dc2626",
+      "macro_hits": [],
+      "individual_hits": [
+        "PEG<1(成长性价比)"
+      ],
+      "macro_details": {
+        "监管恐慌": {
+          "命中": false,
+          "政策新闻恐慌": false,
+          "FedWatch紧急降息": false,
+          "VIX期限倒挂": false,
+          "贴现窗口骤增": false
+        },
+        "杠杆去化": {
+          "命中": false,
+          "MarginDebt二阶导": false,
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
+        }
+      },
+      "individual_details": {
+        "拥挤出清": {
+          "命中": false,
+          "维科夫SC": false,
+          "OI_PCR回落": false
+        },
+        "估值跌透": {
+          "命中": true,
+          "PE历史低位": null,
+          "ERP高位": null,
+          "板块相对低位": false,
+          "PEG小于1": true
+        },
+        "资金动向": {
+          "命中": false,
+          "北向净流出": false
+        }
+      },
+      "asof": "2026-08-07 13:46"
     },
     "GOOGL": {
       "symbol": "GOOGL",
@@ -55,227 +106,45 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [
+        "同板块相对估值排名靠后"
+      ],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": true,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": true,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
-    },
-    "MU": {
-      "symbol": "MU",
-      "bottom_score": 1,
-      "macro_score": 0,
-      "individual_score": 1,
-      "traffic_light": "🔴",
-      "label": "红灯·继续观望",
-      "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
-          "命中": false,
-          "政策新闻恐慌": false,
-          "FedWatch紧急降息": false,
-          "VIX期限倒挂": false,
-          "贴现窗口骤增": false
-        },
-        "维度①_宏观": {
-          "命中": false,
-          "MarginDebt二阶导": false,
-          "CFTC_COT": false
-        }
-      },
-      "individual_detail": {
-        "维度①_个股": {
-          "命中": false,
-          "维科夫SC": false,
-          "OI_PCR回落": false
-        },
-        "维度③_估值": {
-          "命中": true,
-          "PE历史低位": false,
-          "ERP高位": false,
-          "板块相对低位": true,
-          "PEG<1": false
-        },
-        "维度④_资金": {
-          "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
-        }
-      },
-      "asof": "2026-08-07 02:45"
-    },
-    "AMZN": {
-      "symbol": "AMZN",
-      "bottom_score": 0,
-      "macro_score": 0,
-      "individual_score": 0,
-      "traffic_light": "🔴",
-      "label": "红灯·继续观望",
-      "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
-          "命中": false,
-          "政策新闻恐慌": false,
-          "FedWatch紧急降息": false,
-          "VIX期限倒挂": false,
-          "贴现窗口骤增": false
-        },
-        "维度①_宏观": {
-          "命中": false,
-          "MarginDebt二阶导": false,
-          "CFTC_COT": false
-        }
-      },
-      "individual_detail": {
-        "维度①_个股": {
-          "命中": false,
-          "维科夫SC": false,
-          "OI_PCR回落": false
-        },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
-          "板块相对低位": false,
-          "PEG<1": false
-        },
-        "维度④_资金": {
-          "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
-        }
-      },
-      "asof": "2026-08-07 02:45"
-    },
-    "MRVL": {
-      "symbol": "MRVL",
-      "bottom_score": 0,
-      "macro_score": 0,
-      "individual_score": 0,
-      "traffic_light": "🔴",
-      "label": "红灯·继续观望",
-      "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
-          "命中": false,
-          "政策新闻恐慌": false,
-          "FedWatch紧急降息": false,
-          "VIX期限倒挂": false,
-          "贴现窗口骤增": false
-        },
-        "维度①_宏观": {
-          "命中": false,
-          "MarginDebt二阶导": false,
-          "CFTC_COT": false
-        }
-      },
-      "individual_detail": {
-        "维度①_个股": {
-          "命中": false,
-          "维科夫SC": false,
-          "OI_PCR回落": false
-        },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
-          "板块相对低位": false,
-          "PEG<1": false
-        },
-        "维度④_资金": {
-          "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
-        }
-      },
-      "asof": "2026-08-07 02:45"
-    },
-    "LITE": {
-      "symbol": "LITE",
-      "bottom_score": 0,
-      "macro_score": 0,
-      "individual_score": 0,
-      "traffic_light": "🔴",
-      "label": "红灯·继续观望",
-      "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
-          "命中": false,
-          "政策新闻恐慌": false,
-          "FedWatch紧急降息": false,
-          "VIX期限倒挂": false,
-          "贴现窗口骤增": false
-        },
-        "维度①_宏观": {
-          "命中": false,
-          "MarginDebt二阶导": false,
-          "CFTC_COT": false
-        }
-      },
-      "individual_detail": {
-        "维度①_个股": {
-          "命中": false,
-          "维科夫SC": false,
-          "OI_PCR回落": false
-        },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
-          "板块相对低位": false,
-          "PEG<1": false
-        },
-        "维度④_资金": {
-          "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
-        }
-      },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "MSFT": {
       "symbol": "MSFT",
@@ -285,135 +154,137 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
-    "ORCL": {
-      "symbol": "ORCL",
+    "AMZN": {
+      "symbol": "AMZN",
       "bottom_score": 0,
       "macro_score": 0,
       "individual_score": 0,
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
-    "NVDA": {
-      "symbol": "NVDA",
-      "bottom_score": 0,
+    "LITE": {
+      "symbol": "LITE",
+      "bottom_score": 1,
       "macro_score": 0,
-      "individual_score": 0,
+      "individual_score": 1,
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [
+        "PEG<1(成长性价比)"
+      ],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+        "估值跌透": {
+          "命中": true,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": true
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "SNDK": {
       "symbol": "SNDK",
@@ -423,43 +294,139 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [
+        "同板块相对估值排名靠后"
+      ],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": true,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": true,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
+    },
+    "MRVL": {
+      "symbol": "MRVL",
+      "bottom_score": 0,
+      "macro_score": 0,
+      "individual_score": 0,
+      "traffic_light": "🔴",
+      "label": "红灯·继续观望",
+      "color": "#dc2626",
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
+          "命中": false,
+          "政策新闻恐慌": false,
+          "FedWatch紧急降息": false,
+          "VIX期限倒挂": false,
+          "贴现窗口骤增": false
+        },
+        "杠杆去化": {
+          "命中": false,
+          "MarginDebt二阶导": false,
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
+        }
+      },
+      "individual_details": {
+        "拥挤出清": {
+          "命中": false,
+          "维科夫SC": false,
+          "OI_PCR回落": false
+        },
+        "估值跌透": {
+          "命中": false,
+          "PE历史低位": null,
+          "ERP高位": null,
+          "板块相对低位": false,
+          "PEG小于1": false
+        },
+        "资金动向": {
+          "命中": false,
+          "北向净流出": false
+        }
+      },
+      "asof": "2026-08-07 13:46"
+    },
+    "ORCL": {
+      "symbol": "ORCL",
+      "bottom_score": 1,
+      "macro_score": 0,
+      "individual_score": 1,
+      "traffic_light": "🔴",
+      "label": "红灯·继续观望",
+      "color": "#dc2626",
+      "macro_hits": [],
+      "individual_hits": [
+        "PEG<1(成长性价比)"
+      ],
+      "macro_details": {
+        "监管恐慌": {
+          "命中": false,
+          "政策新闻恐慌": false,
+          "FedWatch紧急降息": false,
+          "VIX期限倒挂": false,
+          "贴现窗口骤增": false
+        },
+        "杠杆去化": {
+          "命中": false,
+          "MarginDebt二阶导": false,
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
+        }
+      },
+      "individual_details": {
+        "拥挤出清": {
+          "命中": false,
+          "维科夫SC": false,
+          "OI_PCR回落": false
+        },
+        "估值跌透": {
+          "命中": true,
+          "PE历史低位": null,
+          "ERP高位": null,
+          "板块相对低位": false,
+          "PEG小于1": true
+        },
+        "资金动向": {
+          "命中": false,
+          "北向净流出": false
+        }
+      },
+      "asof": "2026-08-07 13:46"
     },
     "SPCX": {
       "symbol": "SPCX",
@@ -469,135 +436,139 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
+    },
+    "NVDA": {
+      "symbol": "NVDA",
+      "bottom_score": 1,
+      "macro_score": 0,
+      "individual_score": 1,
+      "traffic_light": "🔴",
+      "label": "红灯·继续观望",
+      "color": "#dc2626",
+      "macro_hits": [],
+      "individual_hits": [
+        "PEG<1(成长性价比)"
+      ],
+      "macro_details": {
+        "监管恐慌": {
+          "命中": false,
+          "政策新闻恐慌": false,
+          "FedWatch紧急降息": false,
+          "VIX期限倒挂": false,
+          "贴现窗口骤增": false
+        },
+        "杠杆去化": {
+          "命中": false,
+          "MarginDebt二阶导": false,
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
+        }
+      },
+      "individual_details": {
+        "拥挤出清": {
+          "命中": false,
+          "维科夫SC": false,
+          "OI_PCR回落": false
+        },
+        "估值跌透": {
+          "命中": true,
+          "PE历史低位": null,
+          "ERP高位": null,
+          "板块相对低位": false,
+          "PEG小于1": true
+        },
+        "资金动向": {
+          "命中": false,
+          "北向净流出": false
+        }
+      },
+      "asof": "2026-08-07 13:46"
     },
     "SKHY": {
       "symbol": "SKHY",
-      "bottom_score": 0,
+      "bottom_score": 1,
       "macro_score": 0,
-      "individual_score": 0,
+      "individual_score": 1,
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [
+        "PEG<1(成长性价比)"
+      ],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+        "估值跌透": {
+          "命中": true,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": true
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
-    },
-    "PLTR": {
-      "symbol": "PLTR",
-      "bottom_score": 0,
-      "macro_score": 0,
-      "individual_score": 0,
-      "traffic_light": "🔴",
-      "label": "红灯·继续观望",
-      "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
-          "命中": false,
-          "政策新闻恐慌": false,
-          "FedWatch紧急降息": false,
-          "VIX期限倒挂": false,
-          "贴现窗口骤增": false
-        },
-        "维度①_宏观": {
-          "命中": false,
-          "MarginDebt二阶导": false,
-          "CFTC_COT": false
-        }
-      },
-      "individual_detail": {
-        "维度①_个股": {
-          "命中": false,
-          "维科夫SC": false,
-          "OI_PCR回落": false
-        },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
-          "板块相对低位": false,
-          "PEG<1": false
-        },
-        "维度④_资金": {
-          "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
-        }
-      },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "TSLA": {
       "symbol": "TSLA",
@@ -607,89 +578,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
-    },
-    "RKLB": {
-      "symbol": "RKLB",
-      "bottom_score": 0,
-      "macro_score": 0,
-      "individual_score": 0,
-      "traffic_light": "🔴",
-      "label": "红灯·继续观望",
-      "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
-          "命中": false,
-          "政策新闻恐慌": false,
-          "FedWatch紧急降息": false,
-          "VIX期限倒挂": false,
-          "贴现窗口骤增": false
-        },
-        "维度①_宏观": {
-          "命中": false,
-          "MarginDebt二阶导": false,
-          "CFTC_COT": false
-        }
-      },
-      "individual_detail": {
-        "维度①_个股": {
-          "命中": false,
-          "维科夫SC": false,
-          "OI_PCR回落": false
-        },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
-          "板块相对低位": false,
-          "PEG<1": false
-        },
-        "维度④_资金": {
-          "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
-        }
-      },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "EUV": {
       "symbol": "EUV",
@@ -699,89 +624,135 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
-    "FUTU": {
-      "symbol": "FUTU",
+    "RKLB": {
+      "symbol": "RKLB",
       "bottom_score": 0,
       "macro_score": 0,
       "individual_score": 0,
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
+    },
+    "PLTR": {
+      "symbol": "PLTR",
+      "bottom_score": 0,
+      "macro_score": 0,
+      "individual_score": 0,
+      "traffic_light": "🔴",
+      "label": "红灯·继续观望",
+      "color": "#dc2626",
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
+          "命中": false,
+          "政策新闻恐慌": false,
+          "FedWatch紧急降息": false,
+          "VIX期限倒挂": false,
+          "贴现窗口骤增": false
+        },
+        "杠杆去化": {
+          "命中": false,
+          "MarginDebt二阶导": false,
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
+        }
+      },
+      "individual_details": {
+        "拥挤出清": {
+          "命中": false,
+          "维科夫SC": false,
+          "OI_PCR回落": false
+        },
+        "估值跌透": {
+          "命中": false,
+          "PE历史低位": null,
+          "ERP高位": null,
+          "板块相对低位": false,
+          "PEG小于1": false
+        },
+        "资金动向": {
+          "命中": false,
+          "北向净流出": false
+        }
+      },
+      "asof": "2026-08-07 13:46"
     },
     "GEV": {
       "symbol": "GEV",
@@ -791,89 +762,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
-    },
-    "UNH": {
-      "symbol": "UNH",
-      "bottom_score": 0,
-      "macro_score": 0,
-      "individual_score": 0,
-      "traffic_light": "🔴",
-      "label": "红灯·继续观望",
-      "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
-          "命中": false,
-          "政策新闻恐慌": false,
-          "FedWatch紧急降息": false,
-          "VIX期限倒挂": false,
-          "贴现窗口骤增": false
-        },
-        "维度①_宏观": {
-          "命中": false,
-          "MarginDebt二阶导": false,
-          "CFTC_COT": false
-        }
-      },
-      "individual_detail": {
-        "维度①_个股": {
-          "命中": false,
-          "维科夫SC": false,
-          "OI_PCR回落": false
-        },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
-          "板块相对低位": false,
-          "PEG<1": false
-        },
-        "维度④_资金": {
-          "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
-        }
-      },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "NVO": {
       "symbol": "NVO",
@@ -883,89 +808,135 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
-    "NFLX": {
-      "symbol": "NFLX",
+    "UNH": {
+      "symbol": "UNH",
       "bottom_score": 0,
       "macro_score": 0,
       "individual_score": 0,
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
+    },
+    "FUTU": {
+      "symbol": "FUTU",
+      "bottom_score": 0,
+      "macro_score": 0,
+      "individual_score": 0,
+      "traffic_light": "🔴",
+      "label": "红灯·继续观望",
+      "color": "#dc2626",
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
+          "命中": false,
+          "政策新闻恐慌": false,
+          "FedWatch紧急降息": false,
+          "VIX期限倒挂": false,
+          "贴现窗口骤增": false
+        },
+        "杠杆去化": {
+          "命中": false,
+          "MarginDebt二阶导": false,
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
+        }
+      },
+      "individual_details": {
+        "拥挤出清": {
+          "命中": false,
+          "维科夫SC": false,
+          "OI_PCR回落": false
+        },
+        "估值跌透": {
+          "命中": false,
+          "PE历史低位": null,
+          "ERP高位": null,
+          "板块相对低位": false,
+          "PEG小于1": false
+        },
+        "资金动向": {
+          "命中": false,
+          "北向净流出": false
+        }
+      },
+      "asof": "2026-08-07 13:46"
     },
     "JNJ": {
       "symbol": "JNJ",
@@ -975,89 +946,137 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
-    "INTU": {
-      "symbol": "INTU",
+    "NFLX": {
+      "symbol": "NFLX",
       "bottom_score": 0,
       "macro_score": 0,
       "individual_score": 0,
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
+    },
+    "INTU": {
+      "symbol": "INTU",
+      "bottom_score": 1,
+      "macro_score": 0,
+      "individual_score": 1,
+      "traffic_light": "🔴",
+      "label": "红灯·继续观望",
+      "color": "#dc2626",
+      "macro_hits": [],
+      "individual_hits": [
+        "PEG<1(成长性价比)"
+      ],
+      "macro_details": {
+        "监管恐慌": {
+          "命中": false,
+          "政策新闻恐慌": false,
+          "FedWatch紧急降息": false,
+          "VIX期限倒挂": false,
+          "贴现窗口骤增": false
+        },
+        "杠杆去化": {
+          "命中": false,
+          "MarginDebt二阶导": false,
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
+        }
+      },
+      "individual_details": {
+        "拥挤出清": {
+          "命中": false,
+          "维科夫SC": false,
+          "OI_PCR回落": false
+        },
+        "估值跌透": {
+          "命中": true,
+          "PE历史低位": null,
+          "ERP高位": null,
+          "板块相对低位": false,
+          "PEG小于1": true
+        },
+        "资金动向": {
+          "命中": false,
+          "北向净流出": false
+        }
+      },
+      "asof": "2026-08-07 13:46"
     },
     "688809.SS": {
       "symbol": "688809.SS",
@@ -1067,43 +1086,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "300408.SZ": {
       "symbol": "300408.SZ",
@@ -1113,89 +1132,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
-    },
-    "000426.SZ": {
-      "symbol": "000426.SZ",
-      "bottom_score": 0,
-      "macro_score": 0,
-      "individual_score": 0,
-      "traffic_light": "🔴",
-      "label": "红灯·继续观望",
-      "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
-          "命中": false,
-          "政策新闻恐慌": false,
-          "FedWatch紧急降息": false,
-          "VIX期限倒挂": false,
-          "贴现窗口骤增": false
-        },
-        "维度①_宏观": {
-          "命中": false,
-          "MarginDebt二阶导": false,
-          "CFTC_COT": false
-        }
-      },
-      "individual_detail": {
-        "维度①_个股": {
-          "命中": false,
-          "维科夫SC": false,
-          "OI_PCR回落": false
-        },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
-          "板块相对低位": false,
-          "PEG<1": false
-        },
-        "维度④_资金": {
-          "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
-        }
-      },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "300679.SZ": {
       "symbol": "300679.SZ",
@@ -1205,43 +1178,89 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
+    },
+    "000426.SZ": {
+      "symbol": "000426.SZ",
+      "bottom_score": 0,
+      "macro_score": 0,
+      "individual_score": 0,
+      "traffic_light": "🔴",
+      "label": "红灯·继续观望",
+      "color": "#dc2626",
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
+          "命中": false,
+          "政策新闻恐慌": false,
+          "FedWatch紧急降息": false,
+          "VIX期限倒挂": false,
+          "贴现窗口骤增": false
+        },
+        "杠杆去化": {
+          "命中": false,
+          "MarginDebt二阶导": false,
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
+        }
+      },
+      "individual_details": {
+        "拥挤出清": {
+          "命中": false,
+          "维科夫SC": false,
+          "OI_PCR回落": false
+        },
+        "估值跌透": {
+          "命中": false,
+          "PE历史低位": null,
+          "ERP高位": null,
+          "板块相对低位": false,
+          "PEG小于1": false
+        },
+        "资金动向": {
+          "命中": false,
+          "北向净流出": false
+        }
+      },
+      "asof": "2026-08-07 13:46"
     },
     "002624.SZ": {
       "symbol": "002624.SZ",
@@ -1251,43 +1270,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "002258.SZ": {
       "symbol": "002258.SZ",
@@ -1297,43 +1316,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "601872.SS": {
       "symbol": "601872.SS",
@@ -1343,135 +1362,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
-    },
-    "601975.SS": {
-      "symbol": "601975.SS",
-      "bottom_score": 0,
-      "macro_score": 0,
-      "individual_score": 0,
-      "traffic_light": "🔴",
-      "label": "红灯·继续观望",
-      "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
-          "命中": false,
-          "政策新闻恐慌": false,
-          "FedWatch紧急降息": false,
-          "VIX期限倒挂": false,
-          "贴现窗口骤增": false
-        },
-        "维度①_宏观": {
-          "命中": false,
-          "MarginDebt二阶导": false,
-          "CFTC_COT": false
-        }
-      },
-      "individual_detail": {
-        "维度①_个股": {
-          "命中": false,
-          "维科夫SC": false,
-          "OI_PCR回落": false
-        },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
-          "板块相对低位": false,
-          "PEG<1": false
-        },
-        "维度④_资金": {
-          "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
-        }
-      },
-      "asof": "2026-08-07 02:45"
-    },
-    "600150.SS": {
-      "symbol": "600150.SS",
-      "bottom_score": 0,
-      "macro_score": 0,
-      "individual_score": 0,
-      "traffic_light": "🔴",
-      "label": "红灯·继续观望",
-      "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
-          "命中": false,
-          "政策新闻恐慌": false,
-          "FedWatch紧急降息": false,
-          "VIX期限倒挂": false,
-          "贴现窗口骤增": false
-        },
-        "维度①_宏观": {
-          "命中": false,
-          "MarginDebt二阶导": false,
-          "CFTC_COT": false
-        }
-      },
-      "individual_detail": {
-        "维度①_个股": {
-          "命中": false,
-          "维科夫SC": false,
-          "OI_PCR回落": false
-        },
-        "维度③_估值": {
-          "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
-          "板块相对低位": false,
-          "PEG<1": false
-        },
-        "维度④_资金": {
-          "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
-        }
-      },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "001331.SZ": {
       "symbol": "001331.SZ",
@@ -1481,43 +1408,135 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
+    },
+    "601975.SS": {
+      "symbol": "601975.SS",
+      "bottom_score": 0,
+      "macro_score": 0,
+      "individual_score": 0,
+      "traffic_light": "🔴",
+      "label": "红灯·继续观望",
+      "color": "#dc2626",
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
+          "命中": false,
+          "政策新闻恐慌": false,
+          "FedWatch紧急降息": false,
+          "VIX期限倒挂": false,
+          "贴现窗口骤增": false
+        },
+        "杠杆去化": {
+          "命中": false,
+          "MarginDebt二阶导": false,
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
+        }
+      },
+      "individual_details": {
+        "拥挤出清": {
+          "命中": false,
+          "维科夫SC": false,
+          "OI_PCR回落": false
+        },
+        "估值跌透": {
+          "命中": false,
+          "PE历史低位": null,
+          "ERP高位": null,
+          "板块相对低位": false,
+          "PEG小于1": false
+        },
+        "资金动向": {
+          "命中": false,
+          "北向净流出": false
+        }
+      },
+      "asof": "2026-08-07 13:46"
+    },
+    "600150.SS": {
+      "symbol": "600150.SS",
+      "bottom_score": 0,
+      "macro_score": 0,
+      "individual_score": 0,
+      "traffic_light": "🔴",
+      "label": "红灯·继续观望",
+      "color": "#dc2626",
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
+          "命中": false,
+          "政策新闻恐慌": false,
+          "FedWatch紧急降息": false,
+          "VIX期限倒挂": false,
+          "贴现窗口骤增": false
+        },
+        "杠杆去化": {
+          "命中": false,
+          "MarginDebt二阶导": false,
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
+        }
+      },
+      "individual_details": {
+        "拥挤出清": {
+          "命中": false,
+          "维科夫SC": false,
+          "OI_PCR回落": false
+        },
+        "估值跌透": {
+          "命中": false,
+          "PE历史低位": null,
+          "ERP高位": null,
+          "板块相对低位": false,
+          "PEG小于1": false
+        },
+        "资金动向": {
+          "命中": false,
+          "北向净流出": false
+        }
+      },
+      "asof": "2026-08-07 13:46"
     },
     "0700.HK": {
       "symbol": "0700.HK",
@@ -1527,43 +1546,45 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [
+        "同板块相对估值排名靠后"
+      ],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": true,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": true,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "0883.HK": {
       "symbol": "0883.HK",
@@ -1573,43 +1594,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "3750.HK": {
       "symbol": "3750.HK",
@@ -1619,43 +1640,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "07709.HK": {
       "symbol": "07709.HK",
@@ -1665,43 +1686,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "00981.HK": {
       "symbol": "00981.HK",
@@ -1711,89 +1732,89 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
-    "02500.HK": {
-      "symbol": "02500.HK",
+    "01879.HK": {
+      "symbol": "01879.HK",
       "bottom_score": 0,
       "macro_score": 0,
       "individual_score": 0,
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "00293.HK": {
       "symbol": "00293.HK",
@@ -1803,43 +1824,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "03690.HK": {
       "symbol": "03690.HK",
@@ -1849,43 +1870,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "01138.HK": {
       "symbol": "01138.HK",
@@ -1895,43 +1916,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     },
     "03968.HK": {
       "symbol": "03968.HK",
@@ -1941,43 +1962,43 @@
       "traffic_light": "🔴",
       "label": "红灯·继续观望",
       "color": "#dc2626",
-      "macro_detail": {
-        "维度②_监管恐慌": {
+      "macro_hits": [],
+      "individual_hits": [],
+      "macro_details": {
+        "监管恐慌": {
           "命中": false,
           "政策新闻恐慌": false,
           "FedWatch紧急降息": false,
           "VIX期限倒挂": false,
           "贴现窗口骤增": false
         },
-        "维度①_宏观": {
+        "杠杆去化": {
           "命中": false,
           "MarginDebt二阶导": false,
-          "CFTC_COT": false
+          "CFTC_COT": false,
+          "热力图离散度低": null,
+          "离散度描述": "离散度 1.55% (历史 0/60 天，积累中)"
         }
       },
-      "individual_detail": {
-        "维度①_个股": {
+      "individual_details": {
+        "拥挤出清": {
           "命中": false,
           "维科夫SC": false,
           "OI_PCR回落": false
         },
-        "维度③_估值": {
+        "估值跌透": {
           "命中": false,
-          "PE历史低位": false,
-          "ERP高位": false,
+          "PE历史低位": null,
+          "ERP高位": null,
           "板块相对低位": false,
-          "PEG<1": false
+          "PEG小于1": false
         },
-        "维度④_资金": {
+        "资金动向": {
           "命中": false,
-          "热力图离散度高": false,
-          "离散度描述": "计算失败",
-          "北向净流出": false,
-          "避险资产联动": false,
-          "避险资产描述": "待部署避险资产日常抓取(GLD/TLT/DXY)"
+          "北向净流出": false
         }
       },
-      "asof": "2026-08-07 02:45"
+      "asof": "2026-08-07 13:46"
     }
   }
 }

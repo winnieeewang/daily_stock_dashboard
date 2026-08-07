@@ -1,68 +1,27 @@
-# ---- Project-specific (not committed) ----
-refer-to/
-feature/
-sdd-docs/*
-.workbuddy
-
-# ---- Secrets / local env ----
+# Python
+__pycache__/
+*.pyc
+*.pyo
 .env
-.env.*
-!.env.example
+secrets.toml
+*.log
 
-# ---- OS ----
+# WorkBuddy 内部（记忆/缓存，勿入库）
+.workbuddy/
+
+# 本地数据目录 — 部署到 Streamlit Cloud 需要 stocks.csv 等静态数据，必须入库。
+# （CI 工作流会重新生成并更新；手动同步时也要把 data/ 一起上传到 GitHub，否则云端无数据。）
+# 仅排除 data/ 下的缓存类临时文件：
+data/__pycache__/
+data/.cache/
+data/*.tmp
+
+# 本地生成物（汇报文档等）
+outputs/
+
+# 同花顺 Financial-API 仓库本地克隆（参考用，体积大不入库）
+_ths_repo/
+
+# 系统
 .DS_Store
 Thumbs.db
-
-# ---- Python bytecode / cache ----
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-
-# ---- Packaging / build artifacts ----
-build/
-dist/
-*.egg-info/
-*.egg
-pip-wheel-metadata/
-.eggs/
-
-# ---- Virtual environments ----
-.venv/
-venv/
-env/
-ENV/
-
-# ---- Testing / coverage ----
-.pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-.tox/
-.nox/
-coverage.xml
-*.cover
-
-# ---- Type checkers / linters ----
-.mypy_cache/
-.ruff_cache/
-.pytype/
-
-# ---- Jupyter ----
-.ipynb_checkpoints/
-
-# ---- IDE / editor ----
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# ---- Local data / scratch outputs ----
-data/
-out/
-*.sqlite
-*.sqlite3
-*.db
-*.duckdb
-*.parquet
-*.log

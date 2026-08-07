@@ -185,16 +185,39 @@ def r_multiple_plan(
 # ---------------------------------------------------------------------------
 # 个股杠杆强平线
 # ---------------------------------------------------------------------------
-def liquidation_line(entry: float, leverage: float, maintenance: float = 0.3) -> Optional[float]:
+# 按市场区分的默认维持保证金率（机构惯例，可在调用时覆盖）：
+#   US: Reg T 维持保证金 25%；个别高波动标的（VIX ETN 等）可能要求更高
+#   HK: 港股孖展常见 30%
+#   CN: A股融资融券维持担保比例折算 ≈ 35%
+MARKET_MAINTENANCE = {"US": 0.25, "HK": 0.30, "CN": 0.35}
+
+
+def maintenance_for_symbol(symbol: str, override: Optional[float] = None) -> float:
+    """按标的代码推断市场默认维持保证金率，override 优先。"""
+    if override is not None:
+        return override
+    if symbol.upper().endswith(".HK"):
+        return MARKET_MAINTENANCE["HK"]
+    if symbol.upper().endswith((".SS", ".SZ")):
+        return MARKET_MAINTENANCE["CN"]
+    return MARKET_MAINTENANCE["US"]
+
+
+def liquidation_line(entry: float, leverage: float, maintenance: Optional[float] = None,
+                     symbol: Optional[str] = None) -> Optional[float]:
     """
     杠杆强平价公式：
       margin_call_price = entry × (leverage - 1) / (leverage × (1 - maintenance))
     示例：2x 杠杆 + 30% 维持保证金 → 强平价 ≈ entry × 0.714（跌 ~28.6% 触发强平）
+    maintenance 未传时按 symbol 所属市场推断（美股 25% / 港股 30% / A股 35%）。
     """
     e = _num(entry)
-    if e is None or leverage is None or leverage <= 1 or maintenance is None or maintenance <= 0:
+    if e is None or leverage is None or leverage <= 1:
         return None
-    return round(e * (leverage - 1) / (leverage * (1 - maintenance)), 2)
+    m = maintenance if maintenance is not None else maintenance_for_symbol(symbol or "")
+    if m is None or m <= 0 or m >= 1:
+        return None
+    return round(e * (leverage - 1) / (leverage * (1 - m)), 2)
 
 
 def leverage_risk_plan(
@@ -202,20 +225,24 @@ def leverage_risk_plan(
     current: float,
     atr: Optional[float] = None,
     leverage_levels: tuple = (1.5, 2.0, 3.0),
-    maintenance: float = 0.3,
+    maintenance: Optional[float] = None,
+    symbol: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """按多个杠杆档位给出强平价 + 距强平 ATR 倍数 + 风险等级。"""
+    """按多个杠杆档位给出强平价 + 距强平 ATR 倍数 + 风险等级。
+    maintenance 未传时按 symbol 所属市场推断。"""
     out: Dict[str, Any] = {"ok": False, "details": {}, "error": ""}
     e = _num(entry)
     c = _num(current)
     if e is None or c is None:
         out["error"] = "entry / current 需为正数"
         return out
+    m = maintenance if maintenance is not None else maintenance_for_symbol(symbol or "")
     out["ok"] = True
     out["entry"] = round(e, 4)
     out["current"] = round(c, 4)
+    out["maintenance_used"] = m
     for lev in leverage_levels:
-        mc = liquidation_line(e, lev, maintenance)
+        mc = liquidation_line(e, lev, maintenance=m, symbol=symbol)
         atr_mult = None
         if mc is not None and atr is not None:
             atr_v = _num(atr)

@@ -211,8 +211,19 @@ class DataFetcher:
         try:
             import akshare as ak
             code = symbol.replace(".HK", "").zfill(5)
-            # 用未复权实际成交价（qfq 对港股杠杆ETF 等会产生错乱）
-            df = ak.stock_hk_daily(symbol=code, adjust="")
+            # 统一复权口径：前复权(qfq)，与美股 auto_adjust=True 对齐（历史价格按复权因子调整）
+            # 注意：杠杆ETF/ETN（每日重置）复权可能失真，此类标的由 fetch_yf 兜底
+            df = None
+            try:
+                end = datetime.now().strftime("%Y%m%d")
+                start = (datetime.now() - timedelta(days=self.cfg.lookback_days + 30)).strftime("%Y%m%d")
+                df = ak.stock_hk_hist(symbol=code, period="daily", start_date=start, end_date=end, adjust="qfq")
+            except Exception:
+                df = None
+            if df is None or df.empty:
+                # 降级：stock_hk_daily 不支持复权，取未复权并记录
+                logger.warning("stock_hk_hist 失败，港股 %s 回退未复权 stock_hk_daily", symbol)
+                df = ak.stock_hk_daily(symbol=code, adjust="")
             if df.empty:
                 raise ValueError("AKShare 返回空数据")
             rename_map = {
@@ -239,7 +250,7 @@ class DataFetcher:
             if len(df.columns) < len(required):
                 missing = set(required) - set(df.columns)
                 raise ValueError(f"AKShare 返回数据缺少列: {missing}")
-            return df.apply(pd.to_numeric, errors="coerce").dropna()
+            return df.apply(pd.to_numeric, errors="coerce").dropna().tail(self.cfg.lookback_days)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"AKShare {symbol} 失败({e})，回退 Yahoo Finance")
             return self.fetch_yf(symbol, period=f"{self.cfg.lookback_days}d")
@@ -248,8 +259,8 @@ class DataFetcher:
         try:
             import akshare as ak
             code = symbol.replace(".SS", "").replace(".SZ", "")
-            # 用未复权实际成交价，避免复权算法在个别标的上的偏差
-            df = ak.stock_zh_a_hist(symbol=code, period="daily", adjust="")
+            # 统一复权口径：前复权(qfq)，与美股 auto_adjust=True 对齐
+            df = ak.stock_zh_a_hist(symbol=code, period="daily", adjust="qfq")
             if df is None or df.empty:
                 raise ValueError("AKShare A股 返回空")
             rename_map = {
