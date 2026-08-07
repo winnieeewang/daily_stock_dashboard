@@ -2078,7 +2078,8 @@ def fetch_realtime_via_ths(symbol: str) -> Dict[str, Any]:
 def fetch_realtime_quote(symbol: str) -> Dict[str, Any]:
     """返回 {ok, symbol, name, last, prev_close, pct, source}。
 
-    仅处理港股(.HK)与A股(.SS/.SZ)；美股沿用 Yahoo（CI 上可靠），返回 ok=False。
+    仅处理港股(.HK)与A股(.SS/.SZ)；美股优先 Polygon.io（若配 POLYGON_API_KEY），
+    否则沿用 Yahoo（CI 上可靠），返回 ok=False。
     优先级：富途OpenD → 东方财富 → 腾讯 → 新浪；任一源成功即返回。
     最终 ok=False 表示所有源都无法取得可信实时价。
     """
@@ -2086,7 +2087,16 @@ def fetch_realtime_quote(symbol: str) -> Dict[str, Any]:
     _nm = STOCK_NAMES.get(symbol)  # 中文名映射优先，防止新浪英文名/腾讯简称污染 name 字段
     is_hk = symbol.endswith(".HK")
     is_cn = symbol.endswith((".SS", ".SZ"))
+
+    # 美股：Polygon.io 优先（需 POLYGON_API_KEY；免费档 delayed 15 分钟 + 5req/min 限流）
     if not (is_hk or is_cn):
+        try:
+            pq = fetch_polygon_quote(symbol)
+            if pq.get("ok"):
+                pq["name"] = _nm or ""
+                return pq
+        except Exception:  # noqa: BLE001
+            pass
         return out
 
     # 0) 富途 OpenD（若已开启 USE_FUTU 且网关可达）：优先级最高
@@ -4761,4 +4771,376 @@ def compute_safe_haven_correlation(symbol: str, days: int = 30) -> Optional[Dict
         return {"correlations": corrs, "avg_abs_corr": round(avg_corr, 3), "desc": desc}
     except Exception as e:  # noqa: BLE001
         logger.debug("避险资产相关计算失败 %s: %s", symbol, e)
+        return None
+
+
+# ---------------------------------------------------------------------------
+# 组合风险指标：Beta 暴露 / 行业集中度 HHI / 最大回撤 MaxDD (Phase 2 ②)
+# ---------------------------------------------------------------------------
+
+STOCK_SECTOR_MAP: Dict[str, str] = {
+    "MSFT": "科技", "GOOGL": "科技", "ORCL": "科技", "META": "科技", "CRM": "科技",
+    "PLTR": "科技", "SNOW": "科技", "PANW": "科技", "FTNT": "科技", "CRWD": "科技",
+    "NVDA": "半导体", "MU": "半导体", "MRVL": "半导体", "LITE": "半导体", "SNDK": "半导体",
+    "AMD": "半导体", "QCOM": "半导体", "TXN": "半导体", "AMAT": "半导体", "SMCI": "半导体",
+    "ASML": "半导体", "AVGO": "半导体",
+    "AMZN": "消费", "TSLA": "汽车", "NIO": "汽车", "XPEV": "汽车", "NKE": "消费",
+    "NVO": "医疗", "LLY": "医疗", "UNH": "医疗", "JNJ": "医疗", "PFE": "医疗",
+    "JPM": "金融", "GS": "金融", "V": "金融", "MA": "金融", "BLK": "金融",
+    "SPCX": "军工航天", "RKLB": "军工航天", "GEV": "新能源", "FUTU": "金融",
+    "XOM": "能源", "CVX": "能源", "COP": "能源", "DRLL": "能源",
+    "AAOX": "杠杆ETF", "SNXX": "杠杆ETF", "SOXL": "杠杆ETF", "SKHY": "杠杆ETF",
+    "0700.HK": "科技", "0883.HK": "能源", "3750.HK": "新能源", "01879.HK": "科技",
+    "00700.HK": "科技", "00293.HK": "交通", "03690.HK": "消费", "01138.HK": "航运",
+    "03968.HK": "金融", "07709.HK": "科技", "00981.HK": "半导体", "01109.HK": "地产",
+    "600519.SS": "消费", "000426.SZ": "公用", "002624.SZ": "科技", "601872.SS": "航运",
+    "601975.SS": "航运", "002258.SZ": "化工", "001331.SZ": "科技", "600150.SS": "军工航天",
+    "688809.SS": "半导体", "300679.SZ": "科技", "688008.SS": "半导体", "600941.SS": "科技",
+}
+
+
+def _fetch_close_series(sym: str, period: str = "1y") -> Optional[pd.Series]:
+    """容错取收盘序列（复用 yfinance）。"""
+    try:
+        import yfinance as yf
+        df = yf.download(sym, period=period, progress=False, auto_adjust=True)
+        return _normalize_close_series(df)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def compute_portfolio_risk_metrics(stocks_df: Optional[pd.DataFrame] = None,
+                                   lookback_days: int = 250) -> Dict[str, Any]:
+    """
+    组合级风险指标（机构风控常用三件套）：
+      1. Beta 暴露：组合相对标普500(^GSPC) 的市值加权 Beta（逐股 OLS 回归）
+      2. 行业集中度 HHI：按板块权重的 Herfindahl-Hirschman Index（0~1，>0.25 偏集中）
+      3. 最大回撤 MaxDD：等权组合净值序列的最大回撤
+    全部为尽力而为：任一环节失败不影响整体，字段缺失时前端显示 "—"。
+    """
+    out: Dict[str, Any] = {"beta": None, "hhi": None, "max_dd": None,
+                           "sector_weights": {}, "n_symbols": 0, "error": None}
+    if stocks_df is None or stocks_df.empty or "symbol" not in stocks_df.columns:
+        out["error"] = "stocks_df 为空"
+        return out
+    symbols = stocks_df["symbol"].tolist()
+    out["n_symbols"] = len(symbols)
+    if len(symbols) < 2:
+        out["error"] = "组合标的过少"
+        return out
+
+    # 1) Beta（逐股 1 年日收益率 OLS，成交量*收盘价近似权重）
+    try:
+        spx = _fetch_close_series("^GSPC")
+        if spx is not None and len(spx) > 60:
+            spx_ret = spx.pct_change().dropna()
+            betas: list = []
+            weights: list = []
+            try:
+                batch = yf.download(symbols, period="1y", progress=False, auto_adjust=True, group_by="ticker")
+            except Exception:  # noqa: BLE001
+                batch = None
+            for sym in symbols:
+                try:
+                    if batch is not None:
+                        df = batch if len(symbols) == 1 else batch.get(sym)
+                        close = _normalize_close_series(df) if df is not None else None
+                    else:
+                        close = _fetch_close_series(sym)
+                    if close is None or len(close) < 60:
+                        continue
+                    ret = close.pct_change().dropna()
+                    j = ret.index.intersection(spx_ret.index)
+                    if len(j) < 40:
+                        continue
+                    cov = float(pd.concat([ret.loc[j], spx_ret.loc[j]], axis=1).cov().iloc[0, 1])
+                    var = float(spx_ret.loc[j].var())
+                    if var <= 0:
+                        continue
+                    b = cov / var
+                    if pd.isna(b) or b < -5 or b > 8:
+                        continue
+                    betas.append(b)
+                    if "成交量" in stocks_df.columns:
+                        row = stocks_df[stocks_df["symbol"] == sym]
+                        w = float(close.iloc[-1]) * float(row["成交量"].iloc[0]) if not row.empty else float(close.iloc[-1])
+                    else:
+                        w = float(close.iloc[-1])
+                    weights.append(max(w, 1e-6))
+                except Exception:  # noqa: BLE001
+                    continue
+            if betas:
+                wsum = sum(weights)
+                out["beta"] = round(sum(b * w for b, w in zip(betas, weights)) / wsum, 2)
+    except Exception as e:  # noqa: BLE001
+        logger.debug("组合 Beta 计算失败: %s", e)
+
+    # 2) 行业集中度 HHI
+    try:
+        sector_weights: Dict[str, float] = {}
+        total_w = 0.0
+        for sym in symbols:
+            sec = STOCK_SECTOR_MAP.get(sym, "其他")
+            if "成交量" in stocks_df.columns:
+                row = stocks_df[stocks_df["symbol"] == sym]
+                w = float(row["成交量"].iloc[0]) if not row.empty else 1.0
+            else:
+                w = 1.0
+            sector_weights[sec] = sector_weights.get(sec, 0.0) + max(w, 0)
+            total_w += max(w, 0)
+        if total_w > 0 and sector_weights:
+            norm = {k: v / total_w for k, v in sector_weights.items()}
+            out["sector_weights"] = {k: round(v * 100, 1) for k, v in sorted(norm.items(), key=lambda x: -x[1])}
+            out["hhi"] = round(sum(v * v for v in norm.values()), 3)
+    except Exception as e:  # noqa: BLE001
+        logger.debug("组合 HHI 计算失败: %s", e)
+
+    # 3) 最大回撤 MaxDD（等权净值近似）
+    try:
+        rets = []
+        for sym in symbols:
+            close = _fetch_close_series(sym)
+            if close is None or len(close) < lookback_days // 2:
+                continue
+            rets.append(close.pct_change().dropna().iloc[-lookback_days:])
+        if len(rets) >= 2:
+            panel = pd.concat(rets, axis=1).dropna()
+            if len(panel) >= 20:
+                ew_ret = panel.mean(axis=1)
+                nav = (1 + ew_ret).cumprod()
+                dd = (nav - nav.cummax()) / nav.cummax()
+                out["max_dd"] = round(float(dd.min()) * 100, 2)
+    except Exception as e:  # noqa: BLE001
+        logger.debug("组合 MaxDD 计算失败: %s", e)
+
+    return out
+
+
+# ---------------------------------------------------------------------------
+# 组合风险指标：Beta 暴露 / 行业集中度 HHI / 最大回撤 MaxDD (Phase 2 ②)
+# ---------------------------------------------------------------------------
+
+STOCK_SECTOR_MAP: Dict[str, str] = {
+    "MSFT": "科技", "GOOGL": "科技", "ORCL": "科技", "META": "科技", "CRM": "科技",
+    "PLTR": "科技", "SNOW": "科技", "PANW": "科技", "FTNT": "科技", "CRWD": "科技",
+    "NVDA": "半导体", "MU": "半导体", "MRVL": "半导体", "LITE": "半导体", "SNDK": "半导体",
+    "AMD": "半导体", "QCOM": "半导体", "TXN": "半导体", "AMAT": "半导体", "SMCI": "半导体",
+    "ASML": "半导体", "AVGO": "半导体",
+    "AMZN": "消费", "TSLA": "汽车", "NIO": "汽车", "XPEV": "汽车", "NKE": "消费",
+    "NVO": "医疗", "LLY": "医疗", "UNH": "医疗", "JNJ": "医疗", "PFE": "医疗",
+    "JPM": "金融", "GS": "金融", "V": "金融", "MA": "金融", "BLK": "金融",
+    "SPCX": "军工航天", "RKLB": "军工航天", "GEV": "新能源", "FUTU": "金融",
+    "XOM": "能源", "CVX": "能源", "COP": "能源", "DRLL": "能源",
+    "AAOX": "杠杆ETF", "SNXX": "杠杆ETF", "SOXL": "杠杆ETF", "SKHY": "杠杆ETF",
+    "0700.HK": "科技", "0883.HK": "能源", "3750.HK": "新能源", "01879.HK": "科技",
+    "00700.HK": "科技", "00293.HK": "交通", "03690.HK": "消费", "01138.HK": "航运",
+    "03968.HK": "金融", "07709.HK": "科技", "00981.HK": "半导体", "01109.HK": "地产",
+    "600519.SS": "消费", "000426.SZ": "公用", "002624.SZ": "科技", "601872.SS": "航运",
+    "601975.SS": "航运", "002258.SZ": "化工", "001331.SZ": "科技", "600150.SS": "军工航天",
+    "688809.SS": "半导体", "300679.SZ": "科技", "688008.SS": "半导体", "600941.SS": "科技",
+}
+
+
+def _fetch_close_series(sym: str, period: str = "1y") -> Optional[pd.Series]:
+    """容错取收盘序列（复用 yfinance）。"""
+    try:
+        import yfinance as yf
+        df = yf.download(sym, period=period, progress=False, auto_adjust=True)
+        return _normalize_close_series(df)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def compute_portfolio_risk_metrics(stocks_df: Optional[pd.DataFrame] = None,
+                                   lookback_days: int = 250) -> Dict[str, Any]:
+    """
+    组合级风险指标（机构风控常用三件套）：
+      1. Beta 暴露：组合相对标普500(^GSPC) 的市值加权 Beta（逐股 OLS 回归）
+      2. 行业集中度 HHI：按板块权重的 Herfindahl-Hirschman Index（0~1，>0.25 偏集中）
+      3. 最大回撤 MaxDD：等权组合净值序列的最大回撤
+    全部为尽力而为：任一环节失败不影响整体，字段缺失时前端显示 "—"。
+    """
+    out: Dict[str, Any] = {"beta": None, "hhi": None, "max_dd": None,
+                           "sector_weights": {}, "n_symbols": 0, "error": None}
+    if stocks_df is None or stocks_df.empty or "symbol" not in stocks_df.columns:
+        out["error"] = "stocks_df 为空"
+        return out
+    symbols = stocks_df["symbol"].tolist()
+    out["n_symbols"] = len(symbols)
+    if len(symbols) < 2:
+        out["error"] = "组合标的过少"
+        return out
+
+    # 1) Beta（逐股 1 年日收益率 OLS，成交量*收盘价近似权重）
+    try:
+        spx = _fetch_close_series("^GSPC")
+        if spx is not None and len(spx) > 60:
+            spx_ret = spx.pct_change().dropna()
+            betas: list = []
+            weights: list = []
+            try:
+                batch = yf.download(symbols, period="1y", progress=False, auto_adjust=True, group_by="ticker")
+            except Exception:  # noqa: BLE001
+                batch = None
+            for sym in symbols:
+                try:
+                    if batch is not None:
+                        df = batch if len(symbols) == 1 else batch.get(sym)
+                        close = _normalize_close_series(df) if df is not None else None
+                    else:
+                        close = _fetch_close_series(sym)
+                    if close is None or len(close) < 60:
+                        continue
+                    ret = close.pct_change().dropna()
+                    j = ret.index.intersection(spx_ret.index)
+                    if len(j) < 40:
+                        continue
+                    cov = float(pd.concat([ret.loc[j], spx_ret.loc[j]], axis=1).cov().iloc[0, 1])
+                    var = float(spx_ret.loc[j].var())
+                    if var <= 0:
+                        continue
+                    b = cov / var
+                    if pd.isna(b) or b < -5 or b > 8:
+                        continue
+                    betas.append(b)
+                    if "成交量" in stocks_df.columns:
+                        row = stocks_df[stocks_df["symbol"] == sym]
+                        w = float(close.iloc[-1]) * float(row["成交量"].iloc[0]) if not row.empty else float(close.iloc[-1])
+                    else:
+                        w = float(close.iloc[-1])
+                    weights.append(max(w, 1e-6))
+                except Exception:  # noqa: BLE001
+                    continue
+            if betas:
+                wsum = sum(weights)
+                out["beta"] = round(sum(b * w for b, w in zip(betas, weights)) / wsum, 2)
+    except Exception as e:  # noqa: BLE001
+        logger.debug("组合 Beta 计算失败: %s", e)
+
+    # 2) 行业集中度 HHI
+    try:
+        sector_weights: Dict[str, float] = {}
+        total_w = 0.0
+        for sym in symbols:
+            sec = STOCK_SECTOR_MAP.get(sym, "其他")
+            if "成交量" in stocks_df.columns:
+                row = stocks_df[stocks_df["symbol"] == sym]
+                w = float(row["成交量"].iloc[0]) if not row.empty else 1.0
+            else:
+                w = 1.0
+            sector_weights[sec] = sector_weights.get(sec, 0.0) + max(w, 0)
+            total_w += max(w, 0)
+        if total_w > 0 and sector_weights:
+            norm = {k: v / total_w for k, v in sector_weights.items()}
+            out["sector_weights"] = {k: round(v * 100, 1) for k, v in sorted(norm.items(), key=lambda x: -x[1])}
+            out["hhi"] = round(sum(v * v for v in norm.values()), 3)
+    except Exception as e:  # noqa: BLE001
+        logger.debug("组合 HHI 计算失败: %s", e)
+
+    # 3) 最大回撤 MaxDD（等权净值近似）
+    try:
+        rets = []
+        for sym in symbols:
+            close = _fetch_close_series(sym)
+            if close is None or len(close) < lookback_days // 2:
+                continue
+            rets.append(close.pct_change().dropna().iloc[-lookback_days:])
+        if len(rets) >= 2:
+            panel = pd.concat(rets, axis=1).dropna()
+            if len(panel) >= 20:
+                ew_ret = panel.mean(axis=1)
+                nav = (1 + ew_ret).cumprod()
+                dd = (nav - nav.cummax()) / nav.cummax()
+                out["max_dd"] = round(float(dd.min()) * 100, 2)
+    except Exception as e:  # noqa: BLE001
+        logger.debug("组合 MaxDD 计算失败: %s", e)
+
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Polygon.io 行情接入（Phase 2 ①）：美股实时报价 / 历史日线
+# ---------------------------------------------------------------------------
+# 注意：Polygon 免费档为 delayed 15 分钟数据（非交易所实时），且限 5 req/min。
+# 本模块内置进程级限流（<5 次/分钟），超限自动降级，不阻塞主流程。
+
+_POLYGON_BASE = "https://api.polygon.io"
+_POLYGON_CALLS: List[float] = []  # 最近调用时间戳（进程内）
+
+
+def _polygon_rate_ok(max_per_min: int = 4) -> bool:
+    """免费档 5 req/min，留 1 个余量按 4 次/分钟控制。"""
+    global _POLYGON_CALLS
+    now = time.time()
+    _POLYGON_CALLS = [t for t in _POLYGON_CALLS if now - t < 60.0]
+    if len(_POLYGON_CALLS) >= max_per_min:
+        return False
+    _POLYGON_CALLS.append(now)
+    return True
+
+
+def fetch_polygon_quote(symbol: str) -> Dict[str, Any]:
+    """
+    用 Polygon.io 获取美股实时报价（last trade + 昨收）。
+    返回 {ok, symbol, last, prev_close, pct, source, ts}；无 key/限流/失败 → ok=False。
+    snapshot 接口一次调用同时返回 prev_day 与 lastTrade。
+    """
+    if symbol.endswith((".HK", ".SS", ".SZ")):
+        return {"ok": False, "symbol": symbol, "reason": "market_not_supported"}
+    api_key = _get_secret("POLYGON_API_KEY")
+    if not api_key:
+        return {"ok": False, "symbol": symbol, "reason": "no_key"}
+    if not _polygon_rate_ok():
+        return {"ok": False, "symbol": symbol, "reason": "rate_limited"}
+    try:
+        ticker = symbol.upper().strip()
+        url = f"{_POLYGON_BASE}/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}?apiKey={api_key}"
+        d = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8).json()
+        t = d.get("ticker") or {}
+        last_trade = t.get("lastTrade") or {}
+        prev_day = t.get("prevDay") or {}
+        last = last_trade.get("p")
+        prev = prev_day.get("c")
+        ts = last_trade.get("s") or last_trade.get("t")
+        if last is None or prev is None or last <= 0 or prev <= 0:
+            return {"ok": False, "symbol": symbol, "reason": "empty_data"}
+        pct = (last - prev) / prev * 100.0
+        if abs(pct) > 300:
+            return {"ok": False, "symbol": symbol, "reason": "bad_pct"}
+        out = {"ok": True, "symbol": symbol,
+               "last": round(float(last), 4), "prev_close": round(float(prev), 4),
+               "pct": round(pct, 2), "source": "Polygon.io", "ts": ts}
+        return out
+    except Exception as e:  # noqa: BLE001
+        logger.debug("Polygon %s 报价失败: %s", symbol, e)
+        return {"ok": False, "symbol": symbol, "reason": str(e)}
+
+
+def fetch_polygon_history(symbol: str, days: int = 750) -> Optional[pd.DataFrame]:
+    """
+    用 Polygon.io 聚合接口下载日线（免费档为 split 调整价格）。
+    返回 {Date, Open, High, Low, Close, Volume} 或 None。单次调用覆盖 days 天。
+    """
+    if symbol.endswith((".HK", ".SS", ".SZ")):
+        return None
+    api_key = _get_secret("POLYGON_API_KEY")
+    if not api_key or not _polygon_rate_ok():
+        return None
+    try:
+        ticker = symbol.upper().strip()
+        to = datetime.now().strftime("%Y-%m-%d")
+        frm = (datetime.now() - timedelta(days=int(days * 1.6))).strftime("%Y-%m-%d")
+        url = (f"{_POLYGON_BASE}/v2/aggs/ticker/{ticker}/range/1/day/{frm}/{to}"
+               f"?apiKey={api_key}&limit=50000")
+        d = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=12).json()
+        results = d.get("results") or []
+        if not results:
+            return None
+        rows = [{"Date": pd.to_datetime(r["t"], unit="ms"),
+                 "Open": r["o"], "High": r["h"], "Low": r["l"],
+                 "Close": r["c"], "Volume": r["v"]} for r in results]
+        df = pd.DataFrame(rows).set_index("Date").sort_index()
+        return df.tail(days) if not df.empty else None
+    except Exception as e:  # noqa: BLE001
+        logger.debug("Polygon %s 历史失败: %s", symbol, e)
         return None

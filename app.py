@@ -55,6 +55,64 @@ st.set_page_config(
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("copilot_app")
 
+# ---------------------------------------------------------------------------
+# 主题（深色模式 Phase 3）：侧边栏切换，动态注入 CSS 变量覆盖
+# ---------------------------------------------------------------------------
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False
+
+DARK_CSS = """
+<style>
+    :root {
+        --bg: #0a0a0a;          /* Bloomberg 黑底 */
+        --card: #12151c;
+        --border: #262b36;
+        --text: #e5e7eb;
+        --text-dim: #9ca3af;
+        --accent: #00ff9d;      /* 青绿 */
+        --up: #ff4d4f;          /* 涨 → 红（保留中国习惯） */
+        --down: #00e676;        /* 跌 → 绿 */
+        --neutral: #6b7280;
+        --bg2: #1a1f2b;
+    }
+    .stApp { background: var(--bg); }
+    .card { background: var(--card) !important; border-color: var(--border) !important; }
+    .card h4 { color: var(--text-dim) !important; }
+    .brief-box { background: var(--card) !important; color: var(--text) !important; border-color: var(--border) !important; }
+    .conclusion-zone { background: linear-gradient(135deg, #0e1420 0%, #111a2e 100%) !important; }
+    .dsa-glass { background: rgba(18,21,28,0.92) !important; border-color: var(--border) !important; }
+    .pill-up { background: rgba(255,77,79,0.15); color: #ff8a8c; }
+    .pill-down { background: rgba(0,230,118,0.12); color: #4dff9d; }
+    .pill-neutral { background: rgba(107,114,128,0.18); color: #cbd5e1; }
+    .top-bar { background: linear-gradient(135deg, #0d1117 0%, #123a2a 100%); }
+    input, textarea, [data-baseweb="input"] { background: #0f1117 !important; color: var(--text) !important; }
+    [data-testid="stSidebar"] { background: #0d0f14 !important; }
+    [data-testid="stDataFrame"] { background: #12151c !important; }
+    .stMarkdown, p, li, h1, h2, h3, h4, h5 { color: var(--text); }
+</style>
+"""
+
+def _inject_theme_css() -> None:
+    """根据 session_state 注入主题 CSS（深色或浅色）。"""
+    if st.session_state.dark_mode:
+        st.markdown(DARK_CSS, unsafe_allow_html=True)
+
+
+def _plotly_chart(fig, use_container_width: bool = True, config=None) -> None:
+    """统一输出 plotly 图：深色模式下自动套用 plotly_dark 模板。"""
+    if st.session_state.dark_mode:
+        try:
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e5e7eb"),
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    _plotly_chart(fig, use_container_width=use_container_width, config=config)
+
+
 # 全局 CSS（深色卡片 + 浅色文字，适配投资分析专业感）
 GLOBAL_CSS = """
 <style>
@@ -491,6 +549,12 @@ with st.sidebar:
     st.markdown("### 🤖 Investment Copilot")
     st.caption("by Winnie")
     st.divider()
+    _inject_theme_css()  # 注入主题 CSS（在首次渲染前）
+    dark_toggle = st.toggle("🌙 深色模式（Bloomberg）", value=st.session_state.dark_mode, key="dark_toggle")
+    if dark_toggle != st.session_state.dark_mode:
+        st.session_state.dark_mode = dark_toggle
+        st.rerun()
+    st.divider()
     page = st.radio(
         "导航",
         ["🏠 Dashboard", "🔍 个股深度分析", "📊 跨资产对比", "📖 使用说明"],
@@ -742,7 +806,7 @@ def _rt_dash_strip() -> None:
     st.markdown(
         f"<div class='rt-strip'>"
         f"<span class='rt-label'>📡 实时速览</span>"
-        f"<span class='rt-time'>{now:%H:%M:%S} 北京时间 · 腾讯/东财/新浪 自动降级</span>"
+        f"<span class='rt-time'>{now:%H:%M:%S} 北京时间 · 腾讯/东财/新浪 自动降级 · ⚠️免费源延迟约15-20分钟</span>"
         f"<div class='rt-chips'>{''.join(chips)}</div>"
         f"</div>",
         unsafe_allow_html=True,
@@ -785,6 +849,26 @@ def _render_conclusion_zone() -> None:
                 pass
 
         if err is None:
+            # 组合风险指标（Beta / HHI / MaxDD）——尽力而为，失败显示 —
+            _beta_txt, _beta_color = "—", "var(--text-dim)"
+            _hhi_txt, _hhi_color = "—", "var(--text-dim)"
+            _top_sector, _maxdd_txt = "—", "—"
+            try:
+                _risk = U.compute_portfolio_risk_metrics(STOCKS_DF)
+                if _risk.get("beta") is not None:
+                    _b = _risk["beta"]
+                    _beta_txt = f"{_b:.2f}"
+                    _beta_color = "#dc2626" if _b >= 1.2 else ("#f59e0b" if _b >= 0.9 else "#16a34a")
+                if _risk.get("hhi") is not None:
+                    _h = _risk["hhi"]
+                    _hhi_txt = f"{_h:.3f}"
+                    _hhi_color = "#dc2626" if _h > 0.25 else ("#f59e0b" if _h > 0.15 else "#16a34a")
+                if _risk.get("sector_weights"):
+                    _top_sector = next(iter(_risk["sector_weights"]))
+                if _risk.get("max_dd") is not None:
+                    _maxdd_txt = f"{_risk['max_dd']:.1f}%"
+            except Exception:  # noqa: BLE001
+                pass
             st.markdown(
                 f"""
     <div class="card" style="background:linear-gradient(135deg,#fff 0%,#f8fafc 100%);">
@@ -838,6 +922,23 @@ def _render_conclusion_zone() -> None:
         <div style="width:{long_pct}%;background:#dc2626;transition:width 0.4s;"></div>
         <div style="width:{short_pct}%;background:#16a34a;transition:width 0.4s;"></div>
         <div style="width:{flat_pct}%;background:#94a3b8;transition:width 0.4s;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;font-size:12px;">
+        <div style="background:var(--bg2);border-radius:8px;padding:8px 12px;text-align:center;">
+          <div style="color:var(--text-dim);font-size:10px;">组合 Beta (vs S&P500)</div>
+          <div style="font-size:16px;font-weight:800;color:{_beta_color};">{_beta_txt}</div>
+          <div style="font-size:10px;color:var(--text-dim);">市值加权 · 1Y</div>
+        </div>
+        <div style="background:var(--bg2);border-radius:8px;padding:8px 12px;text-align:center;">
+          <div style="color:var(--text-dim);font-size:10px;">行业集中度 HHI</div>
+          <div style="font-size:16px;font-weight:800;color:{_hhi_color};">{_hhi_txt}</div>
+          <div style="font-size:10px;color:var(--text-dim);">Top: {_top_sector}</div>
+        </div>
+        <div style="background:var(--bg2);border-radius:8px;padding:8px 12px;text-align:center;">
+          <div style="color:var(--text-dim);font-size:10px;">组合最大回撤 MaxDD</div>
+          <div style="font-size:16px;font-weight:800;color:#16a34a;">{_maxdd_txt}</div>
+          <div style="font-size:10px;color:var(--text-dim);">等权净值 · 1Y</div>
+        </div>
       </div>
     </div>
     """,
@@ -1830,6 +1931,82 @@ def _render_research_tab() -> None:
     except Exception as e:  # noqa: BLE001
         st.warning(f"⚠️ 智能荐股计算失败: {e}")
 
+    # ===== 3 年回测验证（Phase 2 ③） =====
+    st.markdown('<div class="section-title"><span class="accent">📉</span>3 年历史回测验证（维科夫 / 多因子 / R倍数）</div>', unsafe_allow_html=True)
+    st.caption("对历史信号做滚动回测，检验策略是否经得起统计检验。运行 `python backtest.py` 更新数据。")
+    try:
+        import backtest as BT
+        report = BT.load_report()
+        results = report.get("results", {})
+        if not results:
+            st.info("回测数据尚未生成。运行 `python backtest.py` 后自动展示。")
+        else:
+            rows = []
+            for sym, r in results.items():
+                if "error" in r:
+                    continue
+                w = r.get("wyckoff", {})
+                m = r.get("multifactor", {})
+                rm = r.get("r_multiple", {})
+                g = m.get("gte60", {}) or {}
+                l = m.get("lt60", {}) or {}
+                rows.append({
+                    "标的": sym,
+                    "维科夫信号数": w.get("signals", 0),
+                    "维科夫20日胜率": f"{w.get('win_rate_20d', '—')}%",
+                    "维科夫20日均收": f"{w.get('avg_ret_20d', '—')}%",
+                    "多因子≥60胜率": f"{g.get('win_rate_20d', '—')}%",
+                    "多因子<60胜率": f"{l.get('win_rate_20d', '—')}%",
+                    "R倍数收益": f"{rm.get('r_total_return_pct', '—')}%",
+                    "Buy&Hold": f"{rm.get('bh_total_return_pct', '—')}%",
+                    "R超额": f"{rm.get('r_excess_pct', '—')}pp",
+                })
+            if rows:
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                st.caption(
+                    "解读：① 多因子 ≥60 vs <60 的胜率差是「60分买入线」有效性的直接证据；"
+                    "② R倍数超额为负说明固定止盈规则在牛市跑输 Buy&Hold；"
+                    "③ 维科夫信号胜率 >55% 才值得纳入初筛。数据为免费源日线，仅供参考。"
+                )
+    except Exception as e:  # noqa: BLE001
+        logger.debug("回测展示失败: %s", e)
+
+    # ===== 阈值扫描校准（40-60 分） =====
+    st.markdown('<div class="section-title"><span class="accent">🎚️</span>多因子阈值扫描校准（40-60 分）</div>', unsafe_allow_html=True)
+    st.caption("全量 43 只 3 年滚动回测，验证 60 分买入线是否最优。运行 `python threshold_scan.py` 更新数据。")
+    try:
+        import threshold_scan as TS
+        ts_report = TS.load_report()
+        by_th = ts_report.get("by_threshold", {})
+        rec = ts_report.get("recommendation", {})
+        if by_th:
+            t_rows = []
+            for t, a in by_th.items():
+                plr = a.get("profit_loss_ratio")
+                t_rows.append({
+                    "阈值": f"≥{t}",
+                    "信号数": a.get("signals", 0),
+                    "样本充足": "✅" if a.get("sample_sufficient") else "⚠️不足",
+                    "20日胜率": f"{a.get('win_rate', 0):.1f}%",
+                    "平均收益": f"{a.get('avg_return', 0):+.2f}%",
+                    "中位收益": f"{a.get('median_return', 0):+.2f}%",
+                    "盈亏比": f"{plr:.2f}" if plr else "—",
+                    "均回撤": f"{a.get('avg_mdd', 0):.2f}%",
+                })
+            st.dataframe(pd.DataFrame(t_rows), use_container_width=True, hide_index=True)
+            best = rec.get("best_threshold")
+            if best:
+                st.success(f"🎯 推荐阈值：**≥{best} 分**（{rec.get('note', '')}）")
+            st.caption(
+                "解读：全量聚合下 60 分仍是最优（胜率61.4%/均收+6.56%/盈亏比1.76，样本1223充足）；"
+                "但单只高波动科技股（如 NVDA/MSFT）存在异质性——60 分阈值对它们可能失效，建议叠加底部信号灯二次过滤。"
+                "详见 THRESHOLD_SCAN_REPORT.md。"
+            )
+        else:
+            st.info("阈值扫描数据尚未生成。运行 `python threshold_scan.py` 后自动展示。")
+    except Exception as e:  # noqa: BLE001
+        logger.debug("阈值扫描展示失败: %s", e)
+
 
 def _render_ai_traders_tab() -> None:
     """🤖 AI炒手对战：KIMI vs DeepSeek 净值对比、持仓、交易日志、胜率统计。"""
@@ -1891,7 +2068,7 @@ def _render_ai_traders_tab() -> None:
                 xaxis_title="日期", yaxis_title="净值 (起点=100)",
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            _plotly_chart(fig, use_container_width=True)
         else:
             st.caption("暂无净值历史")
 
@@ -2001,11 +2178,21 @@ def page_dashboard():
 
 
 def _draw_heatmap(df: pd.DataFrame, sector_col: str, sym_col: str, color_col: str, size_col: str):
-    """绘制 plotly treemap 热力图。"""
+    """绘制 plotly treemap 热力图。颜色范围按当日收益率 5%-95% 分位自适应。"""
     if df is None or df.empty:
         st.info("热力图数据为空")
         return
     try:
+        # 动态色域：按该市场当日收益率分布的 5%-95% 分位数（机构惯例，避免普涨普跌日颜色失真）
+        vals = pd.to_numeric(df[color_col], errors="coerce").dropna()
+        if len(vals) >= 5:
+            lo = float(vals.quantile(0.05))
+            hi = float(vals.quantile(0.95))
+            # 防止零/过窄区间导致渲染异常；绝对值对称化，中心对齐 0
+            bound = max(abs(lo), abs(hi), 0.5)
+            rc = (-bound, bound)
+        else:
+            rc = (-3, 3)
         fig = px.treemap(
             df,
             path=[px.Constant("全市场"), sector_col, sym_col],
@@ -2013,7 +2200,7 @@ def _draw_heatmap(df: pd.DataFrame, sector_col: str, sym_col: str, color_col: st
             color=color_col,
             color_continuous_scale=["#16a34a", "#84cc16", "#f1f5f9", "#fbbf24", "#dc2626"],
             color_continuous_midpoint=0,
-            range_color=(-3, 3),
+            range_color=rc,
             custom_data=[color_col, "price"],
         )
         fig.update_traces(
@@ -2022,7 +2209,7 @@ def _draw_heatmap(df: pd.DataFrame, sector_col: str, sym_col: str, color_col: st
             hovertemplate="<b>%{label}</b><br>涨跌: %{customdata[0]:.2f}%<br>价格: %{customdata[1]:.2f}<extra></extra>",
         )
         fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=380, paper_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        _plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     except Exception as e:  # noqa: BLE001
         st.warning(f"热力图渲染失败: {e}")
 
@@ -2138,6 +2325,7 @@ def page_stock_deepdive():
         price = safe_float(r.get("收盘价"))
         _price_src = "stocks.csv"
         _ts = r.get("日期", "—")
+        _delayed_note = ""  # 免费行情源延迟提示
         try:
             if sym.endswith((".SS", ".SZ")):
                 _acode = sym.split(".")[0]
@@ -2154,6 +2342,9 @@ def page_stock_deepdive():
                     chg = float(_rq.get("pct", chg))
                     _price_src = _rq.get("source", "行情")
                     _ts = datetime.now().strftime("%H:%M")
+            # 免费聚合源行情有延迟，标注以免误判为交易所实时
+            if _price_src != "stocks.csv":
+                _delayed_note = " ⚠️免费源·延迟约15-20分钟"
         except Exception:  # noqa: BLE001
             pass
         st.markdown(
@@ -2162,7 +2353,7 @@ def page_stock_deepdive():
     <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
             <div style="font-size:22px;font-weight:800;">{sym} <span style='font-size:13px;color:var(--text-dim);font-weight:500;'>{market_label}</span></div>
-            <div style="font-size:11px;color:var(--text-dim);">{_price_src} · {_ts}</div>
+            <div style="font-size:11px;color:var(--text-dim);">{_price_src} · {_ts}{_delayed_note}</div>
         </div>
         <div style="text-align:right;">
             <div style="font-size:32px;font-weight:800;color:{color_for_change(chg)};">{price:.2f}</div>
@@ -2224,7 +2415,7 @@ def page_stock_deepdive():
                                       xaxis=dict(gridcolor="rgba(0,0,0,0.06)"),
                                       yaxis=dict(gridcolor="rgba(0,0,0,0.06)", title="价格"),
                                       hovermode="x unified")
-                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                    _plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
                 else:
                     st.caption("🕐 暂无分时数据（非交易时段，或该市场无免费分时源）")
             except Exception as e:  # noqa: BLE001
@@ -2883,7 +3074,7 @@ def page_cross_asset():
         xaxis=dict(gridcolor="#f1f5f9"),
         hovermode="x unified",
     )
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    _plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
     # 数据表
     with st.expander("📋 查看原始数据"):
@@ -2938,7 +3129,7 @@ def page_cross_asset():
                 yaxis2=dict(title="VXN (纳指恐慌)", overlaying="y", side="right", gridcolor="rgba(0,0,0,0)"),
                 hovermode="x unified",
             )
-            st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+            _plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
 
             # 关键统计
             c1, c2, c3, c4 = st.columns(4)
@@ -3001,7 +3192,7 @@ def page_cross_asset():
                     )
                     fig3.update_yaxes(title_text="变化 %（起点=0）", secondary_y=False)
                     fig3.update_yaxes(title_text="NFCI 杠杆指数", secondary_y=True)
-                    st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
+                    _plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
                 else:
                     st.caption(f"⚠️ 联动图拉取失败：{linkage.get('error', '未知错误')}")
             except Exception as e:  # noqa: BLE001
@@ -3234,7 +3425,7 @@ def _draw_kline(hist: pd.DataFrame, sym: str, with_volume: bool = True):
             name=sym, increasing_line_color="#dc2626", decreasing_line_color="#16a34a",
         ))
         fig.update_layout(height=300, paper_bgcolor="rgba(0,0,0,0)", xaxis_rangeslider_visible=False)
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    _plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 # ---------------------------------------------------------------------------
@@ -3294,7 +3485,7 @@ def _rt_market_label(sym: str) -> str:
 # 使用说明（面向非专业用户）
 # ---------------------------------------------------------------------------
 def page_usage_guide() -> None:
-    """📖 使用说明：通俗使用指南 + AI分析额度警示 + 订阅引导 + 功能现状 + 数据层构成。"""
+    """📖 使用说明：通俗使用指南 + AI分析额度警示 + 功能现状 + 数据层构成。"""
     st.markdown('<div class="layer-badge concl">📖 使用说明 — 写给不太懂投资的你</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="conclusion-zone" style="font-size:13.5px;line-height:1.9;color:var(--text);">'
@@ -3340,22 +3531,8 @@ def page_usage_guide() -> None:
         unsafe_allow_html=True,
     )
 
-    # 3) 订阅引导（王妍君 红包）
-    st.markdown("### 💝 三、如何订阅 / 续费（解锁 AI 研判与 AI 评分）", unsafe_allow_html=True)
-    st.markdown(
-        '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #16a34a;'
-        'border-radius:12px;padding:16px 18px;margin:10px 0;font-size:13.5px;line-height:1.9;color:#14532d;">'
-        '本系统的 AI 研判、AI 评分等高级能力由大模型驱动，<b>消耗 API 额度</b>。<br><br>'
-        '如需长期使用，请通过微信向 <b>「王妍君」</b> 发送红包完成订阅 / 续费，'
-        '订阅后即可获得（或延长）<b>API 额度配额</b>，解锁全部 AI 功能。<br><br>'
-        '📮 订阅流程：微信 → 找到「王妍君」 → 发红包并留言你的使用需求 → 等待配额开通。<br>'
-        '<span style="color:#166534;">未订阅时，系统仍可用，但 AI 相关功能会降级为规则总结，不影响基础行情与指标查看。</span>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-
-    # 4) 功能现状说明（港股/A股缺AI评分、K线非实时）
-    st.markdown("### 📋 四、功能现状说明（已知限制与改进方向）", unsafe_allow_html=True)
+    # 3) 功能现状说明（港股/A股缺AI评分、K线非实时）
+    st.markdown("### 📋 三、功能现状说明（已知限制与改进方向）", unsafe_allow_html=True)
 
     with st.expander("❓ 为什么港股 / A股 板块缺少 AI 评分及相关数据？", expanded=True):
         st.markdown(

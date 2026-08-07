@@ -19,6 +19,10 @@ OPENROUTER_API_KEY     = "sk-or-xxxxxxxxxxxx"   # 可选，DeepSeek 兜底
 # 注册 https://fuyao.aicubes.cn/admin/ → 获取 key
 HITHINK_FINANCE_API_KEY = "your-ths-key-here"
 
+# Polygon.io 美股实时/历史行情（可选，注册 https://polygon.io/dashboard/signup）
+# 免费档：delayed 15 分钟 + 5 req/min；系统已内置限流，超限自动降级 yfinance
+POLYGON_API_KEY = "your-polygon-key-here"
+
 # 美股 / 宏观新闻
 FRED_API               = "your-fred-key"
 SERPAPI                = "your-serpapi-key"
