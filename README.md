@@ -1,628 +1,234 @@
-# 同花顺金融数据服务
+# 📈 Winnie's Daily Stock Dashboard
 
-[![Website](https://img.shields.io/badge/官网-fuyao.aicubes.cn-0b66ff)](https://fuyao.aicubes.cn/)
-[![Docs](https://img.shields.io/badge/API%20Docs-同花顺金融数据服务-0f766e)](https://fuyao.aicubes.cn/docs/)
-[![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab)](python/pyproject.toml)
-[![Node.js](https://img.shields.io/badge/Node.js-22.12%2B-339933)](hithink-finance-cli/package.json)
-
-**同花顺金融数据服务（hithink-finance）** 是由同花顺官方提供和维护的 A股金融数据服务，面向 AI Agent、量化研究者和应用开发者。
-
-通过一个统一的 API Key，即可查询 A股最新行情快照、历史行情、财务报表、估值、指数、板块、公募基金资料与净值、涨停、连板、个股异动、热榜和龙虎榜等数据，并将数据接入 AI 工具、Python 研究脚本、量化程序或业务系统。
-
-> 一站式同花顺官方金融数据能力，覆盖 API、MCP、CLI、Python SDK、本地数据库和 Agent Skill。
-
-- 官网：<https://fuyao.aicubes.cn/>
-- 在线文档：<https://fuyao.aicubes.cn/docs/>
-- API Key 管理：<https://fuyao.aicubes.cn/admin/>
-- 仓库文档中心：[`docs/`](docs/README.md)
+> **Investment Copilot v3.0** — 面向专业投资者的 AI 增强型多市场股票分析看板。
+> 美股 / A股 / 港股 三市场覆盖，FRED 宏观 + 多源新闻 + 底部信号灯 + AI 炒手对战 + 双 LLM 研判。
+> Author: 🐻 Winnie Wang
 
 ---
 
-## 你可以用它做什么
+## 🆕 v3.0 主要升级（v2.5 → v3.0）
 
-- 查询一只或多只 A股的最新价格、涨跌幅、成交额等行情数据。
-- 获取股票、指数和板块的历史 K 线，用于趋势分析和量化研究。
-- 查询上市公司的利润表、资产负债表、现金流量表和财务指标。
-- 批量查询 A 股最新市盈率、市净率、市销率和市现率估值快照。
-- 获取交易日历、公司行动、复权因子等基础研究数据。
-- 查询涨停池、连板天梯、个股异动、热榜和龙虎榜等同花顺特色数据。
-- 查询公募基金资料、披露持仓、净值、区间收益、持有人结构以及 ETF/LOF 场内行情。
-- 下载全市场数据，为回测、选股、因子研究和 AI 分析准备数据。
-- 让 Claude、Cursor、Windsurf 等支持 MCP 或 Agent Skill 的工具直接调用金融数据。
-- 在本地构建 DuckDB 数据库，完成增量同步、SQL 查询、复权计算和文件导出。
+### 一、UI 分层重构：结论层 + 证据层 + 钻取层
+
+| 层级 | 可见性 | 内容 |
+|------|--------|------|
+| **第0层 · 结论区** | 默认唯一可见，无需滚动 | 组合策略 Portfolio Context（多头/空头/震荡判定）+ 今日重点 + Top 机会/风险 + 实时行情速览条 |
+| **第1层 · 证据层** | 4 主题 Tab | 📊 宏观（情绪/VIX/全球指数/利率/风险雷达/底部信号灯）/ 🧩 结构（US/CN/HK分段+热力图+维科夫扫描）/ 📅 事件（经济日历+FedWatch）/ 🧠 研判（Morning Brief/Evening Recap/智能荐股） |
+| **第2层 · 钻取层** | 个股深度页 | 概览卡 + AI 摘要 + 3 Subtab（K线技术面/策略与风险/AI研判） |
+
+### 二、底部信号灯（Bottom Signal）— 0-4 分底部确信度
+
+全新模块 `bottom_signal.py`，分层计算：
+
+```
+底部确信度(0-4) = 宏观环境分(0-2, 全市场统一) + 个股结构分(0-2, 逐股不同)
+宏观环境分 = 监管恐慌命中(0/1) + 杠杆去化命中(0/1)
+个股结构分 = 拥挤出清命中(0/1) + 估值资金综合命中(0/1)
+```
+
+**交通灯语义**：🔴 0-1分（观望）/ 🟡 2分（部分确认）/ 🟢 3-4分（多维度共振）
+
+**已实现的维度**：
+- ✅ 热力图离散度（过去60天分布比较）
+- ✅ 同板块 PE 相对排名（后25%命中）
+- ✅ PE 历史分位框架（`data/pe_history.json` 逐日累积，满6个月启用）
+- ✅ 政策新闻恐慌关键词计数（紧急/平准基金/国家队/限制卖空/熔断/央行声明）
+- ✅ PEG<1 判断（成长股性价比）
+- ✅ 维科夫 SC（抛售高潮）复用检测
+- ✅ 避险资产联动（GLD/TLT/DXY 30日滚动相关系数）
+- ✅ OI PCR 历史序列化（`data/options_pcr_history.json`）
+- ✅ FedWatch 非议息窗口检测（紧急降息概率）
+
+### 三、🤖 AI 炒手对战（AI Trader Battle）— KIMI vs DeepSeek
+
+虚拟 $100万 独立账户，双模型每日盘后独立决策、长期跟踪对比。
+
+**核心文件**：`ai_traders.py`
+
+| 功能 | 说明 |
+|------|------|
+| **候选池** | S&P500 + 纳指100 成分股维科夫/多因子扫描 Top15 |
+| **简报生成** | 账户状态 + 宏观快照 + 候选池（含底部信号灯分数） |
+| **双模型决策** | KIMI / DeepSeek 各自独立调用 `U._call_llm()` 输出 JSON 交易指令 |
+| **护栏检查** | 代码真实存在(yfinance校验)、只做多、单标的≤总资产25%、现金/持仓上限自动裁剪 |
+| **模拟成交** | BUY/SELL 更新 portfolio.json，每日 mark-to-market 算 NAV |
+| **状态持久化** | `data/ai_traders/{kimi,deepseek}/portfolio.json + nav_history.csv + trades.jsonl` |
+| **回测验证** | `backtest_threshold.py` — 统计评分≥60 vs <60 的20日收益率、胜率、最大回撤 |
+
+**前端展示**：Dashboard 新增第 5 个 Tab「🤖 AI炒手」
+- 净值曲线对比（归一化到100）
+- 当前持仓表 + 现金/净值概览
+- 交易日志时间线（最近20笔，可展开看 reasoning）
+- 候选池 vs 模型自选胜率对比表
+
+### 四、实时行情深度集成
+
+| 市场 | 实时数据源优先级 |
+|------|----------------|
+| A股 | 同花顺 Financial-API（云端Key）→ 东方财富 push2 → 腾讯 gtimg → akshare |
+| 港股 | 富途 OpenD（本地）→ 东方财富 → 腾讯 gtimg → 新浪 |
+| 美股 | yfinance（日K）+ 实时报价（多源降级） |
+
+**新增实时维度**：
+- 当日分时折线（`fetch_intraday_trend`，盘中刷新）
+- 五档盘口（`fetch_order_book`，A股/港股）
+- 逐笔成交明细（`fetch_tick_detail`，20笔带方向 BUY/SELL/NEUTRAL）
+
+### 五、数据层 10 模块清单
+
+| # | 模块 | 职责 | 关键文件 |
+|---|------|------|----------|
+| ① | 宏观数据层 | 利率/杠杆/波动率/期权情绪 | `utils.py`: FRED系列/MarginDebt/FedWatch |
+| ② | 新闻舆情层 | 宏观/政策/个股/公告/龙虎榜 | `utils.py`: 6源聚合/政策新闻/公告/龙虎榜 |
+| ③ | 行情与实时层 | 实时报价/盘口/分时/逐笔 | `utils.py`: 东财/腾讯/新浪多源降级 |
+| ④ | A股数据层 | 指数/热力图/K线/资金流 | `utils.py`: akshare/东财/腾讯 |
+| ⑤ | 港股数据层 | 港股日线/实时报价 | `utils.py`: akshare/富途/东财 |
+| ⑥ | 美股/ETF数据层 | 历史K线/新闻/指数 | `utils.py`: yfinance/Finnhub/Stocktwits |
+| ⑦ | 技术指标与评分层 | 组合/风险/选股/观察位 | `screener.py` + `risk.py` + `bottom_signal.py` |
+| ⑧ | AI研判层 | DeepSeek/OpenRouter LLM生成 | `utils.py`: `_call_llm()` |
+| ⑨ | 数据管线持久化层 | 每日CI生成静态数据 | `stock_dashboard.py` + GitHub Actions |
+| ⑩ | 外部增强层(可选) | 本地/Key增强，缺失不影响主流程 | `utils_ths.py`(同花顺) / 富途OpenD |
 
 ---
 
-## 30 秒了解
+## 📁 项目结构
 
-### 这是什么
-
-同花顺官方面向 AI Agent、量化研究和开发者提供的 A股金融数据服务。
-
-### 有什么数据
-
-覆盖 A股行情、标的目录、公司行动、财务报表与指标、估值、交易日历、指数、板块、公募基金、涨停、连板、个股异动、热榜、龙虎榜和全市场数据文件。
-
-### 怎么使用
-
-可以通过 REST API、托管 MCP、`hithink-finance` CLI、Python SDK、本地 marketdb 或统一 Agent Skill 接入。
-
-### 不知道选哪种方式
-
-优先安装 [`hithink-finance` Skill](skills/hithink-finance/SKILL.md)。Agent 会识别当前环境和任务，在 API、MCP、CLI 与 Python SDK 之间自动选择合适的能力。
-
----
-
-## 按使用场景选择接入方式
-
-| 你的需求 | 推荐方式 | 说明 |
-| --- | --- | --- |
-| 想让 AI Agent 自动查询金融数据 | `hithink-finance` Skill | Agent 自动判断使用 API、MCP、CLI 或 Python SDK |
-| 想让 Claude、Cursor 等聊天工具快速接入 | MCP | 配置服务地址和 API Key 后即可在对话中调用 |
-| 想在 Python、Notebook 中研究股票 | Python toolkit/SDK | 适合研究脚本、数据处理和自定义取数策略 |
-| 想把数据接入网站、App 或公司系统 | REST API | 零依赖 HTTP 接入，适合任意编程语言和服务端系统 |
-| 想通过终端批量查询、下载和导出数据 | CLI | 统一远端取数、本地数据库和结构化输出 |
-| 想长期保存历史行情并用 SQL 研究 | marketdb | 在本地自动构建和维护 DuckDB 数据库 |
-| 想获取全市场、长时间范围的大批量数据 | CLI / Market Dumps | 大结果落盘，避免终端和 Agent 上下文过载 |
-
----
-
-## 数据能力概览
-
-| 数据 / 能力 | 可以解决的问题 | 推荐入口 |
-| --- | --- | --- |
-| A股最新行情快照 | 查询单只、多只或全市场股票的最新价格与交易数据 | CLI / API / MCP / Python |
-| A股历史 K 线 | 获取股票历史走势，支持研究、回测和趋势分析 | CLI / marketdb |
-| 公司行动与复权 | 查询分红、送转等公司行动，并生成前复权、后复权数据 | CLI / marketdb |
-| 财务报表与财务指标 | 查询利润表、资产负债表、现金流量表和五类财务指标 | CLI / API / MCP / Python |
-| A 股估值快照 | 批量查询市盈率 TTM/MRQ、市净率 MRQ、市销率 TTM 和市现率 TTM | CLI / API / MCP / Python |
-| 标的目录 | 根据股票名称、代码或关键词查找唯一 `thscode` | CLI / API / MCP / Python |
-| 交易日历 | 判断交易日、安排数据同步和回测时间 | CLI / API / MCP / Python |
-| 指数与板块 | 查询指数和板块目录、成分股、行情及历史 K 线 | CLI / API / MCP / Python |
-| 同花顺特色数据 | 获取涨停池、连板、异动、热榜和龙虎榜 | CLI / API / MCP / Python |
-| 公募基金 | 查询资料、披露持仓、净值、收益、持有人结构、ETF/LOF 快照与 ETF 日线 | CLI / API / MCP / Python |
-| 全市场数据导出 | 下载全量或增量日 K、公司行动等标准数据文件 | CLI / Market Dumps |
-| 本地 DuckDB | 完成数据初始化、同步、校验、修复、SQL 查询和导出 | CLI / marketdb |
-
-> 分钟 K、tick、海外行情、宏观数据、新闻公告原文和研报目前不在公开能力范围内。请求未支持的数据时，应明确说明，不使用模拟数据或静态示例冒充真实结果。
+```
+.
+├── app.py                      # Streamlit 主入口（Dashboard + 个股深度 + 跨资产 + 新闻 + 诊断 + 使用说明）
+├── stock_dashboard.py          # 每日跑批：数据采集 + AI报告 + 底部信号 + PCR序列化
+├── ai_traders.py               # 🤖 AI炒手：KIMI vs DeepSeek 虚拟交易对战
+├── backtest_threshold.py       # 回测验证：智能荐股60分阈值胜率统计
+├── bottom_signal.py            # 🚦 底部信号灯：0-4分底部确信度计算
+├── screener.py                 # 选股三层架构：维科夫事件 + 多因子评分
+├── risk.py                     # R倍数止盈 + 杠杆强平监控
+├── utils.py                    # 数据获取：新闻/F&G/FedWatch/日历/热力图/PCR/实时行情/LLM
+├── utils_ths.py                # 同花顺 Financial-API 适配层（可选增强）
+├── secrets_loader.py           # Secret 双路读取（os.environ + st.secrets）
+├── requirements.txt            # Python 依赖
+├── STREAMLIT_DEPLOY.md         # 部署文档（含同花顺云端接入步骤）
+├── data/                       # 自动生成的数据文件
+│   ├── stocks.csv              # 个股行情 + 技术指标
+│   ├── macro.csv               # 宏观指数
+│   ├── sox.csv / sp500.csv     # 行业/指数信号
+│   ├── cards.json              # AI决策卡片
+│   ├── bottom_scores.json      # 底部信号灯批量计算结果
+│   ├── pe_history.json         # PE历史分位（逐日累积）
+│   ├── dispersion_history.json # 热力图离散度历史
+│   ├── options_pcr.json        # 最新PCR快照
+│   ├── options_pcr_history.json# PCR时间序列（180天）
+│   ├── safe_haven_history.json # 避险资产价格历史（90天）
+│   ├── news.json               # 多源新闻聚合
+│   ├── leverage_risk.json      # 杠杆强平监控
+│   ├── predictions.json        # 下周走势预测
+│   ├── morning_brief.md        # 盘前早报
+│   ├── evening_recap.md        # 盘后总结
+│   └── ai_traders/             # AI炒手状态目录
+│       ├── kimi/               # portfolio.json / nav_history.csv / trades.jsonl
+│       └── deepseek/           # portfolio.json / nav_history.csv / trades.jsonl
+└── .github/workflows/
+    ├── daily.yml               # 每日盘后全量更新 + AI炒手决策
+    └── (legacy morning/evening)
+```
 
 ---
 
-## 快速开始
+## 🚀 本地运行
 
-### 1. 获取统一 API Key
+```bash
+# 1. 克隆
+git clone https://github.com/<your-name>/investment-copilot.git
+cd investment-copilot
 
-登录 [同花顺金融数据服务官网](https://fuyao.aicubes.cn/)，进入 [API Key 管理](https://fuyao.aicubes.cn/admin/) 创建 Key。
+# 2. 安装依赖
+pip install -r requirements.txt
 
-API、MCP、CLI 和 Python 远端取数共用同一个 API Key。统一推荐保存为用户级环境变量 `HITHINK_FINANCE_API_KEY`；`hithink-finance` Skill 也能读取用户级 `credentials.env`，具体路径与各平台配置命令见 [Skill 的 CLI 安装说明](skills/hithink-finance/references/cli/setup.md)。
+# 3. （可选）配置 Secret
+mkdir -p .streamlit
+cat > .streamlit/secrets.toml <<EOF
+# 推荐配置（让 Dashboard 全部功能满血运行）
+FRED_API = "your-fred-key"
+DEEPSEEK_API_KEY = "your-deepseek-key"
+OPENROUTER_API_KEY = "your-openrouter-key"
+SERPAPI = "your-serpapi"
+HITHINK_FINANCE_API_KEY = "your-hithink-key"   # A股实时增强（同花顺云端）
+EOF
 
-优先使用隐藏输入或环境变量。也可以把刚获取的 Key 交给 Agent 代为配置；Agent 不应复述 Key，并且只能写入用户级凭据来源，不能写入代码、日志、公开配置或 Git 仓库。
+# 4. 采集数据（首次或每日更新）
+python stock_dashboard.py              # 全量
+python ai_traders.py --dry-run         # AI炒手试运行（不实际成交）
 
----
+# 5. 启动看板
+streamlit run app.py
+```
 
-### 2. 优先安装 `hithink-finance` Skill
+打开 http://localhost:8501
 
-Skill 是 Agent 使用本项目的统一说明书，包含：
+### 本地启用富途 OpenD（A股/港股 L2 实时）
 
-- 接入方式选择；
-- API、MCP、CLI 和 Python 快速路径；
-- 股票名称与代码消歧规则；
-- 完整 API 契约镜像；
-- 安全与合规要求；
-- 大结果落盘和上下文控制规范。
-
-请选择一种安装方式：
-
-1. **优先：通过 `npx skills add` 安装（推荐）**
-
-   ```bash
-   npx skills add HiThink-Tech/Financial-API --skill hithink-finance -g --yes
+1. 安装并登录 [OpenD](https://openapi.futunn.com/)（需开通 OpenAPI 权限）
+2. `pip install "futu-api>=8.0.0"`
+3. `.streamlit/secrets.toml` 添加：
+   ```toml
+   USE_FUTU = "true"
+   FUTU_OPEND_HOST = "127.0.0.1"
+   FUTU_OPEND_PORT = "11111"
    ```
-
-2. **无网络条件：从 [Skill Hub](https://www.skillhub.cn/skills/hithink-finance) 安装**
-
-   **将提示词发送给你的 AI 安装该 Skill：**
-
-   ```text
-   请根据 https://skillhub.cn/install/skillhub.md，安装 hithink-finance。
-   ```
-
-如无法使用以上安装方式，也可以把完整的 [`skills/hithink-finance/`](skills/hithink-finance/SKILL.md) 目录复制到 Agent 文档声明的 Skills 发现目录。
-
-> 必须保留 `references/`，不要只复制 `SKILL.md`。
-
-安装完成后重新打开会话，可以直接描述需求，例如：
-
-```text
-查询贵州茅台的最新行情，并分析近一年的涨跌幅、最大回撤和均线趋势。
-```
-
-```text
-获取沪深300当前成分股，并将结果保存为本地文件。
-```
-
-```text
-查询宁德时代最近四期利润表和主要盈利指标，注明报告期和数据来源。
-```
+4. 确保 OpenD 运行后启动 `streamlit run app.py`
 
 ---
 
-### 3. CLI：人类与 Agent 的默认推荐
+## ⚙️ GitHub Actions 自动跑
 
-CLI 将远端取数、本地数据库、认证、统一 JSON 输出和大结果落盘整合到一个命令入口。
+| 工作流 | 文件 | Cron (UTC) | 任务 |
+|--------|------|-----------|------|
+| **Daily** | `.github/workflows/daily.yml` | `30 20 * * 1-5` | 全量数据采集 + AI报告 + AI炒手每日决策 |
 
-优先从 npm 安装：
+**GitHub Secrets 清单**：
 
-```bash
-npm install -g @hithink-tech/hithink-finance-cli
-```
+| Secret 名 | 优先级 | 用途 |
+|-----------|--------|------|
+| `FRED_API` | ⭐⭐⭐ | 4张宏观指标卡 |
+| `DEEPSEEK_API_KEY` | ⭐⭐⭐ | AI报告/预测/炒手决策（首选LLM） |
+| `OPENROUTER_API_KEY` | ⭐⭐ | AI兜底（DeepSeek失败时切Claude 3.5 Sonnet） |
+| `SERPAPI` | ⭐⭐ | 主力新闻（100/月免费） |
+| `HITHINK_FINANCE_API_KEY` | ⭐⭐ | A股实时行情增强（同花顺云端） |
+| `TELEGRAM_BOT_TOKEN` | 可选 | Telegram推送 |
+| `TELEGRAM_CHAT_ID` | 可选 | 推送目标 |
 
-国内用户可使用 [npmmirror](https://npmmirror.com/) 镜像加速：
-
-```bash
-npm install -g @hithink-tech/hithink-finance-cli --registry=https://registry.npmmirror.com
-```
-
-安装完成后验证：
-
-```bash
-hithink-finance auth login
-hithink-finance capabilities --format json
-```
-
-- `auth login`：安全录入 API Key。
-- `capabilities`：查看此版本 CLI 支持的机器可读能力目录。
-- `--format json`：返回稳定、统一的 JSON 格式，方便程序或 Agent 继续处理。
-
-通过 Skill 使用时，Agent 会先复用统一凭据，再通过 stdin 完成 CLI 登录；已有 CLI 凭据需要更新时使用 `auth login --api-key-stdin --replace` 原子替换，无需用户再次输入。CLI 仍将副本保存在自己的系统凭据库中，因此脱离 Skill 后也可独立使用。
-
-常见命令：
-
-```bash
-# 根据代码或名称查找股票
-hithink-finance symbol search --q 600519 --limit 5 --format json
-
-# 查询最新行情
-hithink-finance market snapshot --thscodes 600519.SH --format json
-
-# 查询最近四期利润表
-hithink-finance financials income --thscode 600519.SH --limit 4 --format json
-
-# 初始化本地数据库
-hithink-finance data init --format json
-
-# 使用 SQL 查询本地前复权日线
-hithink-finance db query \
-  --sql "SELECT * FROM v_daily_qfq LIMIT 10" \
-  --format json
-```
-
-仅在参与仓库开发或 npm 暂不可用时从源码验证：
-
-```bash
-cd hithink-finance-cli
-npm ci --ignore-scripts
-npm run build
-node dist/cli/main.js capabilities --format json
-node dist/cli/main.js doctor --format json
-```
-
-完整说明见 [`hithink-finance-cli/README.md`](hithink-finance-cli/README.md)。
+> 💡 **最低成本方案**：只配 `FRED_API` + `DEEPSEEK_API_KEY` 即可让 Dashboard 核心功能全部工作。
 
 ---
 
-### 4. REST API：适合业务系统和自定义开发
+## ☁️ 云部署
 
-REST API 通过标准 HTTP 请求提供数据，适合：
+### Streamlit Cloud（推荐）
 
-- 接入网站、App 和后台服务；
-- 使用 Java、Go、JavaScript、Python 等任意语言；
-- 自定义数据获取和任务编排；
-- 将金融数据嵌入已有业务流程。
+1. 推送到 GitHub 仓库（已含 `.github/workflows/daily.yml`）
+2. https://share.streamlit.io → New app → 选仓库/分支/`app.py`
+3. **App settings → Secrets** 粘贴 TOML（与本地 `.streamlit/secrets.toml` 同格式）
+4. 数据由 GitHub Actions 每天自动刷新并 `git push` 回 `data/`，Streamlit Cloud 自动同步
 
-使用 `curl` 查询贵州茅台最新行情：
-
-```bash
-curl 'https://fuyao.aicubes.cn/api/a-share/prices/snapshot?thscodes=600519.SH' \
-  -H 'X-api-key: <API_KEY>'
-```
-
-仓库内 REST API 契约入口：
-
-- [REST API 文档](docs/api/README.md)
-- 上游完整机器可读契约：<https://fuyao.aicubes.cn/llms-full.txt>
-
-`docs/api/` 是仓库内唯一的上游 REST API 契约来源，其他文档不重复维护字段定义。
+> ⚠️ `*.streamlit.app` 在中国大陆不稳定。国内用户建议用 CloudStudio / 腾讯云等国内节点反代。
 
 ---
 
-### 5. MCP：最快接入 Chat Bot 和 IDE
+## 🛠️ 常见问题
 
-MCP 适合 Claude Desktop、Cursor、Windsurf 和其他支持 MCP 的客户端。
+### Q: Dashboard 结论区显示空白？
+A: 检查 `data/stocks.csv` 是否存在且包含数据。首次使用或数据过期时运行 `python stock_dashboard.py` 重新生成。
 
-将以下四个托管端点配置到客户端，并使用 `hithink-finance-*` 作为服务名称：
+### Q: 配置了同花顺 Key 但 A股仍不显示实时？
+A: Streamlit Cloud 的 Secrets 面板需配 `HITHINK_FINANCE_API_KEY`（不是 GitHub Repository Secrets）。本地则写在 `.streamlit/secrets.toml`。
 
-```json
-{
-  "mcpServers": {
-    "hithink-finance-a-share": {
-      "type": "http",
-      "url": "https://fuyao.aicubes.cn/mcp/a-share",
-      "headers": {
-        "X-api-key": "${HITHINK_FINANCE_API_KEY}"
-      }
-    },
-    "hithink-finance-a-share-index": {
-      "type": "http",
-      "url": "https://fuyao.aicubes.cn/mcp/a-share-index",
-      "headers": {
-        "X-api-key": "${HITHINK_FINANCE_API_KEY}"
-      }
-    },
-    "hithink-finance-meta": {
-      "type": "http",
-      "url": "https://fuyao.aicubes.cn/mcp/meta",
-      "headers": {
-        "X-api-key": "${HITHINK_FINANCE_API_KEY}"
-      }
-    },
-    "hithink-finance-fund": {
-      "type": "http",
-      "url": "https://fuyao.aicubes.cn/mcp/fund",
-      "headers": {
-        "X-api-key": "${HITHINK_FINANCE_API_KEY}"
-      }
-    }
-  }
-}
-```
+### Q: AI炒手没有数据？
+A: 首次需手动运行 `python ai_traders.py` 或等 GitHub Actions 自动跑。`--dry-run` 可先测试不实际成交。
 
-四个服务分别覆盖：
-
-- `hithink-finance-a-share`：A股行情、财务和特色数据；
-- `hithink-finance-a-share-index`：指数、板块及相关行情；
-- `hithink-finance-meta`：标的检索、能力发现等基础信息。
-- `hithink-finance-fund`：基金资料、披露、净值、收益和场内行情。
-
-配置位置、安全方式、意图路由和验证步骤见 [MCP 接入说明](docs/mcp.md)。
-
-Skill 已内置工具功能快照。只有在实际调用或排查参数变化时，才需要读取当前 MCP 连接的 `tools/list`。
+### Q: 港股代码 Yahoo 返回 404？
+A: 部分港股代码在 yfinance 上格式不兼容（如 07709.HK / 01879.HK）。已接入东财/腾讯/新浪多源降级，数据仍会显示。
 
 ---
 
-### 6. Python SDK：适合二次开发与量化研究
+## 🛡️ 免责声明
 
-安装 Python 子项目：
-
-```bash
-python -m pip install -e ./python
-```
-
-通过仓库脚本检索股票并查询行情：
-
-```bash
-python python/toolkit/fuyao/scripts/fuyao.py tickers-search --q "贵州茅台"
-python python/toolkit/fuyao/scripts/fuyao.py prices-snapshot --thscodes 600519.SH
-```
-
-Python 子项目适合：
-
-- Notebook 数据探索；
-- 研究脚本；
-- 定时取数；
-- 自定义分页和重试策略；
-- 与 pandas、NumPy、回测框架等工具组合；
-- 将远端 API 数据与本地数据库数据一起使用。
-
-完整说明：
-
-- [Python README](python/README.md)
-- [toolkit 路由](python/toolkit/README.md)
-- [Python 可执行示例](python/examples/README.md)
-
----
-
-### 7. marketdb：在本地保存和研究历史数据
-
-marketdb 会在本地构建 DuckDB 数据库，适合：
-
-- 保存长期历史行情；
-- 自动执行全量初始化和增量更新；
-- 查询前复权、后复权和原始行情；
-- 构建全市场研究面板；
-- 使用 SQL 快速筛选数据；
-- 将结果导出为文件；
-- 检查和修复本地数据状态。
-
-初始化：
-
-```bash
-python python/bootstrap.py
-```
-
-查看本地数据库状态：
-
-```bash
-marketdb status --json --db data/market.duckdb
-```
-
-查询贵州茅台最近十个交易日的前复权收盘价：
-
-```bash
-marketdb query \
-  --json \
-  --db data/market.duckdb \
-  --sql "SELECT date, close
-         FROM v_daily_qfq
-         WHERE thscode='600519.SH'
-         ORDER BY date DESC
-         LIMIT 10"
-```
-
-完整说明见 [`python/toolkit/marketdb/README.md`](python/toolkit/marketdb/README.md)。
-
----
-
-## 常见使用流程
-
-### 场景一：查询一只股票的最新行情
-
-1. 用户提供股票名称或代码。
-2. 先通过标的检索确认唯一 `thscode`。
-3. 调用最新行情接口。
-4. 返回价格、涨跌幅、成交数据、数据时间和来源。
-
-推荐入口：CLI / API / MCP / Python。
-
----
-
-### 场景二：分析一只股票的历史趋势
-
-1. 将股票名称或不完整代码转换为唯一 `thscode`。
-2. 获取近一年或指定时间范围的历史日 K。
-3. 计算区间涨跌幅、均线、波动和最大回撤。
-4. 注明时间范围、复权口径、数据源和“非投资建议”。
-
-推荐入口：CLI / marketdb / Python。
-
----
-
-### 场景三：查询上市公司财务数据
-
-1. 确认股票代码。
-2. 查询利润表、资产负债表或现金流量表。
-3. 根据需求补充财务指标。
-4. 明确报告期、数据发布日期和口径。
-
-推荐入口：CLI / API / MCP / Python。
-
----
-
-### 场景四：准备量化研究数据
-
-1. 判断数据范围是否属于全市场、多标的或多年历史数据。
-2. 大规模结果使用 CLI 或 Market Dumps 落盘。
-3. 使用 marketdb 构建和增量同步本地数据库。
-4. 通过 SQL 或 Python 生成研究面板、因子数据和导出文件。
-
-推荐入口：CLI / marketdb / Python。
-
----
-
-### 场景五：让 AI Agent 自动完成取数
-
-1. 安装 `hithink-finance` Skill。
-2. Agent 检测当前环境中可用的 API、MCP、CLI 和 Python 能力。
-3. 根据数据新鲜度、任务规模和输出形式选择工具。
-4. 对大结果自动落盘，仅在对话中返回路径、行数和摘要。
-5. 真实数据不可用时明确报告原因，不使用模拟数据替代。
-
-推荐入口：Skill。
-
----
-
-## AI Agent 使用约定
-
-进入仓库的 Agent 按以下顺序读取：
-
-1. [`AGENTS.md`](AGENTS.md)
-2. [`skills/hithink-finance/SKILL.md`](skills/hithink-finance/SKILL.md)
-3. 与实际接入方式对应的一个详细入口
-
-执行时遵守以下规则：
-
-- 用户只提供股票名称、简称或不完整代码时，先消歧为唯一 `thscode`，不要猜测交易所后缀。
-- 最新、当天、财报、指数和特色数据优先使用远端能力。
-- 本地已有且足够新的历史行情优先使用 DuckDB，减少重复下载。
-- 全市场、多年、多标的或分页全集必须落盘，只在对话中返回文件路径、行数和摘要。
-- 输出需要注明数据源、时间范围、报告期和复权口径。
-- 真实数据不可用时明确说明原因，不使用模拟数据或静态示例冒充。
-- 金融分析结果需要注明“非投资建议”。
-
----
-
-## 示例与灵感
-
-### Python 可执行示例
-
-[`python/examples/`](python/examples/README.md) 提供 SDK、marketdb 和远端数据组合示例。
-
-### 金融看板灵感
-
-[`examples/inspirations/`](examples/inspirations/README.md) 提供可以复制使用的 Prompt、预览图和静态 HTML。
-
-### 默认示例：单股行情与趋势速览
-
-[![单股行情与趋势速览](examples/inspirations/01-stock-overview/preview.jpg)](examples/inspirations/01-stock-overview/README.md)
-
-该示例从一只股票出发，组合展示：
-
-- 最新行情；
-- 近一年日 K；
-- 均线；
-- 区间表现；
-- 最大回撤；
-- 可以继续追问和探索的研究方向。
-
-查看：
-
-- [完整说明与 Prompt](examples/inspirations/01-stock-overview/README.md)
-- [直接打开静态 HTML](examples/inspirations/01-stock-overview/example.html)
-
-> 示例用于说明数据组合方式，不是数据能力契约、投资建议或固定视觉标准。
-
----
-
-## 当前公开能力边界
-
-当前公开能力主要覆盖：
-
-- A股最新行情快照；
-- A股历史日 K；
-- 标的目录；
-- 公司行动与复权；
-- 财务报表与指标；
-- 交易日历；
-- 指数与板块；
-- 涨停、连板、异动、热榜和龙虎榜；
-- 全市场日 K 与公司行动数据文件；
-- 本地 DuckDB 数据同步和研究。
-
-当前暂不公开提供：
-
-- 分钟 K；
-- tick 数据；
-- 海外市场行情；
-- 宏观经济数据；
-- 新闻和公告原文；
-- 研报原文。
-
-数据权限、调用频率和可访问 capability 以官网与账号授权为准。
-
----
-
-## 最新变化
-
-当前 monorepo 版本包含四项关键变化，完整历史见 [`CHANGELOG.md`](CHANGELOG.md)。
-
-### 1. 新增公募基金能力
-
-REST API、MCP、CLI 与 Python SDK 统一支持基金资料、披露持仓、净值、区间收益、持有人结构、ETF/LOF 快照和 ETF 历史日线。
-
-### 2. 新增 `hithink-finance` Node.js CLI
-
-统一提供：
-
-- 远端数据查询；
-- 本地 DuckDB；
-- 稳定 JSON 输出；
-- 能力发现；
-- 环境诊断；
-- 数据初始化、更新、校验和修复。
-
-推荐直接从 npm 安装。
-
-### 3. 新增统一 `hithink-finance` Skill
-
-原根目录中的通用、REST、MCP 和 CLI Setup Skills 已合并为一个可以独立安装的入口，统一覆盖：
-
-- API；
-- MCP；
-- CLI；
-- Python SDK；
-- 安全与大结果处理规范。
-
-### 4. 仓库升级为 monorepo
-
-Python 项目已迁入 `python/`。
-
-旧版用户和 Agent 需要先按照 [Monorepo 版本升级指南](docs/monorepo-migration.md) 更新：
-
-- editable 安装路径；
-- 脚本路径；
-- CI 配置；
-- Prompt 中的仓库路径。
-
-本地数据库和 `.env` 不需要迁移。
-
----
-
-## 项目结构
-
-```text
-docs/                    公共文档中心；docs/api 是上游 REST 契约唯一来源
-skills/hithink-finance/  可独立安装的统一 Agent Skill；包含契约镜像
-hithink-finance-cli/     Node.js CLI 子项目，运行时不依赖 Python
-python/                  唯一 Python 项目根
-├── marketdb/            本地 DuckDB CLI 与 Python SDK
-├── toolkit/fuyao/       远端数据 Python client 与脚本
-├── toolkit/marketdb/    本地数据使用文档
-├── examples/            Python 可执行示例
-└── tests/               Python 测试
-examples/                monorepo 级示例导航和静态灵感
-scripts/                 仓库级维护脚本
-```
-
-`internal/` 和 `sdd-docs/` 属于内部治理与开发记录，不是公开使用入口。
-
----
-
-## 文档与契约治理
-
-- 根 README 负责产品介绍、接入导航和完整能力总览。
-- 详细参数下沉到对应子目录 README 或 `docs/`。
-- `docs/api/` 是仓库内上游 REST API 契约的唯一来源。
-- `skills/hithink-finance/references/api.md`、`references/api/`、`references/mcp.md` 与 `references/mcp/` 由 `python scripts/sync_skill_contracts.py` 生成，确保 Skill 独立发布时仍然自包含。
-- Python 和 CLI 文档只维护各自的运行方式、命令和适配语义，不重复维护上游字段契约。
-- 旧版迁移以 [Monorepo 版本升级指南](docs/monorepo-migration.md) 为准。
-
----
-
-## 验证
-
-在仓库根目录执行：
-
-```bash
-python scripts/sync_skill_contracts.py --check
-python -m pytest python/tests/
-```
-
-验证 Node.js CLI：
-
-```bash
-cd hithink-finance-cli
-npm run verify
-```
-
----
-
-## 安全与合规
-
-- 所有远端方式共用 API Key。
-- API Key 只能通过安全输入、用户级环境变量或凭据文件、stdin、系统凭据库或客户端 Secret 传入。
-- 不要把 API Key 写入代码、README、Issue、Prompt、日志、产物或 Git commit。
-- 全市场、多年、多标的等大结果必须落盘，避免终端、日志和 Agent 上下文泄露或膨胀。
-- 不使用模拟数据、示例数据或静态内容冒充真实金融数据。
-- 本项目提供金融数据访问和研究数据准备工具，不提供投资建议。
-- 数据权限、调用频率和可访问 capability 以官网与账号授权为准。
-
----
-
-## 文档导航
-
-- [文档中心](docs/README.md)
-- [REST API 契约](docs/api/README.md)
-- [MCP 接入说明](docs/mcp.md)
-- [CLI README](hithink-finance-cli/README.md)
-- [Python README](python/README.md)
-- [Python toolkit](python/toolkit/README.md)
-- [marketdb 文档](python/toolkit/marketdb/README.md)
-- [Agent Skill](skills/hithink-finance/SKILL.md)
-- [Monorepo 升级指南](docs/monorepo-migration.md)
-- [更新日志](CHANGELOG.md)
-
----
-
-## License
-
-本仓库采用 [MIT License](LICENSE)。
+本工具仅供研究和教育用途，不构成任何投资建议。所有 AI 输出需人工复核，市场数据存在延迟或错误可能。
