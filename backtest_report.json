@@ -1,0 +1,316 @@
+{
+  "generated_at": "2026-08-07T16:19:12.921682",
+  "params": {
+    "years": 3,
+    "step": 10,
+    "hold_days": 20,
+    "wyckoff_window": 130,
+    "score_window": 250
+  },
+  "results": {
+    "NVDA": {
+      "wyckoff": {
+        "signals": 43,
+        "win_rate_20d": 65.1,
+        "avg_ret_20d": 5.1,
+        "sharpe_20d": 8.03,
+        "vs_buy_hold_20d": -5.26,
+        "sample": [
+          {
+            "date": "2024-02-12",
+            "events": [
+              "SC",
+              "AR"
+            ],
+            "confidence": 0.29,
+            "future": {
+              "5": -3.87,
+              "10": 8.93,
+              "20": 27.22
+            }
+          },
+          {
+            "date": "2024-02-27",
+            "events": [
+              "SC",
+              "AR",
+              "PS"
+            ],
+            "confidence": 0.43,
+            "future": {
+              "5": 9.23,
+              "10": 16.79,
+              "20": 17.62
+            }
+          },
+          {
+            "date": "2024-04-24",
+            "events": [
+              "PS"
+            ],
+            "confidence": 0.14,
+            "future": {
+              "5": 4.22,
+              "10": 13.47,
+              "20": 19.17
+            }
+          },
+          {
+            "date": "2024-07-22",
+            "events": [
+              "PS"
+            ],
+            "confidence": 0.14,
+            "future": {
+              "5": -9.67,
+              "10": -18.69,
+              "20": 5.23
+            }
+          },
+          {
+            "date": "2024-08-05",
+            "events": [
+              "PS"
+            ],
+            "confidence": 0.14,
+            "future": {
+              "5": 8.53,
+              "10": 29.42,
+              "20": 7.52
+            }
+          }
+        ]
+      },
+      "multifactor": {
+        "gte60": {
+          "count": 22,
+          "win_rate_20d": 40.9,
+          "avg_ret_20d": 0.78,
+          "sharpe_20d": 1.42
+        },
+        "lt60": {
+          "count": 27,
+          "win_rate_20d": 66.7,
+          "avg_ret_20d": 4.66,
+          "sharpe_20d": 7.87
+        },
+        "total_scored": 49
+      },
+      "r_multiple": {
+        "entry": 40.7,
+        "r_size": 1.79,
+        "exit_times": [
+          "+1R",
+          "+2R"
+        ],
+        "r_total_return_pct": 151.68,
+        "bh_total_return_pct": 438.01,
+        "r_excess_pct": -286.32,
+        "r_wins": false
+      },
+      "years": 3
+    },
+    "MSFT": {
+      "wyckoff": {
+        "signals": 58,
+        "win_rate_20d": 53.4,
+        "avg_ret_20d": 0.43,
+        "sharpe_20d": 0.88,
+        "vs_buy_hold_20d": -1.06,
+        "sample": [
+          {
+            "date": "2024-03-12",
+            "events": [
+              "PS"
+            ],
+            "confidence": 0.14,
+            "future": {
+              "5": 1.48,
+              "10": 1.53,
+              "20": 1.92
+            }
+          },
+          {
+            "date": "2024-03-26",
+            "events": [
+              "PS",
+              "SC"
+            ],
+            "confidence": 0.29,
+            "future": {
+              "5": -0.28,
+              "10": 0.38,
+              "20": -2.99
+            }
+          },
+          {
+            "date": "2024-04-10",
+            "events": [
+              "PS",
+              "SC"
+            ],
+            "confidence": 0.29,
+            "future": {
+              "5": -2.7,
+              "10": -3.35,
+              "20": -3.01
+            }
+          },
+          {
+            "date": "2024-04-24",
+            "events": [
+              "PS",
+              "SC"
+            ],
+            "confidence": 0.29,
+            "future": {
+              "5": -3.45,
+              "10": 0.36,
+              "20": 5.44
+            }
+          },
+          {
+            "date": "2024-05-08",
+            "events": [
+              "PS",
+              "SC"
+            ],
+            "confidence": 0.29,
+            "future": {
+              "5": 3.24,
+              "10": 5.06,
+              "20": 3.59
+            }
+          }
+        ]
+      },
+      "multifactor": {
+        "gte60": {
+          "count": 17,
+          "win_rate_20d": 47.1,
+          "avg_ret_20d": -0.72,
+          "sharpe_20d": -1.91
+        },
+        "lt60": {
+          "count": 32,
+          "win_rate_20d": 59.4,
+          "avg_ret_20d": 1.44,
+          "sharpe_20d": 2.62
+        },
+        "total_scored": 49
+      },
+      "r_multiple": {
+        "entry": 330.99,
+        "r_size": 7.91,
+        "exit_times": [
+          "+1R",
+          "+2R"
+        ],
+        "r_total_return_pct": 19.83,
+        "bh_total_return_pct": 51.02,
+        "r_excess_pct": -31.19,
+        "r_wins": false
+      },
+      "years": 3
+    },
+    "AAPL": {
+      "wyckoff": {
+        "signals": 57,
+        "win_rate_20d": 61.4,
+        "avg_ret_20d": 2.16,
+        "sharpe_20d": 5.38,
+        "vs_buy_hold_20d": 0.08,
+        "sample": [
+          {
+            "date": "2024-02-12",
+            "events": [
+              "PS"
+            ],
+            "confidence": 0.14,
+            "future": {
+              "5": -2.99,
+              "10": -2.42,
+              "20": -7.44
+            }
+          },
+          {
+            "date": "2024-02-27",
+            "events": [
+              "PS"
+            ],
+            "confidence": 0.14,
+            "future": {
+              "5": -6.85,
+              "10": -5.15,
+              "20": -7.07
+            }
+          },
+          {
+            "date": "2024-03-12",
+            "events": [
+              "PS"
+            ],
+            "confidence": 0.14,
+            "future": {
+              "5": 1.65,
+              "10": -2.03,
+              "20": -3.15
+            }
+          },
+          {
+            "date": "2024-03-26",
+            "events": [
+              "PS"
+            ],
+            "confidence": 0.14,
+            "future": {
+              "5": -0.04,
+              "10": -1.14,
+              "20": -0.41
+            }
+          },
+          {
+            "date": "2024-04-10",
+            "events": [
+              "PS"
+            ],
+            "confidence": 0.14,
+            "future": {
+              "5": 0.13,
+              "10": 0.74,
+              "20": 8.92
+            }
+          }
+        ]
+      },
+      "multifactor": {
+        "gte60": {
+          "count": 21,
+          "win_rate_20d": 57.1,
+          "avg_ret_20d": 0.8,
+          "sharpe_20d": 2.27
+        },
+        "lt60": {
+          "count": 28,
+          "win_rate_20d": 60.7,
+          "avg_ret_20d": 2.54,
+          "sharpe_20d": 6.0
+        },
+        "total_scored": 49
+      },
+      "r_multiple": {
+        "entry": 168.64,
+        "r_size": 3.13,
+        "exit_times": [
+          "+1R",
+          "+2R"
+        ],
+        "r_total_return_pct": 30.37,
+        "bh_total_return_pct": 85.26,
+        "r_excess_pct": -54.89,
+        "r_wins": false
+      },
+      "years": 3
+    }
+  }
+}
