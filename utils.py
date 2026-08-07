@@ -4677,7 +4677,7 @@ def fetch_capital_flow_eastmoney(symbol: str) -> Optional[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 SAFE_HAVEN_TICKERS = {"GLD": "黄金ETF", "TLT": "20+年美债ETF", "DXY": "美元指数"}
-SAFE_HAVEN_HISTORY_PATH = DATA_DIR / "safe_haven_history.json"
+SAFE_HAVEN_HISTORY_PATH = Path(__file__).parent / "data" / "safe_haven_history.json"
 
 
 def fetch_safe_haven_prices() -> Dict[str, Dict[str, Any]]:
